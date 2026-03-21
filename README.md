@@ -58,6 +58,8 @@ ClearMarket enriches raw market data with 5 fields that don't exist anywhere els
 ```json
 {
   "reference_id": "US-RECESSION-2026",
+  "platform": "polymarket",
+  "platform_market_id": "will-there-be-a-us-recession-in-2026",
   "question": "US recession by end of 2026?",
   "category": "macro",
   "price_snapshot": {
