@@ -61,9 +61,20 @@ Five fields that don't exist anywhere else:
   "question": "US recession by end of 2026?",
   "category": "macro",
   "price_snapshot": {
-    "last_price": 0.305,
-    "best_bid": 0.30,
-    "best_ask": 0.31,
+    "yes": {
+      "last_price": 0.305,
+      "best_bid": 0.30,
+      "best_ask": 0.31
+    },
+    "no": {
+      "last_price": 0.695,
+      "best_bid": 0.69,
+      "best_ask": 0.70
+    },
+    "implied_probability": {
+      "yes": 0.305,
+      "no": 0.695
+    },
     "volume": 632960,
     "liquidity": 154204
   },
