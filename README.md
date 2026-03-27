@@ -2,15 +2,15 @@
 
 **Structured intelligence for prediction markets.**
 
-Prediction market platforms publish prices and order books. They don't publish what those markets actually mean — how they resolve, what events move them before resolution, how the same question is structured differently across platforms, or where coverage gaps exist.
+Platforms give you prices. ClearMarket gives you what the prices actually mean.
 
-ClearMarket is the enrichment layer that fills this gap. Raw market data in, structured intelligence out.
+Raw feeds from Polymarket and Kalshi contain almost no information about resolution rules, catalyst events, cross-platform differences, or related markets. ClearMarket adds the missing intelligence layer so agents and institutions can trade with understanding instead of blind price signals.
 
 ---
 
 ## The Problem
 
-An agent trading prediction markets today gets this from the API:
+A typical raw API response looks like this:
 
 ```json
 {
@@ -21,29 +21,27 @@ An agent trading prediction markets today gets this from the API:
 }
 ```
 
-Four fields. No information about what triggers resolution, what doesn't count (humanitarian pauses? energy-only ceasefires?), when the key diplomatic events that move price are scheduled, whether Kalshi has an equivalent market, or how this relates to the 6 other ceasefire markets on the same platform.
-
-The agent is trading blind on everything except price.
+No triggers, no exclusions, no catalyst calendar, no cross-platform equivalents, no relationships to other ceasefire markets. Agents are flying blind.
 
 ---
 
 ## What ClearMarket Adds
 
-ClearMarket enriches raw market data with 5 fields that don't exist anywhere else:
+Five fields that don't exist anywhere else:
 
-| Field | What it contains | Why it matters |
+| Field | What it gives you | Why it matters |
 |---|---|---|
-| **resolution_logic** | Parsed triggers, exclusions, and edge cases from prose resolution criteria | The #1 source of disputes and losses. "Ceasefire" excludes energy-only deals, informal agreements, and humanitarian pauses. An agent that doesn't know this will misinterpret resolution risk. |
-| **temporal_context** | Close date, resolution date, and a catalyst calendar of events that move price before resolution | Trading stops and payout are different dates. Between now and then, FOMC meetings, GDP releases, and diplomatic summits move prices. Agents that only know the end date miss the calendar. |
-| **resolution_source** | Who determines the outcome and how | Kalshi uses centralized CFTC-regulated settlement. Polymarket uses UMA's optimistic oracle with a $750 dispute bond. The same event can resolve differently across platforms. |
-| **cross_platform_link** | Equivalent markets on other platforms, with structural notes | Kalshi trades Fed rate decisions as per-meeting binaries. Polymarket trades them as year-end distributions. Same underlying event, completely different structure. A null value here is itself a signal — it means one platform has a coverage gap. |
-| **related_markets** | Connected markets on the same platform with typed relationships | Ceasefire markets form temporal clusters (March, April, June, December) and parlays. The term structure between them implies a monthly hazard rate. Individual market prices don't tell you this. |
+| `resolution_logic` | Parsed triggers, exclusions, edge cases | The #1 source of disputes and losses |
+| `temporal_context` | Close date, resolution date, `catalyst_dates[]` | Know exactly which real-world events move price before resolution |
+| `resolution_source` | Who decides + mechanism (UMA vs CFTC) | Same event can resolve differently across platforms |
+| `cross_platform_link` | Equivalent markets + structural notes + coverage gaps | Kalshi has no direct equivalent? That's valuable information |
+| `related_markets` | Typed relationships (temporal clusters, parlays, etc.) | Reveals term structure and arb opportunities |
 
 ---
 
-## Before and After
+## Before vs After (Real Example)
 
-**Before** — what you get from the Polymarket API for a recession market:
+**Raw Polymarket API** (recession market) — 4 basic fields:
 
 ```json
 {
@@ -53,7 +51,7 @@ ClearMarket enriches raw market data with 5 fields that don't exist anywhere els
 }
 ```
 
-**After** — the same market enriched by ClearMarket:
+**ClearMarket enriched record** — 10 structured fields including parsed GDP triggers, BEA catalyst dates, Kalshi coverage gap, and causal links to Fed-rate markets:
 
 ```json
 {
@@ -121,24 +119,22 @@ ClearMarket enriches raw market data with 5 fields that don't exist anywhere els
 }
 ```
 
-Three fields became a complete analytical record. An agent can now programmatically check resolution triggers against real-time GDP data, know exactly when the next catalyst date is, understand that Kalshi has no equivalent market, and see which related markets to monitor.
+(See `markets/` for enriched records.)
 
 ---
 
 ## What ClearMarket Is Not
 
-- **Not a unified API.** Dome (acquired by Polymarket), PolyRouter, and pmxt normalize access and order routing across platforms. ClearMarket consumes their outputs as inputs.
+- **Not a unified API.** Dome (acquired by Polymarket), PolyRouter, and pmxt normalize access and order routing. ClearMarket consumes those outputs as inputs.
 - **Not a trading platform.** No order execution, no portfolio management.
 - **Not a price feed.** Price snapshots are included for context but are not real-time.
-- **Not a latency play.** If your edge is speed, ClearMarket won't help. If your edge is understanding what you're trading, it will.
+- **Not a latency play.** If your edge is speed, this won't help. If your edge is understanding what you're trading, it will.
 
 ---
 
 ## Current Coverage
 
 **v0.1** covers macro/economics and geopolitics — the categories with the highest institutional relevance and the most complex resolution criteria.
-
-Enriched records are stored as individual JSON files in `markets/`.
 
 | Category | Markets | Platforms |
 |---|---|---|
@@ -147,17 +143,17 @@ Enriched records are stored as individual JSON files in `markets/`.
 | Geopolitics | Russia-Ukraine ceasefire cluster | Polymarket (Kalshi gap) |
 | Trade / Tariffs | US-Canada, US-China tariff markets | Polymarket, Kalshi |
 
-Schema definition: [`schema/clearmarket-schema.json`](schema/clearmarket-schema.json)
+Schema: [`schema/clearmarket-schema.json`](schema/clearmarket-schema.json)
 
 ---
 
 ## Who This Is For
 
-- **Bot and agent developers** trading across platforms who need structured resolution logic and cross-platform mapping. If you've been burned by resolution criteria you didn't fully parse, or missed that two "identical" markets on Kalshi and Polymarket have different triggers — this is for you.
-- **Quantitative researchers** building models that incorporate prediction market signals alongside traditional data
-- **Anyone evaluating prediction market data quality** — coverage gaps, resolution ambiguity, and structural differences across platforms are documented in the records themselves
+- **Bot and agent developers** who need machine-readable resolution logic and cross-platform mapping
+- **Quantitative researchers** incorporating prediction market signals into models
+- **Institutions evaluating prediction market data quality** and coverage gaps
 
-Prediction market data is increasingly embedded in institutional infrastructure (ICE, Bloomberg Terminal, Tradeweb, Dow Jones). The analytical context around that data — resolution logic, structural mapping, accuracy tracking — doesn't exist yet. ClearMarket is building it.
+Prediction market data is increasingly embedded in institutional infrastructure (ICE, Bloomberg Terminal, Tradeweb, Dow Jones). The analytical context around that data doesn't exist yet.
 
 ---
 
@@ -167,14 +163,14 @@ Prediction market data is increasingly embedded in institutional infrastructure 
 |---|---|
 | Schema definition + enriched records | **Current** |
 | Automated enrichment pipeline | Next |
-| API or MCP server (query enriched markets programmatically) | When demand warrants |
-| Resolution outcome tracking + accuracy dataset | After 6 months of accumulated data — this becomes the moat |
+| API or MCP server | When demand warrants |
+| Resolution outcome tracking + accuracy dataset | After 6 months of data — this becomes the moat |
 
 ---
 
 ## Contributing
 
-ClearMarket is early-stage. If you trade prediction markets, build agents, or work with this data professionally, open an issue or reach out. The schema is the product — feedback on what's missing or wrong is more valuable than code contributions right now.
+Early stage. Feedback on the schema and missing fields is more valuable than code contributions right now. Open an issue or reach out.
 
 ---
 

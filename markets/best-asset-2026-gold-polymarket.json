@@ -1,0 +1,82 @@
+{
+  "reference_id": "BEST-ASSET-2026-GOLD",
+  "description": "Three-way performance comparison: will Gold outperform both Bitcoin and the S&P 500 in 2026? Currently the favorite at 54%, reflecting risk-off macro sentiment and strong YTD gold performance.",
+  "platform": "polymarket",
+  "platform_market_id": "0x23db4bef50396fe700d23cb2eaa7d726da9280f7ce3ecd54126a976e9591c7bf",
+  "question": "Will Gold have the best performance in 2026 (vs Bitcoin and S&P 500)?",
+  "category": "macro",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.54,
+      "best_bid": 0.53,
+      "best_ask": 0.54
+    },
+    "no": {
+      "last_price": 0.46,
+      "best_bid": 0.46,
+      "best_ask": 0.47
+    },
+    "implied_probability": {
+      "yes": 0.54,
+      "no": 0.46
+    },
+    "volume": 231391,
+    "liquidity": 28004,
+    "as_of": "2026-03-25T00:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if Gold's percentage price change in 2026 exceeds both Bitcoin's and S&P 500's. Uses MarketWatch Gold Continuous Contract (GC00) close prices for last trading day of 2025 vs last trading day of 2026.",
+    "triggers": [
+      {
+        "type": "metric",
+        "description": "Gold YTD return exceeds both Bitcoin and S&P 500 YTD returns",
+        "metric": "Gold Continuous Contract (GC00) % change (MarketWatch close, last trading day 2025 vs last trading day 2026)",
+        "threshold": "Greater than both BTC (Binance) and S&P 500 (Yahoo Finance)",
+        "source": "MarketWatch",
+        "deadline": "Last trading day of 2026"
+      }
+    ],
+    "trigger_logic": "SINGLE",
+    "exclusions": [
+      "Total return measures — only closing prices",
+      "Spot gold prices from other sources — must be GC00 continuous contract on MarketWatch"
+    ],
+    "ambiguity_notes": "Gold uses futures continuous contract, not spot — these can diverge due to contango/backwardation. 'Last trading day' is typically December 31 but could be December 30 if Dec 31 falls on a weekend or holiday. MarketWatch historical data is the authoritative source."
+  },
+  "temporal_context": {
+    "closes": "2026-12-31",
+    "resolves": "~2027-01-02",
+    "catalyst_dates": [
+      {"date": "2026-04-29", "event": "April FOMC — rate decisions drive gold via real yield channel"},
+      {"date": "2026-06-17", "event": "June FOMC + dot plot — forward guidance moves gold"},
+      {"date": "2026-09-16", "event": "September FOMC + dot plot"},
+      {"date": "2026-12-09", "event": "December FOMC — last major catalyst before year-end"}
+    ],
+    "days_to_resolution": 281
+  },
+  "resolution_source": {
+    "name": "MarketWatch",
+    "type": "news_organization",
+
+    "url": "https://www.marketwatch.com/investing/future/gc00",
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "No equivalent on Kalshi. Coverage gap."
+  },
+  "related_markets": [
+    {
+      "market_id": "0xb276435811dc77171602f790db2b5900e780adfadb7cff57e547d58fb1a8215f",
+      "relationship_type": "comparison",
+      "notes": "Bitcoin best performer at 30% — Gold is the current favorite at 54%, reflecting risk-off macro sentiment"
+    },
+    {
+      "market_id": "0x5290e1debd1d164f7828f32c9da7747018462293928a8624e27a070b7255f1f1",
+      "relationship_type": "comparison",
+      "notes": "S&P 500 best performer at 20% — equities lagging in this race"
+    }
+  ]
+}

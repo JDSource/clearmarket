@@ -1,0 +1,79 @@
+{
+  "reference_id": "FOMC-APR2026-HOLD",
+  "description": "Binary market on whether the Fed holds rates at the April 29, 2026 FOMC meeting. Currently pricing 95% probability of no change, implying near-certainty the Fed stands pat in April.",
+  "platform": "kalshi",
+  "platform_market_id": "KXFEDDECISION-26APR-H0",
+  "question": "Will the Federal Reserve hold rates at their April 2026 meeting?",
+  "category": "macro",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.95,
+      "best_bid": 0.94,
+      "best_ask": 0.95
+    },
+    "no": {
+      "last_price": 0.05,
+      "best_bid": 0.05,
+      "best_ask": 0.06
+    },
+    "implied_probability": {
+      "yes": 0.95,
+      "no": 0.05
+    },
+    "volume": 1701212,
+    "liquidity": null,
+    "as_of": "2026-03-25T00:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if the Federal Reserve makes no change to the federal funds rate (0 bps hike) at the April 29, 2026 FOMC meeting. Mutually exclusive with cut and hike markets.",
+    "triggers": [
+      {
+        "type": "announcement",
+        "description": "Federal Reserve FOMC statement announces no rate change",
+        "metric": "Federal funds rate target range",
+        "threshold": "No change (0 bps)",
+        "source": "Federal Reserve",
+        "deadline": "2026-04-29"
+      }
+    ],
+    "trigger_logic": "SINGLE",
+    "exclusions": [
+      "Emergency rate changes between meetings do not affect this market — it resolves only on the scheduled April 29 decision"
+    ],
+    "ambiguity_notes": "If the scheduled FOMC meeting is canceled and does not occur on its scheduled date, the 'Fed maintains rate' strike resolves Yes and all others resolve No. This is a non-obvious edge case — meeting cancellation is treated as a hold."
+  },
+  "temporal_context": {
+    "closes": "2026-04-29",
+    "resolves": "2026-04-29",
+    "catalyst_dates": [
+      {"date": "2026-04-10", "event": "March CPI release — inflation data directly influences hold/cut decision"},
+      {"date": "2026-04-04", "event": "March jobs report (BLS) — labor market data influences Fed stance"},
+      {"date": "2026-04-29", "event": "FOMC statement and press conference"}
+    ],
+    "days_to_resolution": 35
+  },
+  "resolution_source": {
+    "name": "Federal Reserve",
+    "type": "central_bank",
+    "url": "https://www.federalreserve.gov/monetarypolicy/openmarket.htm",
+    "mechanism": "Centralized (CFTC-regulated staff determination)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "polymarket",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "Polymarket does not have a direct April 2026 hold/cut binary. Their Fed rate markets are structured as combo markets (Fed Chair nominee + rate level threshold), not per-meeting decisions. Structural divergence: Kalshi offers granular per-meeting decisions; Polymarket bundles rate outcomes with political events."
+  },
+  "related_markets": [
+    {
+      "market_id": "KXFEDDECISION-26DEC-H0",
+      "relationship_type": "temporal_cluster",
+      "notes": "December 2026 hold at 67% — shows market expects cuts between April and December (April hold 95% vs December hold 67% implies ~28% probability of at least one cut)"
+    },
+    {
+      "market_id": "KXFED-26DEC-T3.50",
+      "relationship_type": "causal_indicator",
+      "notes": "Fed rate above 3.50% after December meeting at 63% — rate level market that shows expected terminal rate"
+    }
+  ]
+}

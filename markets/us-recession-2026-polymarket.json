@@ -1,0 +1,84 @@
+{
+  "reference_id": "US-RECESSION-2026",
+  "description": "Binary market on whether the US enters a recession by end of 2026, defined by two consecutive quarters of negative GDP growth or an NBER declaration. Currently pricing 34.5% probability.",
+  "platform": "polymarket",
+  "platform_market_id": "0xfdc73f10edf0266756686f35b5712cffa828b0940fc015e0426c76c934c2105d",
+  "question": "Will the US enter a recession by end of 2026?",
+  "category": "macro",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.345,
+      "best_bid": 0.34,
+      "best_ask": 0.35
+    },
+    "no": {
+      "last_price": 0.655,
+      "best_bid": 0.65,
+      "best_ask": 0.66
+    },
+    "implied_probability": {
+      "yes": 0.345,
+      "no": 0.655
+    },
+    "volume": 880777,
+    "liquidity": 79660,
+    "as_of": "2026-03-25T00:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if (1) two consecutive quarters of negative real GDP growth between Q2 2025 and Q4 2026 per BEA data, OR (2) the NBER publicly announces a US recession occurred during 2025-2026 by the time BEA releases the Q4 2026 advance estimate.",
+    "triggers": [
+      {
+        "type": "metric",
+        "description": "Two consecutive quarters of negative seasonally adjusted annualized real GDP growth",
+        "metric": "Real GDP quarterly % change (SAAR)",
+        "threshold": "< 0.0% for two consecutive quarters",
+        "source": "Bureau of Economic Analysis (BEA)",
+        "deadline": "Q4 2026 advance estimate release"
+      },
+      {
+        "type": "announcement",
+        "description": "NBER publicly declares a US recession occurred in 2025 or 2026",
+        "metric": null,
+        "threshold": null,
+        "source": "National Bureau of Economic Research (NBER)",
+        "deadline": "By Q4 2026 advance estimate release"
+      }
+    ],
+    "trigger_logic": "OR",
+    "exclusions": [
+      "GDP revisions after the advance estimate do not retroactively change resolution",
+      "Recession declared by entities other than NBER does not count"
+    ],
+    "ambiguity_notes": "Advance estimates are considered. If latest Q3 2025 estimate is negative and Q4 2026 advance is also negative, resolves Yes even if Q3 was later revised positive. NBER typically declares recessions 6-12 months after the fact, so an NBER call before Q4 2026 advance release would be unusual but qualifying."
+  },
+  "temporal_context": {
+    "closes": "2027-01-31",
+    "resolves": "~2027-01-31",
+    "catalyst_dates": [
+      {"date": "2026-04-30", "event": "BEA advance estimate Q1 2026 GDP"},
+      {"date": "2026-06-25", "event": "BEA third estimate Q1 2026 GDP"},
+      {"date": "2026-07-30", "event": "BEA advance estimate Q2 2026 GDP"},
+      {"date": "2026-10-29", "event": "BEA advance estimate Q3 2026 GDP"}
+    ],
+    "days_to_resolution": 312
+  },
+  "resolution_source": {
+    "name": "Bureau of Economic Analysis / NBER",
+    "type": "government_statistical_agency",
+    "url": "https://www.bea.gov/data/gdp/gross-domestic-product",
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "Kalshi does not have a direct US recession 2026 binary market. Their closest equivalent is the 'Powell says Recession' word market (KXFEDMENTION-26APR-RECE), which is a proxy at best. Coverage gap: Kalshi lacks a standalone recession probability market."
+  },
+  "related_markets": [
+    {
+      "market_id": "0x006c094eeab7dac264ed602f6a8576475d72df9a6d53ab79b6fbc87148022f54",
+      "relationship_type": "causal_indicator",
+      "notes": "China tariff rate on March 31 — higher tariffs increase recession probability via supply chain disruption and consumer price inflation"
+    }
+  ]
+}

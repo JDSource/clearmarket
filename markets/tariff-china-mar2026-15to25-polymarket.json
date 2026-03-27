@@ -1,0 +1,74 @@
+{
+  "reference_id": "TARIFF-CHINA-MAR2026-15TO25",
+  "description": "Distribution market on the US general tariff rate on Chinese imports as of March 31, 2026. The 15-25% bucket prices at 4%, capturing the tail risk of a sudden tariff escalation before the snapshot date.",
+  "platform": "polymarket",
+  "platform_market_id": "0xccea89b06c0223bf0f86f2ad23f9ae438352407530a22e567026ab85860e6b85",
+  "question": "Will the US tariff rate on China be between 15% and 25% on March 31, 2026?",
+  "category": "macro",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.04,
+      "best_bid": 0.02,
+      "best_ask": 0.04
+    },
+    "no": {
+      "last_price": 0.96,
+      "best_bid": 0.96,
+      "best_ask": 0.98
+    },
+    "implied_probability": {
+      "yes": 0.04,
+      "no": 0.96
+    },
+    "volume": 75432,
+    "liquidity": 8922,
+    "as_of": "2026-03-25T00:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if the general tariff rate on Chinese imports is between 15% and 25% (inclusive of lower bound, exclusive of upper) at 12:00 PM ET on March 31, 2026.",
+    "triggers": [
+      {
+        "type": "metric",
+        "description": "General tariff rate on Chinese imports falls in the 15-25% range",
+        "metric": "General import tariff rate on China",
+        "threshold": ">= 15% and < 25%",
+        "source": "Trump administration official information",
+        "deadline": "2026-03-31T12:00:00-05:00"
+      }
+    ],
+    "trigger_logic": "SINGLE",
+    "exclusions": [
+      "Item-specific exceptions or increases",
+      "Announced but not-yet-implemented tariffs",
+      "Paused or suspended tariffs"
+    ],
+    "ambiguity_notes": "Same general-vs-effective distinction as the 5-15% bucket. At 4% implied probability, market sees low chance of escalation to 15%+ before March 31 — but this bucket captures the tail risk of a sudden executive order. Multiple general rates stack (reciprocal + fentanyl + any new country-specific duties)."
+  },
+  "temporal_context": {
+    "closes": "2026-03-31",
+    "resolves": "2026-03-31",
+    "catalyst_dates": [
+      {"date": "2026-03-25", "event": "Any new executive orders or trade talk breakdowns before snapshot"}
+    ],
+    "days_to_resolution": 6
+  },
+  "resolution_source": {
+    "name": "Trump administration",
+    "type": "government",
+    "url": null,
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": "KXTARIFFRATEPRC-26JUL01-5",
+    "match_confidence": "proxy",
+    "structural_notes": "Kalshi's July 1 tariff distribution has a 10-20% bucket and a 20-30% bucket — overlapping but different boundaries and a 3-month later snapshot date."
+  },
+  "related_markets": [
+    {
+      "market_id": "0xde06508942f7f7d83bdbfc7c5b07c88e20891e9ef7440d74c9c259f2347fb8d3",
+      "relationship_type": "comparison",
+      "notes": "China tariff 5-15% on March 31 at 92% — dominant bucket. Together: 96% probability rate is between 5-25%."
+    }
+  ]
+}

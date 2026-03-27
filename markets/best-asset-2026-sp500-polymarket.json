@@ -1,0 +1,82 @@
+{
+  "reference_id": "BEST-ASSET-2026-SP500",
+  "description": "Three-way performance comparison: will the S&P 500 outperform both Bitcoin and Gold in 2026? Least favored at 20%, reflecting equity underperformance amid tariff uncertainty and recession risk. Uses price return only — excludes dividends.",
+  "platform": "polymarket",
+  "platform_market_id": "0x5290e1debd1d164f7828f32c9da7747018462293928a8624e27a070b7255f1f1",
+  "question": "Will the S&P 500 have the best performance in 2026 (vs Bitcoin and Gold)?",
+  "category": "macro",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.20,
+      "best_bid": 0.18,
+      "best_ask": 0.20
+    },
+    "no": {
+      "last_price": 0.80,
+      "best_bid": 0.80,
+      "best_ask": 0.82
+    },
+    "implied_probability": {
+      "yes": 0.20,
+      "no": 0.80
+    },
+    "volume": 114682,
+    "liquidity": 18105,
+    "as_of": "2026-03-25T00:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if S&P 500's percentage price change in 2026 exceeds both Bitcoin's and Gold's. Uses Yahoo Finance ^SPX close prices for last trading day of 2025 vs last trading day of 2026.",
+    "triggers": [
+      {
+        "type": "metric",
+        "description": "S&P 500 YTD return exceeds both Bitcoin and Gold YTD returns",
+        "metric": "S&P 500 Index (^SPX) % change (Yahoo Finance close, last trading day 2025 vs last trading day 2026)",
+        "threshold": "Greater than both BTC (Binance) and Gold (MarketWatch GC00)",
+        "source": "Yahoo Finance",
+        "deadline": "Last trading day of 2026"
+      }
+    ],
+    "trigger_logic": "SINGLE",
+    "exclusions": [
+      "Total return (including dividends) — only price return",
+      "S&P 500 Total Return Index — must be price-only ^SPX"
+    ],
+    "ambiguity_notes": "S&P 500 uses price return only, not total return — excludes ~1.3% annual dividend yield. This slightly disadvantages S&P vs assets with no yield (BTC) since dividends aren't counted. Yahoo Finance is the authoritative source — other data providers' ^SPX values may differ slightly."
+  },
+  "temporal_context": {
+    "closes": "2026-12-31",
+    "resolves": "~2027-01-02",
+    "catalyst_dates": [
+      {"date": "2026-04-14", "event": "Q1 2026 earnings season begins — corporate profit signals"},
+      {"date": "2026-04-29", "event": "April FOMC — rate path impacts equity valuations"},
+      {"date": "2026-07-14", "event": "Q2 2026 earnings season begins"},
+      {"date": "2026-10-13", "event": "Q3 2026 earnings season begins"},
+      {"date": "2026-11-03", "event": "US midterm elections — policy uncertainty catalyst"}
+    ],
+    "days_to_resolution": 281
+  },
+  "resolution_source": {
+    "name": "Yahoo Finance",
+    "type": "news_organization",
+    "url": "https://finance.yahoo.com/quote/%5ESPX/history/",
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "No equivalent on Kalshi. Coverage gap."
+  },
+  "related_markets": [
+    {
+      "market_id": "0x23db4bef50396fe700d23cb2eaa7d726da9280f7ce3ecd54126a976e9591c7bf",
+      "relationship_type": "comparison",
+      "notes": "Gold best performer at 54% — current favorite. S&P at 20% is the least favored of the three."
+    },
+    {
+      "market_id": "0xb276435811dc77171602f790db2b5900e780adfadb7cff57e547d58fb1a8215f",
+      "relationship_type": "comparison",
+      "notes": "Bitcoin best performer at 30% — second place. Implied market ranking: Gold > BTC > S&P 500."
+    }
+  ]
+}

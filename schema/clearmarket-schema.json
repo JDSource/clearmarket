@@ -23,6 +23,10 @@
       "description": "Canonical event identifier. Master key across platforms. Format: CATEGORY-TOPIC-VARIANT (e.g., US-RECESSION-2026, FOMC-JUNE-2026).",
       "pattern": "^[A-Z0-9-]+$"
     },
+    "description": {
+      "type": "string",
+      "description": "Human-readable summary of the market in 1-2 sentences. Includes what the market asks and its current implied probability."
+    },
     "platform": {
       "type": "string",
       "enum": ["polymarket", "kalshi"],
@@ -43,26 +47,77 @@
     },
     "price_snapshot": {
       "type": "object",
-      "description": "Yes-side pricing. No = 1 - Yes.",
-      "required": ["last_price", "volume", "as_of"],
+      "description": "Market pricing for both Yes and No outcomes, plus implied probability. Matches convention used by both Polymarket and Kalshi APIs.",
+      "required": ["yes", "no", "implied_probability", "volume", "as_of"],
       "properties": {
-        "last_price": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "description": "Last traded price for Yes outcome (0-1)."
+        "yes": {
+          "type": "object",
+          "description": "Yes-side pricing.",
+          "required": ["last_price"],
+          "properties": {
+            "last_price": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Last traded price for Yes outcome (0-1)."
+            },
+            "best_bid": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Best bid for Yes outcome."
+            },
+            "best_ask": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Best ask for Yes outcome."
+            }
+          }
         },
-        "best_bid": {
-          "type": ["number", "null"],
-          "minimum": 0,
-          "maximum": 1,
-          "description": "Best bid for Yes outcome."
+        "no": {
+          "type": "object",
+          "description": "No-side pricing.",
+          "required": ["last_price"],
+          "properties": {
+            "last_price": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Last traded price for No outcome (0-1)."
+            },
+            "best_bid": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Best bid for No outcome."
+            },
+            "best_ask": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Best ask for No outcome."
+            }
+          }
         },
-        "best_ask": {
-          "type": ["number", "null"],
-          "minimum": 0,
-          "maximum": 1,
-          "description": "Best ask for Yes outcome."
+        "implied_probability": {
+          "type": "object",
+          "description": "Market-implied probability of each outcome. In prediction markets, price equals probability — a Yes price of 0.35 means the market assigns a 35% chance of the event occurring.",
+          "required": ["yes", "no"],
+          "properties": {
+            "yes": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Implied probability of Yes outcome (0-1)."
+            },
+            "no": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "Implied probability of No outcome (0-1)."
+            }
+          }
         },
         "volume": {
           "type": "number",
@@ -192,17 +247,41 @@
           "description": "Name of the resolution authority (e.g., 'BEA', 'Federal Reserve', 'NBER')."
         },
         "type": {
-          "type": "string",
-          "enum": [
-            "government_statistical_agency",
-            "central_bank",
-            "regulatory_body",
-            "international_organization",
-            "news_organization",
-            "platform_staff",
-            "other"
+          "oneOf": [
+            {
+              "type": "string",
+              "enum": [
+                "government_statistical_agency",
+                "central_bank",
+                "government",
+                "regulatory_body",
+                "international_organization",
+                "news_organization",
+                "financial_data_provider",
+                "platform_staff",
+                "other"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "government_statistical_agency",
+                  "central_bank",
+                  "government",
+                  "regulatory_body",
+                  "international_organization",
+                  "news_organization",
+                  "financial_data_provider",
+                  "platform_staff",
+                  "other"
+                ]
+              },
+              "minItems": 2
+            }
           ],
-          "description": "Type of resolution authority."
+          "description": "Type of resolution authority. Use a string for single-source markets, an array for markets resolved by multiple source types."
         },
         "url": {
           "type": ["string", "null"],
