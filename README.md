@@ -34,7 +34,7 @@ Five fields that don't exist anywhere else:
 | `resolution_logic` | Parsed triggers, exclusions, edge cases | The #1 source of disputes and losses |
 | `temporal_context` | Close date, resolution date, `catalyst_dates[]` | Know exactly which real-world events move price before resolution |
 | `resolution_source` | Who decides + mechanism (UMA vs CFTC) | Same event can resolve differently across platforms |
-| `cross_platform_link` | Equivalent markets + structural notes + coverage gaps | Kalshi has no direct equivalent? That's valuable information |
+| `cross_platform_link` | Equivalent markets + structural notes + coverage gaps | Maps structural differences and documents where one platform has no equivalent |
 | `related_markets` | Typed relationships (temporal clusters, parlays, etc.) | Reveals term structure and arb opportunities |
 
 ---
