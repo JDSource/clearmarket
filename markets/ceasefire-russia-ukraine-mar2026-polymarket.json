@@ -7,25 +7,25 @@
   "category": "geopolitics",
   "price_snapshot": {
     "yes": {
-      "last_price": 0.005,
-      "best_bid": 0.004,
-      "best_ask": 0.005
+      "last_price": 0.001,
+      "best_bid": 0.001,
+      "best_ask": 0.002
     },
     "no": {
-      "last_price": 0.995,
-      "best_bid": 0.995,
-      "best_ask": 0.996
+      "last_price": 0.999,
+      "best_bid": 0.998,
+      "best_ask": 0.999
     },
     "implied_probability": {
-      "yes": 0.005,
-      "no": 0.995
+      "yes": 0.001,
+      "no": 0.999
     },
-    "volume": 28298697,
-    "liquidity": 486317,
-    "as_of": "2026-03-25T00:00:00Z"
+    "volume": 29469269,
+    "liquidity": 389034,
+    "as_of": "2026-03-30T14:00:00Z"
   },
   "resolution_logic": {
-    "summary": "Resolves Yes if an official ceasefire agreement — a publicly announced and mutually agreed halt in military engagement — is reached between Russia and Ukraine by March 31, 2026 11:59 PM ET. The agreement must be reached by the deadline; the ceasefire itself can start later.",
+    "summary": "Resolves Yes if an official ceasefire agreement \u2014 a publicly announced and mutually agreed halt in military engagement \u2014 is reached between Russia and Ukraine by March 31, 2026 11:59 PM ET. The agreement must be reached by the deadline; the ceasefire itself can start later.",
     "triggers": [
       {
         "type": "announcement",
@@ -49,9 +49,12 @@
     "closes": "2026-03-31",
     "resolves": "2026-03-31",
     "catalyst_dates": [
-      {"date": "2026-03-25", "event": "Ongoing US-mediated ceasefire negotiations"}
+      {
+        "date": "2026-03-25",
+        "event": "Ongoing US-mediated ceasefire negotiations"
+      }
     ],
-    "days_to_resolution": 6
+    "days_to_resolution": 1
   },
   "resolution_source": {
     "name": "Russian and Ukrainian governments",
@@ -63,23 +66,23 @@
     "linked_platform": "kalshi",
     "linked_market_id": null,
     "match_confidence": null,
-    "structural_notes": "Kalshi does not have a Russia-Ukraine ceasefire market. Coverage gap — Polymarket dominates geopolitical event markets."
+    "structural_notes": "Kalshi does not have a Russia-Ukraine ceasefire market. Coverage gap \u2014 Polymarket dominates geopolitical event markets."
   },
   "related_markets": [
     {
       "market_id": "0x7434b22007745d99095c102119fdb6b975d34869212e9dda4c6c5c48db0683a7",
       "relationship_type": "temporal_cluster",
-      "notes": "Ceasefire by April 30 at 3.9% — one-month extension of the same question"
+      "notes": "Ceasefire by April 30 at 3.9% \u2014 one-month extension of the same question"
     },
     {
       "market_id": "0xe546672750517f62c45a5a00067481981e62b9c20fa8220203232c9dc8fd2093",
       "relationship_type": "temporal_cluster",
-      "notes": "Ceasefire by June 30 at 15% — three-month extension"
+      "notes": "Ceasefire by June 30 at 15% \u2014 three-month extension"
     },
     {
       "market_id": "0x2aceb9fdc00a2cf03cb4b70681322e0974d2309a32143003b297410734bbade5",
       "relationship_type": "comparison",
-      "notes": "Russia-Ukraine ceasefire before US-Iran ceasefire at 14% — relative timing market"
+      "notes": "Russia-Ukraine ceasefire before US-Iran ceasefire at 14% \u2014 relative timing market"
     }
   ]
 }

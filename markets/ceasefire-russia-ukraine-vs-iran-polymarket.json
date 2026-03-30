@@ -7,22 +7,22 @@
   "category": "geopolitics",
   "price_snapshot": {
     "yes": {
-      "last_price": 0.14,
-      "best_bid": 0.12,
-      "best_ask": 0.13
+      "last_price": 0.11,
+      "best_bid": 0.11,
+      "best_ask": 0.12
     },
     "no": {
-      "last_price": 0.86,
-      "best_bid": 0.87,
-      "best_ask": 0.88
+      "last_price": 0.89,
+      "best_bid": 0.88,
+      "best_ask": 0.89
     },
     "implied_probability": {
-      "yes": 0.14,
-      "no": 0.86
+      "yes": 0.115,
+      "no": 0.885
     },
-    "volume": 39887,
-    "liquidity": 19478,
-    "as_of": "2026-03-25T00:00:00Z"
+    "volume": 46270,
+    "liquidity": 20931,
+    "as_of": "2026-03-30T14:00:00Z"
   },
   "resolution_logic": {
     "summary": "Resolves Yes if Russia-Ukraine ceasefire is officially announced before a US-Iran ceasefire. Resolves No if US-Iran comes first. Resolves 50-50 if neither occurs by December 31, 2026. Same-day announcements resolve by earlier ET timestamp.",
@@ -43,16 +43,22 @@
       "Partial ceasefires (energy infrastructure, Black Sea only) for Russia-Ukraine",
       "Frameworks without explicit dated commitment to stop fighting"
     ],
-    "ambiguity_notes": "Novel 50-50 resolution if neither ceasefire occurs — unusual mechanism. Same-day tiebreaker uses ET timestamp, creating a potential edge case if announcements happen in different time zones near midnight. US-Iran ceasefire requires both governments to publicly confirm — backchannel de-escalation does not count."
+    "ambiguity_notes": "Novel 50-50 resolution if neither ceasefire occurs \u2014 unusual mechanism. Same-day tiebreaker uses ET timestamp, creating a potential edge case if announcements happen in different time zones near midnight. US-Iran ceasefire requires both governments to publicly confirm \u2014 backchannel de-escalation does not count."
   },
   "temporal_context": {
     "closes": "2026-12-31",
     "resolves": "~2026-12-31",
     "catalyst_dates": [
-      {"date": "2026-03-31", "event": "March 31 Russia-Ukraine ceasefire deadline market resolves"},
-      {"date": "2026-04-30", "event": "April 30 Russia-Ukraine ceasefire deadline market resolves"}
+      {
+        "date": "2026-03-31",
+        "event": "March 31 Russia-Ukraine ceasefire deadline market resolves"
+      },
+      {
+        "date": "2026-04-30",
+        "event": "April 30 Russia-Ukraine ceasefire deadline market resolves"
+      }
     ],
-    "days_to_resolution": 281
+    "days_to_resolution": 276
   },
   "resolution_source": {
     "name": "Governments of Russia, Ukraine, United States, and Iran",
@@ -70,12 +76,12 @@
     {
       "market_id": "0xe546672750517f62c45a5a00067481981e62b9c20fa8220203232c9dc8fd2093",
       "relationship_type": "causal_indicator",
-      "notes": "Russia-Ukraine ceasefire by June 30 at 15% — if this resolves Yes, the relative market likely moves sharply"
+      "notes": "Russia-Ukraine ceasefire by June 30 at 15% \u2014 if this resolves Yes, the relative market likely moves sharply"
     },
     {
       "market_id": "0x7434b22007745d99095c102119fdb6b975d34869212e9dda4c6c5c48db0683a7",
       "relationship_type": "causal_indicator",
-      "notes": "Russia-Ukraine ceasefire by April 30 at 3.9% — near-term signal"
+      "notes": "Russia-Ukraine ceasefire by April 30 at 3.9% \u2014 near-term signal"
     }
   ]
 }

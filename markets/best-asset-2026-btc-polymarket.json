@@ -7,22 +7,22 @@
   "category": "crypto",
   "price_snapshot": {
     "yes": {
-      "last_price": 0.30,
-      "best_bid": 0.28,
+      "last_price": 0.29,
+      "best_bid": 0.26,
       "best_ask": 0.29
     },
     "no": {
-      "last_price": 0.70,
+      "last_price": 0.71,
       "best_bid": 0.71,
-      "best_ask": 0.72
+      "best_ask": 0.74
     },
     "implied_probability": {
-      "yes": 0.30,
-      "no": 0.70
+      "yes": 0.275,
+      "no": 0.725
     },
-    "volume": 369769,
-    "liquidity": 29637,
-    "as_of": "2026-03-25T00:00:00Z"
+    "volume": 371389,
+    "liquidity": 28417,
+    "as_of": "2026-03-30T14:00:00Z"
   },
   "resolution_logic": {
     "summary": "Resolves Yes if Bitcoin's percentage price change in 2026 exceeds both Gold's and S&P 500's. Each asset uses a specific data source and methodology: Bitcoin uses Binance BTC/USDT 1-minute candle close prices, Gold uses MarketWatch GC00 continuous contract close, S&P 500 uses Yahoo Finance ^SPX close.",
@@ -38,26 +38,41 @@
     ],
     "trigger_logic": "SINGLE",
     "exclusions": [
-      "Total return measures — only closing prices, no dividends or yield",
-      "Intraday prices — only official closes used",
-      "Preliminary or adjusted closing prices — must be the published close"
+      "Total return measures \u2014 only closing prices, no dividends or yield",
+      "Intraday prices \u2014 only official closes used",
+      "Preliminary or adjusted closing prices \u2014 must be the published close"
     ],
-    "ambiguity_notes": "Three different data sources creates operational risk. Binance uses 1-minute candle (very specific — midnight ET on Jan 1 and 11:59 PM ET on Dec 31). Gold and S&P use last trading day closes, which differ from calendar year-end. Alphabetical tiebreaker: Bitcoin beats Gold beats S&P if tied. Shortened trading days use published session close."
+    "ambiguity_notes": "Three different data sources creates operational risk. Binance uses 1-minute candle (very specific \u2014 midnight ET on Jan 1 and 11:59 PM ET on Dec 31). Gold and S&P use last trading day closes, which differ from calendar year-end. Alphabetical tiebreaker: Bitcoin beats Gold beats S&P if tied. Shortened trading days use published session close."
   },
   "temporal_context": {
     "closes": "2026-12-31",
     "resolves": "~2027-01-02",
     "catalyst_dates": [
-      {"date": "2026-03-31", "event": "Q1 2026 performance comparison — first quarterly checkpoint"},
-      {"date": "2026-06-30", "event": "H1 2026 midpoint — rebalancing flows"},
-      {"date": "2026-09-30", "event": "Q3 end — 3 months remaining, positioning accelerates"},
-      {"date": "2026-12-31", "event": "Final trading day — resolution"}
+      {
+        "date": "2026-03-31",
+        "event": "Q1 2026 performance comparison \u2014 first quarterly checkpoint"
+      },
+      {
+        "date": "2026-06-30",
+        "event": "H1 2026 midpoint \u2014 rebalancing flows"
+      },
+      {
+        "date": "2026-09-30",
+        "event": "Q3 end \u2014 3 months remaining, positioning accelerates"
+      },
+      {
+        "date": "2026-12-31",
+        "event": "Final trading day \u2014 resolution"
+      }
     ],
-    "days_to_resolution": 281
+    "days_to_resolution": 276
   },
   "resolution_source": {
     "name": "Binance (BTC), MarketWatch (Gold), Yahoo Finance (S&P 500)",
-    "type": ["financial_data_provider", "news_organization"],
+    "type": [
+      "financial_data_provider",
+      "news_organization"
+    ],
     "url": "https://www.binance.com/en/trade/BTC_USDT",
     "mechanism": "UMA optimistic oracle ($500 dispute bond)"
   },
@@ -71,12 +86,12 @@
     {
       "market_id": "0x23db4bef50396fe700d23cb2eaa7d726da9280f7ce3ecd54126a976e9591c7bf",
       "relationship_type": "comparison",
-      "notes": "Gold best performer at 54% — currently the favorite. BTC at 30% is second."
+      "notes": "Gold best performer at 54% \u2014 currently the favorite. BTC at 30% is second."
     },
     {
       "market_id": "0x5290e1debd1d164f7828f32c9da7747018462293928a8624e27a070b7255f1f1",
       "relationship_type": "comparison",
-      "notes": "S&P 500 best performer at 20% — least favored. Implied ranking: Gold > BTC > S&P."
+      "notes": "S&P 500 best performer at 20% \u2014 least favored. Implied ranking: Gold > BTC > S&P."
     }
   ]
 }

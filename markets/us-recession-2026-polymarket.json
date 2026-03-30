@@ -7,22 +7,22 @@
   "category": "macro",
   "price_snapshot": {
     "yes": {
-      "last_price": 0.345,
-      "best_bid": 0.34,
-      "best_ask": 0.35
+      "last_price": 0.38,
+      "best_bid": 0.37,
+      "best_ask": 0.38
     },
     "no": {
-      "last_price": 0.655,
-      "best_bid": 0.65,
-      "best_ask": 0.66
+      "last_price": 0.62,
+      "best_bid": 0.62,
+      "best_ask": 0.63
     },
     "implied_probability": {
-      "yes": 0.345,
-      "no": 0.655
+      "yes": 0.375,
+      "no": 0.625
     },
-    "volume": 880777,
-    "liquidity": 79660,
-    "as_of": "2026-03-25T00:00:00Z"
+    "volume": 917462,
+    "liquidity": 83363,
+    "as_of": "2026-03-30T14:00:00Z"
   },
   "resolution_logic": {
     "summary": "Resolves Yes if (1) two consecutive quarters of negative real GDP growth between Q2 2025 and Q4 2026 per BEA data, OR (2) the NBER publicly announces a US recession occurred during 2025-2026 by the time BEA releases the Q4 2026 advance estimate.",
@@ -55,12 +55,24 @@
     "closes": "2027-01-31",
     "resolves": "~2027-01-31",
     "catalyst_dates": [
-      {"date": "2026-04-30", "event": "BEA advance estimate Q1 2026 GDP"},
-      {"date": "2026-06-25", "event": "BEA third estimate Q1 2026 GDP"},
-      {"date": "2026-07-30", "event": "BEA advance estimate Q2 2026 GDP"},
-      {"date": "2026-10-29", "event": "BEA advance estimate Q3 2026 GDP"}
+      {
+        "date": "2026-04-30",
+        "event": "BEA advance estimate Q1 2026 GDP"
+      },
+      {
+        "date": "2026-06-25",
+        "event": "BEA third estimate Q1 2026 GDP"
+      },
+      {
+        "date": "2026-07-30",
+        "event": "BEA advance estimate Q2 2026 GDP"
+      },
+      {
+        "date": "2026-10-29",
+        "event": "BEA advance estimate Q3 2026 GDP"
+      }
     ],
-    "days_to_resolution": 312
+    "days_to_resolution": 307
   },
   "resolution_source": {
     "name": "Bureau of Economic Analysis / NBER",
@@ -78,7 +90,7 @@
     {
       "market_id": "0x006c094eeab7dac264ed602f6a8576475d72df9a6d53ab79b6fbc87148022f54",
       "relationship_type": "causal_indicator",
-      "notes": "China tariff rate on March 31 — higher tariffs increase recession probability via supply chain disruption and consumer price inflation"
+      "notes": "China tariff rate on March 31 \u2014 higher tariffs increase recession probability via supply chain disruption and consumer price inflation"
     }
   ]
 }

@@ -7,22 +7,22 @@
   "category": "macro",
   "price_snapshot": {
     "yes": {
-      "last_price": 0.95,
-      "best_bid": 0.94,
-      "best_ask": 0.95
+      "last_price": 0.97,
+      "best_bid": 0.97,
+      "best_ask": 0.98
     },
     "no": {
-      "last_price": 0.05,
-      "best_bid": 0.05,
-      "best_ask": 0.06
+      "last_price": 0.03,
+      "best_bid": 0.02,
+      "best_ask": 0.03
     },
     "implied_probability": {
-      "yes": 0.95,
-      "no": 0.05
+      "yes": 0.97,
+      "no": 0.03
     },
-    "volume": 1701212,
+    "volume": 2353349,
     "liquidity": null,
-    "as_of": "2026-03-25T00:00:00Z"
+    "as_of": "2026-03-30T14:00:00Z"
   },
   "resolution_logic": {
     "summary": "Resolves Yes if the Federal Reserve makes no change to the federal funds rate (0 bps hike) at the April 29, 2026 FOMC meeting. Mutually exclusive with cut and hike markets.",
@@ -38,19 +38,28 @@
     ],
     "trigger_logic": "SINGLE",
     "exclusions": [
-      "Emergency rate changes between meetings do not affect this market — it resolves only on the scheduled April 29 decision"
+      "Emergency rate changes between meetings do not affect this market \u2014 it resolves only on the scheduled April 29 decision"
     ],
-    "ambiguity_notes": "If the scheduled FOMC meeting is canceled and does not occur on its scheduled date, the 'Fed maintains rate' strike resolves Yes and all others resolve No. This is a non-obvious edge case — meeting cancellation is treated as a hold."
+    "ambiguity_notes": "If the scheduled FOMC meeting is canceled and does not occur on its scheduled date, the 'Fed maintains rate' strike resolves Yes and all others resolve No. This is a non-obvious edge case \u2014 meeting cancellation is treated as a hold."
   },
   "temporal_context": {
     "closes": "2026-04-29",
     "resolves": "2026-04-29",
     "catalyst_dates": [
-      {"date": "2026-04-10", "event": "March CPI release — inflation data directly influences hold/cut decision"},
-      {"date": "2026-04-04", "event": "March jobs report (BLS) — labor market data influences Fed stance"},
-      {"date": "2026-04-29", "event": "FOMC statement and press conference"}
+      {
+        "date": "2026-04-10",
+        "event": "March CPI release \u2014 inflation data directly influences hold/cut decision"
+      },
+      {
+        "date": "2026-04-04",
+        "event": "March jobs report (BLS) \u2014 labor market data influences Fed stance"
+      },
+      {
+        "date": "2026-04-29",
+        "event": "FOMC statement and press conference"
+      }
     ],
-    "days_to_resolution": 35
+    "days_to_resolution": 30
   },
   "resolution_source": {
     "name": "Federal Reserve",
@@ -68,12 +77,12 @@
     {
       "market_id": "KXFEDDECISION-26DEC-H0",
       "relationship_type": "temporal_cluster",
-      "notes": "December 2026 hold at 67% — shows market expects cuts between April and December (April hold 95% vs December hold 67% implies ~28% probability of at least one cut)"
+      "notes": "December 2026 hold at 67% \u2014 shows market expects cuts between April and December (April hold 95% vs December hold 67% implies ~28% probability of at least one cut)"
     },
     {
       "market_id": "KXFED-26DEC-T3.50",
       "relationship_type": "causal_indicator",
-      "notes": "Fed rate above 3.50% after December meeting at 63% — rate level market that shows expected terminal rate"
+      "notes": "Fed rate above 3.50% after December meeting at 63% \u2014 rate level market that shows expected terminal rate"
     }
   ]
 }
