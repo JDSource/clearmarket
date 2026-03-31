@@ -1,0 +1,148 @@
+{
+  "reference_id": "FED-RATE-CUTS-2026-DISTRIBUTION",
+  "description": "Distribution market on how many 25bp Fed rate cuts will occur in 2026. Six outcomes (0 through 5+). Modal outcome is 0 cuts at 37.4%, with the market pricing ~63% chance of at least one cut. This is a negRisk grouped market where all outcomes sum to 100%.",
+  "platform": "polymarket",
+  "platform_market_id": "0xdcd7daabcacdc4ecf4f9a48d0a2708b52f356dd086c8070992136da62eb72b00",
+  "question": "How many Fed rate cuts in 2026?",
+  "category": "macro",
+  "price_snapshot": {
+    "distribution": {
+      "0_cuts": {
+        "last_price": 0.374,
+        "best_bid": 0.371,
+        "best_ask": 0.376,
+        "condition_id": "0xd4e77ba6f29fc093509d24f508631abd445ecf506bbdc9c4c80e60256a318527",
+        "volume": 2635381
+      },
+      "1_cut": {
+        "last_price": 0.23,
+        "best_bid": 0.23,
+        "best_ask": 0.24,
+        "condition_id": "0x5e082f0b57f47a29044aa35b4c5658393122e659d5feae521c06b57cdd7f905c",
+        "volume": 872604
+      },
+      "2_cuts": {
+        "last_price": 0.17,
+        "best_bid": 0.17,
+        "best_ask": 0.18,
+        "condition_id": "0xe0d9f508a249e0070db06eb7d1e1fb17eb23c963f6fb722c4c3f81e23240c1cd",
+        "volume": 816602
+      },
+      "3_cuts": {
+        "last_price": 0.10,
+        "best_bid": 0.10,
+        "best_ask": 0.11,
+        "condition_id": "0x8d4966e84ae80f24b2e14643fdd45364e354229e11e2c17903b4b1763cfbe67c",
+        "volume": 790189
+      },
+      "4_cuts": {
+        "last_price": 0.056,
+        "best_bid": 0.056,
+        "best_ask": 0.057,
+        "condition_id": "0xaece8d6062d3e3eb9845b32441a4ab06eb2ef332c0228bc6a36add450647c7c4",
+        "volume": 795062
+      },
+      "5_plus_cuts": {
+        "last_price": 0.024,
+        "best_bid": 0.023,
+        "best_ask": 0.024,
+        "condition_id": "0x7ee722a07e0f84405f1267bc1c84eb95bd6348454453abf445618e778af8fd18",
+        "volume": 829316
+      }
+    },
+    "implied_probability": {
+      "0_cuts": 0.374,
+      "1_cut": 0.235,
+      "2_cuts": 0.175,
+      "3_cuts": 0.105,
+      "4_cuts": 0.057,
+      "5_plus_cuts": 0.024
+    },
+    "total_event_volume": 5939154,
+    "as_of": "2026-03-30T20:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves to the exact number of 25bp cuts made by the Fed in 2026 (including the December meeting). A 50bp cut counts as 2 cuts. Cuts between 1-24bp count as 1 cut. Emergency cuts outside scheduled FOMC meetings count. Individual outcome markets resolve early to No if the specified count becomes impossible.",
+    "triggers": [
+      {
+        "type": "metric",
+        "description": "Count of 25bp-equivalent rate cuts across all 2026 FOMC meetings",
+        "metric": "Federal funds target rate changes",
+        "threshold": "Exact match to outcome bucket (0, 1, 2, 3, 4, or 5+)",
+        "source": "FOMC post-meeting statements",
+        "deadline": "December 31, 2026 11:59 PM ET"
+      }
+    ],
+    "trigger_logic": "EXACT_MATCH",
+    "exclusions": [
+      "Rate hikes do not reduce the cut count",
+      "A 50bp cut is counted as 2 cuts, not 1"
+    ],
+    "ambiguity_notes": "The 1-24bp threshold is unusual — a hypothetical 10bp 'technical adjustment' would count as a full cut. The market stays open through Dec 31 to capture any emergency inter-meeting cuts. Early resolution only applies to individual buckets becoming impossible (e.g., if 2 cuts happen, the '0 cuts' and '1 cut' markets resolve No immediately)."
+  },
+  "temporal_context": {
+    "closes": "2026-12-31",
+    "resolves": "2026-12-31",
+    "catalyst_dates": [
+      {
+        "date": "2026-05-06",
+        "event": "FOMC meeting (May) — next scheduled decision"
+      },
+      {
+        "date": "2026-06-17",
+        "event": "FOMC meeting (June) — with updated dot plot and SEP"
+      },
+      {
+        "date": "2026-07-29",
+        "event": "FOMC meeting (July)"
+      },
+      {
+        "date": "2026-09-16",
+        "event": "FOMC meeting (September) — with updated dot plot and SEP"
+      },
+      {
+        "date": "2026-10-28",
+        "event": "FOMC meeting (October)"
+      },
+      {
+        "date": "2026-12-16",
+        "event": "FOMC meeting (December) — final 2026 meeting, with dot plot"
+      }
+    ],
+    "days_to_resolution": 276
+  },
+  "resolution_source": {
+    "name": "Federal Reserve / FOMC",
+    "type": "central_bank",
+    "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": "KXFED-26MAY07",
+    "match_confidence": "partial",
+    "structural_notes": "Kalshi uses per-meeting binary decisions (hold/cut/hike at each FOMC), while Polymarket uses a year-end distribution (total cut count). Structurally incompatible — a Kalshi trader must piece together 6 individual meeting markets to reconstruct Polymarket's distribution. ClearMarket already tracks Kalshi's April and December FOMC holds (FOMC-APR2026-HOLD, FOMC-DEC2026-HOLD). The term structure across meeting dates creates natural arb opportunities when Kalshi per-meeting probabilities imply a different distribution than Polymarket's year-end prices."
+  },
+  "related_markets": [
+    {
+      "market_id": "FOMC-APR2026-HOLD",
+      "relationship_type": "component",
+      "notes": "Kalshi April FOMC hold market — one of 6 component decisions that determine the 2026 cut count"
+    },
+    {
+      "market_id": "FOMC-DEC2026-HOLD",
+      "relationship_type": "component",
+      "notes": "Kalshi December FOMC hold market — last meeting of the year, final determinant"
+    },
+    {
+      "market_id": "FED-RATE-DEC2026-LEVEL",
+      "relationship_type": "causal_indicator",
+      "notes": "Kalshi end-of-year rate level brackets — if rate is >3.50% (previously 49%), implies fewer cuts"
+    },
+    {
+      "market_id": "US-RECESSION-2026",
+      "relationship_type": "causal_indicator",
+      "notes": "Recession probability (37.5%) drives cut expectations — recession would likely force 3+ cuts"
+    }
+  ]
+}

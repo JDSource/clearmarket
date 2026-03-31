@@ -1,0 +1,106 @@
+{
+  "reference_id": "US-FORCES-ENTER-IRAN-APR2026",
+  "description": "Will active US military personnel physically enter Iran's terrestrial territory by April 30, 2026? Part of a temporal cluster spanning January through December. The April variant is the current 'front month' with the highest trading activity ($10.1M volume, $1.97M in 24hr). Resolution hinges on a precise definition of 'enter' that excludes airspace, maritime, intelligence operatives, and accidental entry.",
+  "platform": "polymarket",
+  "platform_market_id": "0x6d0e09d0f04572d9b1adad84703458b0297bc5603b69dccbde93147ee4443246",
+  "question": "US forces enter Iran by April 30?",
+  "category": "geopolitics",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.64,
+      "best_bid": 0.65,
+      "best_ask": 0.66
+    },
+    "no": {
+      "last_price": 0.36,
+      "best_bid": 0.34,
+      "best_ask": 0.35
+    },
+    "implied_probability": {
+      "yes": 0.655,
+      "no": 0.345
+    },
+    "volume": 10091461,
+    "liquidity": 281379,
+    "as_of": "2026-03-30T20:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if active US military personnel deliberately enter Iran's terrestrial territory by April 30, 2026 ET. Special operations forces qualify. Intelligence operatives, military contractors, advisors, diplomatic entourages, and pilots shot down do NOT qualify.",
+    "triggers": [
+      {
+        "type": "event",
+        "description": "Active US military personnel physically and deliberately enter the terrestrial territory of Iran for operational purposes",
+        "qualifying_scenarios": [
+          "Ground invasion",
+          "Special operations forces deployment on Iranian soil",
+          "Humanitarian military operation on Iranian soil"
+        ]
+      }
+    ],
+    "trigger_logic": "ANY qualifying entry",
+    "exclusions": [
+      "Entering Iran's maritime territory (naval operations in Iranian waters)",
+      "Entering Iran's aerial territory (airstrikes, overflights)",
+      "Intelligence operatives (CIA, etc.) — only active military personnel",
+      "Military contractors and military advisors",
+      "High-ranking US service members entering for diplomatic purposes",
+      "Pilots shot down or other non-deliberate entry",
+      "Any entry that is not deliberate and for operational purposes"
+    ],
+    "ambiguity_notes": "The terrestrial-only requirement is the key resolution trap. The US has been conducting airstrikes on Iran since March 2026 — but none of those qualify. Only boots on the ground count. The 'deliberate' requirement excludes crash landings, POWs, etc. The distinction between 'military special operation forces' (qualifies) and 'intelligence operatives' (doesn't qualify) is murky in practice — many operations involve both."
+  },
+  "temporal_context": {
+    "closes": "2026-04-30",
+    "resolves": "2026-04-30",
+    "catalyst_dates": [
+      {
+        "date": "2026-03-31",
+        "event": "March 31 variant resolves — currently 4% Yes, will establish near-term floor"
+      },
+      {
+        "date": "ongoing",
+        "event": "US-Iran military escalation — airstrikes ongoing, ground invasion decision pending"
+      }
+    ],
+    "days_to_resolution": 31
+  },
+  "resolution_source": {
+    "name": "Consensus of credible reporting",
+    "type": "media_consensus",
+    "url": null,
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "Kalshi has no equivalent market for US military ground entry into Iran. Their Iran-related markets cover Trump visiting Iran (KXTRUMPIRAN), Iran democracy (KXIRANDEMOCRACY), US-Iran nuclear deal (KXUSAIRANAGREEMENT), and US imports from Iran (KXIRANIMPORTS) — all political/economic, none military. Major coverage gap: the highest-volume geopolitical market on Polymarket has no Kalshi equivalent."
+  },
+  "related_markets": [
+    {
+      "market_id": "0x306d10d4a4d51b41910dbc779ca00908bd917c131541c5c42bbbc736258d2d56",
+      "relationship_type": "temporal_cluster",
+      "notes": "US forces enter Iran by March 31 — 4% Yes, $38.4M volume. About to resolve."
+    },
+    {
+      "market_id": "0xe4b9a52d2bb336ff9d84799b70e72e8e5f4507df881af60f3f4daeb9f541a80e",
+      "relationship_type": "temporal_cluster",
+      "notes": "US forces enter Iran by December 31 — 74.5% Yes, $6.2M volume. Year-end variant. Term structure: Apr 65.5% → Dec 74.5% implies 9pp of incremental probability between May-December."
+    },
+    {
+      "market_id": "IRAN-REGIME-FALL-JUN2026",
+      "relationship_type": "causal_indicator",
+      "notes": "Ground entry is the most likely catalyst for regime fall (16.5% by June)"
+    },
+    {
+      "market_id": "IRAN-CEASEFIRE-BEFORE-OIL120",
+      "relationship_type": "causal_indicator",
+      "notes": "Ground entry would delay ceasefire and drive oil toward $120"
+    },
+    {
+      "market_id": "0xefc69f5f48827e331957acbcc2339eb3b15e27e32453b8e6f29b5de67474c986",
+      "relationship_type": "conditional",
+      "notes": "Will the Iranian regime SURVIVE US military strikes? 83.5% Yes. Conditional on US action actually happening."
+    }
+  ]
+}

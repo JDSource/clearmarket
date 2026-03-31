@@ -1,0 +1,110 @@
+{
+  "reference_id": "IRAN-CEASEFIRE-BEFORE-OIL120",
+  "description": "Sequencing market: will a US-Iran ceasefire be announced before crude oil (CL) hits $120? Dual-trigger resolution with 50-50 fallback if neither occurs by June 30. Part of Polymarket's 'before' market pattern — a novel market structure that creates implicit conditional probabilities between geopolitical and financial events.",
+  "platform": "polymarket",
+  "platform_market_id": "0x265a3b26257a298caad9712ac84cadcec5d084ad01e45d7f22c764a21c2d23e4",
+  "question": "US x Iran ceasefire before Oil hits $120?",
+  "category": "geopolitics",
+  "price_snapshot": {
+    "yes": {
+      "last_price": 0.27,
+      "best_bid": 0.27,
+      "best_ask": 0.28
+    },
+    "no": {
+      "last_price": 0.73,
+      "best_bid": 0.72,
+      "best_ask": 0.73
+    },
+    "implied_probability": {
+      "yes": 0.275,
+      "no": 0.725
+    },
+    "volume": 56681,
+    "liquidity": 12947,
+    "as_of": "2026-03-30T20:00:00Z"
+  },
+  "resolution_logic": {
+    "summary": "Resolves Yes if US-Iran ceasefire is announced before CL settlement hits $120. Resolves No if CL hits $120 first. Resolves 50-50 if neither occurs by June 30, 2026. Same-day tie broken by ET timestamp.",
+    "triggers": [
+      {
+        "type": "event_sequence",
+        "description": "Official US-Iran ceasefire agreement announced BEFORE crude oil CL active month settlement price reaches $120",
+        "trigger_a": {
+          "event": "US-Iran ceasefire",
+          "definition": "Clear public confirmation from both US and Iranian governments of a mutually agreed halt in military hostilities, or confirmed by overwhelming media consensus",
+          "excludes": "Informal understandings, backchannels, de-escalation without formal agreement, humanitarian pauses, tactical stand-downs, unilateral pauses"
+        },
+        "trigger_b": {
+          "event": "Crude Oil CL hits $120",
+          "definition": "Official CME settlement price for the Active Month (front month) of CL futures equals or exceeds $120",
+          "excludes": "Intraday trades, highs, lows, bids, offers, midpoint values, indicative prices — ONLY the official settlement price counts"
+        }
+      }
+    ],
+    "trigger_logic": "SEQUENCE — first trigger to occur determines resolution",
+    "exclusions": [
+      "Broader peace deals qualify ONLY if they include an explicit, dated commitment to halt fighting",
+      "CME settlement price corrections after initial publication are ignored",
+      "Only Active Month (front month) settlement counts — not back months"
+    ],
+    "fallback": {
+      "condition": "Neither trigger occurs by June 30, 2026 11:59 PM ET",
+      "resolution": "50-50 (market pays out evenly to both sides)"
+    },
+    "ambiguity_notes": "The ceasefire definition references 'before Trump visits China' in one clause — appears to be a copy-paste artifact from a related market. The oil trigger uses CME settlement, which can differ from last traded price. Active Month rolls ~2 business days before spot month expiration, creating brief windows where the 'front month' changes."
+  },
+  "temporal_context": {
+    "closes": "2026-06-30",
+    "resolves": "2026-06-30",
+    "catalyst_dates": [
+      {
+        "date": "2026-03-31",
+        "event": "CME CL settlement — current WTI ~$69, needs 74% rally to trigger No"
+      },
+      {
+        "date": "ongoing",
+        "event": "US-Iran military operations and diplomatic signals"
+      },
+      {
+        "date": "2026-04-30",
+        "event": "April CL contract expiry — active month roll"
+      }
+    ],
+    "days_to_resolution": 92
+  },
+  "resolution_source": {
+    "name": "CME Group (oil) / US & Iranian governments (ceasefire)",
+    "type": "hybrid_exchange_and_government",
+    "url": "https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.settlements.html",
+    "mechanism": "UMA optimistic oracle ($500 dispute bond)"
+  },
+  "cross_platform_link": {
+    "linked_platform": "kalshi",
+    "linked_market_id": null,
+    "match_confidence": null,
+    "structural_notes": "Kalshi has no equivalent 'before' sequencing market. They offer daily/weekly WTI price brackets (KXWTI series) and a US-Iran nuclear deal market (KXUSAIRANAGREEMENT), but nothing that links ceasefire timing to oil price. This is a Polymarket-native market structure with no cross-platform comparison possible. Coverage gap."
+  },
+  "related_markets": [
+    {
+      "market_id": "0x13a51d63e8053ee7045caf8653ddcbe57d58cf829e94431084bb3de35c0b5dcd",
+      "relationship_type": "temporal_cluster",
+      "notes": "US x Iran ceasefire before Trump visits China — same ceasefire trigger, different second condition"
+    },
+    {
+      "market_id": "0x2aceb9fdc00a2cf03cb4b70681322e0974d2309a32143003b297410734bbade5",
+      "relationship_type": "temporal_cluster",
+      "notes": "Russia-Ukraine ceasefire before US-Iran ceasefire — ceasefire sequencing between two conflicts"
+    },
+    {
+      "market_id": "IRAN-REGIME-FALL-JUN2026",
+      "relationship_type": "causal_indicator",
+      "notes": "Regime fall would likely precede or accompany ceasefire — 16.5% probability"
+    },
+    {
+      "market_id": "US-FORCES-ENTER-IRAN-APR2026",
+      "relationship_type": "causal_indicator",
+      "notes": "Ground forces in Iran (65%) would drive oil toward $120 trigger and delay ceasefire"
+    }
+  ]
+}

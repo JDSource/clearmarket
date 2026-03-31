@@ -149,10 +149,12 @@ Five fields that don't exist anywhere else:
 
 | Category | Markets | Platforms |
 |---|---|---|
-| Monetary Policy (Fed) | FOMC rate decisions, chair nominations | Polymarket, Kalshi |
+| Monetary Policy (Fed) | FOMC rate decisions, rate cut distribution, rate level brackets | Polymarket, Kalshi |
 | Recession / GDP | US recession 2026 | Polymarket (Kalshi gap) |
-| Geopolitics | Russia-Ukraine ceasefire cluster | Polymarket (Kalshi gap) |
+| Geopolitics | Russia-Ukraine ceasefire cluster, Iran regime fall, US forces in Iran, US-Iran ceasefire sequencing | Polymarket (Kalshi gap) |
 | Trade / Tariffs | US-Canada, US-China tariff markets | Polymarket, Kalshi |
+| Commodities | Crude oil $120 target | Polymarket, Kalshi (structural divergence) |
+| Asset Performance | Best-performing asset 2026 (BTC, Gold, S&P 500) | Polymarket |
 
 Schema: [`schema/clearmarket-schema.json`](schema/clearmarket-schema.json)
 
