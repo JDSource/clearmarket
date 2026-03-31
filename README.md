@@ -2,7 +2,7 @@
 
 **Structured intelligence for prediction markets.**
 
-Platforms give you prices. ClearMarket gives you what the prices actually mean.
+Prediction Market Platforms give you prices. ClearMarket gives you what the prices actually mean.
 
 Raw feeds from Polymarket and Kalshi contain almost no information about resolution rules, catalyst events, cross-platform differences, or related markets. ClearMarket adds the missing intelligence layer so agents and institutions can trade with understanding instead of blind price signals.
 
