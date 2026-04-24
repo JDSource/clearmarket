@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clearmarket.io/schema/markets.json",
+  "title": "ClearMarket Market",
+  "description": "One row per market per platform. Raw venue data + ClearMarket editorial fill on top. Auto-ingested daily from Kalshi and Polymarket public APIs. API response shape includes the derived field cross_platform_link, computed at serve time. Thematic grouping across events is handled via tags on the linked event, not via fields on markets.",
+  "type": "object",
+  "required": [
+    "market_id",
+    "platform",
+    "platform_market_id",
+    "contract_type",
+    "settlement_currency",
+    "status",
+    "first_seen_at",
+    "last_updated_at"
+  ],
+  "properties": {
+    "market_id": {
+      "type": "integer",
+      "description": "BIGSERIAL auto-generated primary key."
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["kalshi", "polymarket"],
+      "description": "Source venue."
+    },
+    "platform_market_id": {
+      "type": "string",
+      "description": "Venue's native ID. Kalshi ticker (e.g., 'KXFED-26APR-T3.25') or Polymarket conditionId."
+    },
+    "event_id": {
+      "type": ["string", "null"],
+      "pattern": "^CM[0-9A-Z]{10}$",
+      "description": "FK to events.event_id. Nullable — editorial assignment. Market can exist without an event."
+    },
+    "platform_event_id": {
+      "type": ["string", "null"],
+      "description": "Platform's own grouping identifier (informational). Kalshi event_ticker; Polymarket event slug."
+    },
+    "question_raw": {
+      "type": ["string", "null"],
+      "description": "Platform's short headline question."
+    },
+    "description_raw": {
+      "type": ["string", "null"],
+      "description": "Platform's long prose description."
+    },
+    "category_raw": {
+      "type": ["string", "null"],
+      "description": "Platform's own category classification."
+    },
+    "contract_type": {
+      "type": "string",
+      "enum": ["binary", "scalar"],
+      "description": "Binary YES/NO or true-scalar payout. v0.1 only populates binary; scalar support v0.2+."
+    },
+    "settlement_currency": {
+      "type": "string",
+      "enum": ["USD", "USDC"],
+      "description": "USD (Kalshi) or USDC (Polymarket)."
+    },
+    "tick_size": {
+      "type": ["number", "null"],
+      "description": "Minimum price increment."
+    },
+    "contract_multiplier": {
+      "type": ["number", "null"],
+      "description": "Notional per contract. Usually 1.0 for binaries."
+    },
+    "underlying_reference": {
+      "type": ["string", "null"],
+      "description": "Editorial: specific real-world data reference (e.g., 'BLS Series CUUR0000SA0', 'S&P 500 index close per S&P Dow Jones Indices', 'Credible news reporting — no specific feed')."
+    },
+    "close_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When trading stops (TIMESTAMPTZ)."
+    },
+    "last_trading_date": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Last tradeable date. May differ from close_at."
+    },
+    "resolve_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Expected payout date."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed", "resolved", "amended"],
+      "description": "Market lifecycle state."
+    },
+    "resolution_rules_raw": {
+      "type": ["string", "null"],
+      "description": "Full rules text from platform. Source for the parsed resolution_triggers."
+    },
+    "resolution_triggers": {
+      "type": ["object", "null"],
+      "description": "Parsed machine-readable resolution structure. Editorial.",
+      "properties": {
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {"type": "string"},
+              "description": {"type": "string"},
+              "metric": {"type": "string"},
+              "threshold": {},
+              "source": {"type": "string"},
+              "deadline": {"type": ["string", "null"], "format": "date-time"}
+            }
+          },
+          "description": "Array of resolution trigger conditions."
+        },
+        "trigger_logic": {
+          "type": "string",
+          "enum": ["AND", "OR", "SINGLE"]
+        },
+        "exclusions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "What explicitly does not count as resolution."
+        },
+        "resolution_risks": {
+          "type": "string",
+          "description": "Known edge cases or dispute scenarios."
+        }
+      }
+    },
+    "resolution_mechanism": {
+      "type": ["string", "null"],
+      "enum": [
+        "uma_oracle",
+        "kalshi_staff",
+        "polymarket_staff",
+        "platform_auto",
+        "determinations_committee",
+        "other",
+        null
+      ],
+      "description": "Who arbitrates disputes. Stored column (not derived)."
+    },
+    "proposer_model": {
+      "type": ["string", "null"],
+      "enum": [
+        "permissionless",
+        "managed_whitelist",
+        "platform_staff",
+        "gov_agency",
+        null
+      ],
+      "description": "Who can propose resolution outcomes. 'managed_whitelist' captures UMA MOOV2 (Aug 2025 — whitelist of 37 proposers)."
+    },
+    "resolution_source_name": {
+      "type": ["string", "null"],
+      "description": "What data is cited. Editorial fill for Polymarket where API is blank or prose is vague ('consensus of credible reporting')."
+    },
+    "resolution_source_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Link to the data source itself (not the arbiter's admin page)."
+    },
+    "resolution_source_type": {
+      "type": ["string", "null"],
+      "enum": [
+        "gov_stat_agency",
+        "central_bank",
+        "regulated_data_vendor",
+        "media_consensus",
+        "court_filing",
+        "issuer_announcement",
+        "scheduled_event",
+        "subjective",
+        "other",
+        null
+      ],
+      "description": "Objectivity classification of the data source."
+    },
+    "contract_terms_url": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "Kalshi PDF link to full contract terms. Kalshi-only."
+    },
+    "resolution_outcome": {
+      "type": ["string", "null"],
+      "description": "Once resolved: 'YES', 'NO', or scalar value. Null until resolved."
+    },
+    "resolution_value": {
+      "type": ["number", "null"],
+      "description": "For scalar markets: final numeric value. Null for binary."
+    },
+    "resolved_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Actual settlement timestamp."
+    },
+    "first_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When ClearMarket first ingested this market."
+    },
+    "last_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Most recent ingestion update."
+    },
+    "cross_platform_link": {
+      "type": ["object", "null"],
+      "description": "DERIVED AT API SERVE TIME. Summary of markets sharing the same event_id across platforms. Shape: {kalshi: {market_count}, polymarket: {market_count}}. Null if no event_id assigned."
+    },
+    "field_provenance": {
+      "type": "object",
+      "description": "Per-field provenance. Keys are field names; values indicate 'platform_api' / 'clearmarket_editorial' / 'derived' / 'null_by_venue_limitation'.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "platform_api",
+              "clearmarket_editorial",
+              "derived",
+              "imputed",
+              "null_by_venue_limitation"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

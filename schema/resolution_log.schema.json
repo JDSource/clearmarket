@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clearmarket.io/schema/resolution_log.json",
+  "title": "ClearMarket Resolution Log Entry",
+  "description": "Append-only audit trail of lifecycle events for a market. Never updated, never deleted. Row sequence reconstructs the market's full history. v0.1 populates status_change / rule_change / resolved events via platform API diffing. resolution_proposed and disputed events require UMA subgraph reader (v0.3+). amended and reversed events require editorial observation.",
+  "type": "object",
+  "required": [
+    "log_id",
+    "market_id",
+    "event_type",
+    "occurred_at",
+    "recorded_at",
+    "source"
+  ],
+  "properties": {
+    "log_id": {
+      "type": "integer",
+      "description": "BIGSERIAL auto-generated primary key."
+    },
+    "market_id": {
+      "type": "integer",
+      "description": "FK to markets.market_id."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "status_change",
+        "rule_change",
+        "resolution_proposed",
+        "disputed",
+        "resolved",
+        "amended",
+        "reversed"
+      ],
+      "description": "Lifecycle event type. status_change: market state transition (active -> closed, etc). rule_change: resolution criteria amended mid-life. resolution_proposed: outcome submitted (UMA or staff). disputed: proposed resolution challenged. resolved: final outcome committed. amended: post-resolution correction. reversed: post-resolution full reversal."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the event happened, by the venue's clock. Authoritative event timestamp."
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When ClearMarket captured this event. Gap between occurred_at and recorded_at = detection lag."
+    },
+    "from_value": {
+      "type": ["string", "null"],
+      "description": "Prior state. For status_change: old status string. For rule_change: snippet of old rule. NULL for initial creation events."
+    },
+    "to_value": {
+      "type": ["string", "null"],
+      "description": "New state. Same format as from_value."
+    },
+    "diff": {
+      "type": ["object", "null"],
+      "description": "Structured diff for multi-field changes (rule_change, complex amended). Simple status changes leave this null. Free-form JSONB — typical shape: {field_name: {before, after}, reason_prose}."
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "platform_api",
+        "uma_subgraph",
+        "editorial_observation",
+        "platform_announcement",
+        "cftc_filing"
+      ],
+      "description": "How ClearMarket detected this event. v0.1 supports platform_api, editorial_observation, platform_announcement. uma_subgraph and cftc_filing are v0.3+."
+    },
+    "source_ref": {
+      "type": ["string", "null"],
+      "description": "Pointer into the source: UMA dispute ID (for uma_subgraph), announcement URL (platform_announcement), editorial commit hash (editorial_observation). Null for platform_api events."
+    },
+    "actor": {
+      "type": ["string", "null"],
+      "description": "Who caused the event: platform name, UMA proposer address, editorial author. NULL for autonomous platform state transitions where actor is implicit."
+    }
+  },
+  "additionalProperties": false
+}

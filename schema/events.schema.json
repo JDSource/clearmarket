@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clearmarket.io/schema/events.json",
+  "title": "ClearMarket Event",
+  "description": "Canonical record of a prediction market question. One row per canonical tradable question; every event has one or more markets attached. The editorial layer that platforms don't ship. Thematic grouping across events is handled via tags, not a hierarchy. API response shape includes derived fields (venues_covered, current_primary_mark) computed at serve time from the normalized 4-table storage.",
+  "type": "object",
+  "required": [
+    "event_id",
+    "slug",
+    "question",
+    "category",
+    "published",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^CM[0-9A-Z]{10}$",
+      "description": "ClearMarket canonical ID. Format: 'CM' + 9-char vowel-free base36 + 1-char mod-10 check digit. 12 chars total. Stable forever — never changes."
+    },
+    "slug": {
+      "type": "string",
+      "description": "Human-readable URL form. Can change; not a stable identifier."
+    },
+    "question": {
+      "type": "string",
+      "description": "ClearMarket-canonical normalized English question text."
+    },
+    "category": {
+      "type": "string",
+      "enum": ["macro", "geopolitics", "politics", "crypto", "sports"],
+      "description": "Top-level classification. 5-enum."
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Cross-cutting filter tags (editorial + platform)."
+    },
+    "primary_market_id": {
+      "type": ["integer", "null"],
+      "description": "FK to markets.market_id. The market quoted as the event's headline price. Auto-computed nightly unless locked."
+    },
+    "primary_market_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Editorial override flag. If true, primary_market_id is not auto-recomputed."
+    },
+    "catalyst_dates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "event"],
+        "properties": {
+          "date": {"type": "string", "format": "date"},
+          "event": {"type": "string"}
+        },
+        "additionalProperties": false
+      },
+      "description": "Real-world events that can move the market before resolution. Sourced from verified public calendars."
+    },
+    "published": {
+      "type": "boolean",
+      "default": false,
+      "description": "API gate. If false, event is internal-only and excluded from public API responses."
+    },
+    "editorial_notes": {
+      "type": ["string", "null"],
+      "description": "Public-facing editorial context (why this event is grouped, source quality caveats, cross-platform observations). Surfaced in API responses — this is the editorial layer platforms don't ship."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Row creation timestamp (TIMESTAMPTZ)."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp (TIMESTAMPTZ)."
+    },
+    "venues_covered": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["kalshi", "polymarket"]
+      },
+      "description": "DERIVED AT API SERVE TIME. Distinct platform values across all markets linked to this event."
+    },
+    "current_primary_mark": {
+      "type": ["object", "null"],
+      "description": "DERIVED AT API SERVE TIME. Latest marks row for the event's primary_market_id. Shape matches the marks schema response."
+    },
+    "field_provenance": {
+      "type": "object",
+      "description": "Per-field provenance. Keys are field names; values are objects with 'source' ('platform_api' / 'clearmarket_editorial' / 'derived') and optional metadata.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "platform_api",
+              "clearmarket_editorial",
+              "derived",
+              "imputed",
+              "null_by_venue_limitation"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

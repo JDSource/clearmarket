@@ -1,0 +1,27 @@
+# API keys + secrets
+.env
+.env.*
+
+# LLM + CLOB response cache (huge, ephemeral, regenerable)
+.enhance-cache/
+
+# Internal prep docs (cost projections, research notes, issue pack)
+_internal-*.md
+
+# Per-specimen review aids (internal workflow, not for public consumption)
+samples/**/ai-review.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clearmarket.io/schema/marks.json",
+  "title": "ClearMarket Mark",
+  "description": "Daily pricing and liquidity snapshot. One row per market per UTC date. Normalizes Kalshi + Polymarket into a single feed with consistent field names and units (USD). Populated via GitHub Actions daily cron against platform public APIs. v0.1 includes Polymarket CLOB calls to populate size and no-side fields.",
+  "type": "object",
+  "required": [
+    "mark_id",
+    "market_id",
+    "snapshot_date",
+    "snapshot_at",
+    "source_updated_at",
+    "mark_method",
+    "stale_flag",
+    "source_count"
+  ],
+  "properties": {
+    "mark_id": {
+      "type": "integer",
+      "description": "BIGSERIAL auto-generated primary key."
+    },
+    "market_id": {
+      "type": "integer",
+      "description": "FK to markets.market_id."
+    },
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "description": "UTC calendar date of the snapshot. Unique with market_id (one mark per market per day)."
+    },
+    "snapshot_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Exact moment of API pull (TIMESTAMPTZ). Distinct from snapshot_date."
+    },
+    "source_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Venue's own 'last updated' timestamp (Kalshi updated_time, Polymarket updatedAt). Compare to snapshot_at for staleness."
+    },
+    "yes_bid": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Best bid price on the yes-side book. Decimal 0-1."
+    },
+    "yes_ask": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Best ask price on the yes-side book. Decimal 0-1."
+    },
+    "no_bid": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Best bid price on the no-side book. For Polymarket, populated via CLOB API call."
+    },
+    "no_ask": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Best ask price on the no-side book. For Polymarket, populated via CLOB API call."
+    },
+    "yes_bid_size_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "USD-normalized size at best yes-bid. Computed as contracts * price. TOP-OF-BOOK ONLY, not full-book depth."
+    },
+    "yes_ask_size_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "USD-normalized size at best yes-ask. TOP-OF-BOOK ONLY."
+    },
+    "no_bid_size_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "USD-normalized size at best no-bid. TOP-OF-BOOK ONLY."
+    },
+    "no_ask_size_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "USD-normalized size at best no-ask. TOP-OF-BOOK ONLY."
+    },
+    "yes_last_price": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Last traded price on the yes-side. Decimal 0-1."
+    },
+    "implied_probability": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1,
+      "description": "For binary markets: equals yes_last_price. For scalar strike ladders: normalized probability mass across the ladder (computed at serve time)."
+    },
+    "volume_24h_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Dollar trading volume in the last 24 hours. Kalshi value is imputed (contracts * last_price); Polymarket value is native USDC."
+    },
+    "volume_total_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Cumulative dollar trading volume since market opened. Kalshi value is imputed; Polymarket native."
+    },
+    "open_interest_usd": {
+      "type": ["number", "null"],
+      "minimum": 0,
+      "description": "Dollar value of positions currently held. Kalshi-native; NULL for Polymarket (not exposed without on-chain subgraph — v0.2+)."
+    },
+    "mark_method": {
+      "type": "string",
+      "enum": [
+        "venue_snapshot",
+        "imputed_carry_forward",
+        "editorial_override"
+      ],
+      "description": "How this mark was produced. 'venue_snapshot' = pulled directly from API (default). 'imputed_carry_forward' = prior day carried forward when venue returned no data. 'editorial_override' = manual correction (rare)."
+    },
+    "stale_flag": {
+      "type": "boolean",
+      "description": "True if hours_since_source_update > STALENESS_THRESHOLD_HOURS (4). Warns consumer that the venue data itself is older than our freshness commitment."
+    },
+    "source_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of distinct API responses feeding this mark. 1 in v0.1. Reserved for future blended quotes."
+    },
+    "raw_payload": {
+      "type": ["object", "null"],
+      "description": "Full raw API response(s) for audit. Preserves all venue-native fields not surfaced as first-class columns (contracts counts, umaBond, rewardsMaxSpread, fractional_trading_enabled, etc.)."
+    },
+    "spread": {
+      "type": ["number", "null"],
+      "description": "DERIVED AT API SERVE TIME. Computed as yes_ask - yes_bid."
+    },
+    "mid": {
+      "type": ["number", "null"],
+      "description": "DERIVED AT API SERVE TIME. Computed as (yes_bid + yes_ask) / 2."
+    },
+    "divergence_from_primary": {
+      "type": ["number", "null"],
+      "description": "DERIVED AT API SERVE TIME. abs(yes_last_price - this event's primary market's yes_last_price). Null when event has one market or no primary_market_id set."
+    },
+    "hours_since_source_update": {
+      "type": ["number", "null"],
+      "description": "DERIVED AT API SERVE TIME. (snapshot_at - source_updated_at) in hours. Used to compute stale_flag."
+    },
+    "field_provenance": {
+      "type": "object",
+      "description": "Per-field provenance. Keys are field names; values indicate 'platform_api' / 'derived' / 'imputed' / 'null_by_venue_limitation'.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "platform_api",
+              "derived",
+              "imputed",
+              "null_by_venue_limitation",
+              "clearmarket_editorial"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
