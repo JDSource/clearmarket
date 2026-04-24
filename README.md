@@ -2,7 +2,7 @@
 
 > Institutional reference layer for prediction market data. Structures, classifies, and links markets across Polymarket and Kalshi so research, risk, and data teams can use them like any other asset class.
 
-v0.1.0 — April 2026
+v0.1.0 · April 2026
 
 ---
 
@@ -25,7 +25,7 @@ This repo contains:
 - **JSON Schemas** for the four ClearMarket tables (`events`, `markets`, `marks`, `resolution_log`)
 - **Postgres DDL** matching the schemas
 - **An Enhancement Script** (`enhance.py`) that transforms raw Polymarket + Kalshi API pulls into ClearMarket-shaped records, with AI-drafted editorial enrichment
-- **Four v0.1.0 specimens** covering 15 canonical events and 58 markets
+- **Four v0.1.0 specimens** covering 15 canonical events and 55 markets
 - **A sample cache** of the 4 raw API pulls used to generate the specimens (for reproducibility)
 
 All specimens validate against the JSON Schemas. All records carry per-field `field_provenance` flagging whether a value came from the platform API, ClearMarket editorial, a derived computation, an imputed proxy, or a known venue limitation.
@@ -39,8 +39,8 @@ All specimens validate against the JSON Schemas. All records carry per-field `fi
 | `samples/iran/` | Polymarket | 9 | 9 | Thematic family (9 related questions, shared tag `iran-conflict`). UMA Optimistic Oracle with subjective resolution. Full 4-side CLOB prices for open markets; `resolved_at` timestamps for already-settled children. |
 | `samples/fed-apr-2026/` | Polymarket + Kalshi | 1 | 15 | Cross-platform single event. 4 UMA-resolved Polymarket directional markets and 11 staff-resolved Kalshi strike markets, all normalized under one `event_id`. |
 | `samples/netanyahu/` | Polymarket | 4 | 4 | Thematic family with deadline variants. Same subjective UMA pattern as Iran. |
-| `samples/sp500-2026/` | Kalshi | 1 | 30 | Strike ladder. 30 binary markets resolving to one closing value. Editorial refinement of Kalshi's loose source naming ("for example, Google Finance") to the authoritative calculator (S&P Dow Jones Indices). |
-| **Total** | | **15** | **58** | |
+| `samples/sp500-2026/` | Kalshi | 1 | 27 | Strike ladder. 27 binary markets resolving to one closing value. Editorial refinement of Kalshi's loose source naming ("for example, Google Finance") to the authoritative calculator (S&P Dow Jones Indices). |
+| **Total** | | **15** | **55** | |
 
 Open any `samples/<id>/specimen.json` for the full bundle. The top-level `_meta.editorial_review_notes` block lists every AI-drafted field and the rules that govern them.
 
@@ -48,7 +48,7 @@ Open any `samples/<id>/specimen.json` for the full bundle. The top-level `_meta.
 
 ## The wedge in one sentence
 
-Platforms ship you a market. ClearMarket ships you a canonical question, an authoritative data source, a parsed resolution structure, a cross-platform linkage, a thematic family, and a provenance record saying which fields came from where.
+ClearMarket is the independent enrichment layer above those feeds. It parses what the platforms don't publish in structured form: canonical questions, authoritative data sources, parsed resolution structures, cross-platform linkage, thematic families, and per-field provenance.
 
 Three product surfaces sit on top of the same schema:
 
@@ -106,8 +106,8 @@ Three steps. The first two are deterministic Python; the third is the editorial 
  ┌────────────────────────────────────────────────────────────────┐
  │  4. STORAGE + API (not yet in v0.1)                            │
  │                                                                │
- │     • Postgres (Supabase) — 4 tables per schema/ddl.sql        │
- │     • Public API — /events/*, /markets/*, /marks/*             │
+ │     • Postgres (Supabase): 4 tables per schema/ddl.sql         │
+ │     • Public API: /events/*, /markets/*, /marks/*              │
  │     • All derived fields computed at serve time, not stored    │
  └────────────────────────────────────────────────────────────────┘
 ```
@@ -121,20 +121,20 @@ Every paying consumer read hits cached storage. Zero LLM cost at read time.
 What AI drafts vs. what the platform ships, per record:
 
 **Markets table, AI-drafted fields:**
-- `underlying_reference` — a one-sentence identification of the real-world data source
-- `resolution_source_name` — only when the platform API ships empty (Polymarket only; Kalshi is always authoritative via `settlement_sources`)
+- `underlying_reference`: a one-sentence identification of the real-world data source
+- `resolution_source_name`: only when the platform API ships empty (Polymarket only; Kalshi is always authoritative via `settlement_sources`)
 
 **Events table, AI-drafted fields:**
-- `editorial_notes` — 2-3 sentence institutional framing
-- `tags` — 4-6 tags mixing thematic, attribute, and entity
-- `question` — canonical grammar rewrite of raw platform prose when needed
+- `editorial_notes`: 2-3 sentence institutional framing
+- `tags`: 4-6 tags mixing thematic, attribute, and entity
+- `question`: canonical grammar rewrite of raw platform prose when needed
 
 **Everything else** is either a deterministic transform (Python), a derived field (computed at serve time), a platform API value, or flagged with `null_by_venue_limitation` if the venue does not expose it.
 
 ### Rules the editorial layer respects
 
 - **Kalshi resolution_source_name and resolution_source_url are ALWAYS pulled from series `settlement_sources`.** No UMA-style subjective default ever. Kalshi has structured settlement metadata; use it.
-- **Polymarket resolution_source_name uses editorial default language ("Credible news reporting — subjective") ONLY when the Polymarket API ships an empty field.** Where Polymarket description prose names a specific URL (e.g., Fed markets citing federalreserve.gov), the platform-shipped value wins.
+- **Polymarket resolution_source_name uses editorial default language ("Credible news reporting, subjective") ONLY when the Polymarket API ships an empty field.** Where Polymarket description prose names a specific URL (e.g., Fed markets citing federalreserve.gov), the platform-shipped value wins.
 - **Index and data-product markets are normalized to the authoritative calculator**, not platform shorthand. "S&P 500" resolves to "S&P Dow Jones Indices," not "Google Finance," regardless of what Kalshi series metadata says.
 - **All generated prose anchors on `close_at` or `resolve_at` for the authoritative date.** The AI does not infer future years from present-day reasoning.
 
@@ -157,9 +157,9 @@ Four tables. Full definitions in `schema/`.
 
 - **Flat events with tag-based grouping, not recursive hierarchy.** Every event has ≥1 market. Thematic families (Iran conflict, Fed decisions) are expressed via shared tags, not parent/child hierarchy. Matches Bloomberg / Stripe conventions. Consumers filter families with `GET /events?tag=<name>`.
 - **Resolution mechanism vs. resolution source type are separate fields.** `resolution_mechanism` is who arbitrates (UMA oracle, Kalshi staff, platform auto, etc.). `resolution_source_type` is what data is cited (central bank, regulated data vendor, media consensus, subjective, etc.). Previously conflated; split makes it possible to filter for "UMA-resolved but with a named central-bank source" (e.g., Poly Fed markets).
-- **`proposer_model` enum** on markets captures UMA's MOOV2 upgrade (August 2025) — a managed whitelist of 37 proposers — distinct from Kalshi's platform-staff model or permissionless proposals.
+- **`proposer_model` enum** on markets captures UMA's MOOV2 upgrade (August 2025, a managed whitelist of 37 proposers), distinct from Kalshi's platform-staff model or permissionless proposals.
 - **`field_provenance` on every row.** Per-field flag with five values: `platform_api`, `clearmarket_editorial`, `derived`, `imputed`, `null_by_venue_limitation`. Lets a consumer audit which fields are raw vs. enriched at field granularity.
-- **Derived fields are computed at API serve time, not stored.** `spread`, `mid`, `venues_covered`, `cross_platform_link`, `current_primary_mark` — all reshaped from the normalized tables on demand.
+- **Derived fields are computed at API serve time, not stored.** `spread`, `mid`, `venues_covered`, `cross_platform_link`, `current_primary_mark`: all reshaped from the normalized tables on demand.
 
 ---
 
@@ -169,7 +169,7 @@ Four tables. Full definitions in `schema/`.
 
 - 4-table schema (JSON Schema + Postgres DDL)
 - Enhancement Script (`enhance.py`) with CLOB + LLM enrichment
-- 4 specimen events, 15 events, 58 markets, 58 marks
+- 4 specimens: 15 events, 55 markets, 55 marks
 - `field_provenance` on every record
 - Deterministic 12-character canonical event IDs
 
@@ -243,8 +243,8 @@ clearmarket/
 │   └── sp500-2026/specimen.json        S&P 500 yearly strike ladder
 ├── raw/
 │   └── clearmarket-api-pulls-apr22/    Raw API dumps used to generate v0.1.0
-├── .env                                (gitignored — API key)
-├── .enhance-cache/                     (gitignored — LLM + CLOB cache)
+├── .env                                (gitignored: API key)
+├── .enhance-cache/                     (gitignored: LLM + CLOB cache)
 └── .gitignore
 ```
 
