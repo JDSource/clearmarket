@@ -1,0 +1,124 @@
+{
+  "overall": {
+    "n_markets": 10165,
+    "total_volume_contracts": 593800040,
+    "pct_rules_has_url": 0.0,
+    "pct_rules_has_named_source": 12.6,
+    "pct_rules_has_url_or_named_source": 12.6,
+    "pct_rules_has_placeholder": 3.7,
+    "pct_rules_short": 46.0,
+    "median_rules_length": 236,
+    "vw_pct_rules_has_url_or_named_source": 15.2,
+    "vw_pct_rules_has_placeholder": 6.7
+  },
+  "by_category": {
+    "crypto": {
+      "n_markets": 125,
+      "total_volume_contracts": 52656786,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 52.0,
+      "pct_rules_has_url_or_named_source": 52.0,
+      "pct_rules_has_placeholder": 0.0,
+      "pct_rules_short": 0.8,
+      "median_rules_length": 642,
+      "vw_pct_rules_has_url_or_named_source": 65.9,
+      "vw_pct_rules_has_placeholder": 0.0
+    },
+    "culture": {
+      "n_markets": 2142,
+      "total_volume_contracts": 31659039,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 0.7,
+      "pct_rules_has_url_or_named_source": 0.7,
+      "pct_rules_has_placeholder": 3.1,
+      "pct_rules_short": 50.8,
+      "median_rules_length": 197,
+      "vw_pct_rules_has_url_or_named_source": 0.0,
+      "vw_pct_rules_has_placeholder": 3.9
+    },
+    "geopolitics": {
+      "n_markets": 45,
+      "total_volume_contracts": 555017,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 0.0,
+      "pct_rules_has_url_or_named_source": 0.0,
+      "pct_rules_has_placeholder": 68.9,
+      "pct_rules_short": 31.1,
+      "median_rules_length": 1173,
+      "vw_pct_rules_has_url_or_named_source": 0.0,
+      "vw_pct_rules_has_placeholder": 41.7
+    },
+    "macro": {
+      "n_markets": 1368,
+      "total_volume_contracts": 66575153,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 39.3,
+      "pct_rules_has_url_or_named_source": 39.3,
+      "pct_rules_has_placeholder": 0.1,
+      "pct_rules_short": 31.1,
+      "median_rules_length": 252,
+      "vw_pct_rules_has_url_or_named_source": 28.0,
+      "vw_pct_rules_has_placeholder": 0.3
+    },
+    "other": {
+      "n_markets": 1,
+      "total_volume_contracts": 4953,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 0.0,
+      "pct_rules_has_url_or_named_source": 0.0,
+      "pct_rules_has_placeholder": 0.0,
+      "pct_rules_short": 100.0,
+      "median_rules_length": 133,
+      "vw_pct_rules_has_url_or_named_source": 0.0,
+      "vw_pct_rules_has_placeholder": 0.0
+    },
+    "politics": {
+      "n_markets": 3609,
+      "total_volume_contracts": 379409580,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 1.9,
+      "pct_rules_has_url_or_named_source": 1.9,
+      "pct_rules_has_placeholder": 7.8,
+      "pct_rules_short": 34.2,
+      "median_rules_length": 282,
+      "vw_pct_rules_has_url_or_named_source": 8.3,
+      "vw_pct_rules_has_placeholder": 10.1
+    },
+    "sports": {
+      "n_markets": 2706,
+      "total_volume_contracts": 39919910,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 21.8,
+      "pct_rules_has_url_or_named_source": 21.8,
+      "pct_rules_has_placeholder": 0.0,
+      "pct_rules_short": 66.1,
+      "median_rules_length": 126,
+      "vw_pct_rules_has_url_or_named_source": 13.4,
+      "vw_pct_rules_has_placeholder": 0.0
+    },
+    "tech_ai": {
+      "n_markets": 124,
+      "total_volume_contracts": 21560647,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 0.0,
+      "pct_rules_has_url_or_named_source": 0.0,
+      "pct_rules_has_placeholder": 0.0,
+      "pct_rules_short": 63.7,
+      "median_rules_length": 146,
+      "vw_pct_rules_has_url_or_named_source": 0.0,
+      "vw_pct_rules_has_placeholder": 0.0
+    },
+    "weather_science": {
+      "n_markets": 45,
+      "total_volume_contracts": 1458953,
+      "pct_rules_has_url": 0.0,
+      "pct_rules_has_named_source": 0.0,
+      "pct_rules_has_url_or_named_source": 0.0,
+      "pct_rules_has_placeholder": 0.0,
+      "pct_rules_short": 93.3,
+      "median_rules_length": 109,
+      "vw_pct_rules_has_url_or_named_source": 0.0,
+      "vw_pct_rules_has_placeholder": 0.0
+    }
+  }
+}
