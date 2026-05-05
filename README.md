@@ -10,11 +10,72 @@ v0.1.0 · April 2026
 
 Polymarket and Kalshi publish market data that is useful for retail trading but not ingestion-ready for institutional research or risk. Three gaps a buyer hits immediately:
 
-1. **Resolution logic is opaque.** A 2026 survey of 746 institutional-category Polymarket markets found 0% populate the `resolutionSource` API field, ~8% embed a specific URL in description prose, and ~92% rely on placeholder language ("a consensus of credible reporting"). Kalshi is cleaner but source-naming is loose ("for example, Google Finance" on S&P 500 contracts).
-2. **The same question is priced on both platforms under different structures.** Polymarket lists the Fed April 2026 decision as four directional YES/NO questions resolved via UMA; Kalshi lists eleven rate-level strike markets resolved by staff. Nothing in either API tells you they are the same event.
-3. **Platforms do not publish an editorial view of what counts as a "family" of related questions.** Nine Polymarket contracts on when the Iran conflict ends are ingestion-level siblings with no connecting metadata.
+1. **You can't tell where the resolution data comes from.** On 92% of institutional-category Polymarket markets, the resolution source is placeholder language ("a consensus of credible reporting"), not a named authority. Kalshi names sources but loosely ("for example, Google Finance" on S&P 500 contracts).
+2. **The same event is priced differently on each platform.** Polymarket lists the Fed April 2026 rate decision as four directional yes/no questions; Kalshi lists eleven rate-level brackets. Nothing in either API tells you they are pricing the same thing.
+3. **Related markets aren't grouped, on a single platform or across them.** Nine Polymarket contracts on when the Iran conflict ends sit in the API as nine separate items, with nothing connecting them. Cross-platform, the gap is wider still.
 
 Institutions solving any of these gaps in-house end up with one-off parses that do not generalize. ClearMarket ships a normalized schema, an enrichment pipeline, and machine-readable specimens you can diff against.
+
+---
+
+## Before and after
+
+### What the platforms give you
+
+Polymarket on the April 2026 Fed rate decision (1 of 4 directional markets):
+
+```json
+{
+  "question": "Will the Fed decrease interest rates by 50+ bps after the April 2026 meeting?",
+  "endDate": "2026-04-30T23:00:00Z",
+  "resolutionSource": "",
+  "volume": 1530000,
+  "description": "This market will resolve 'Yes' if ... [rules embedded in prose]"
+}
+```
+
+Kalshi on the same Fed decision (1 of 11 strike markets):
+
+```json
+{
+  "ticker": "KXFED-26APR-T3.25",
+  "title": "Will the upper bound of the federal funds rate be above 3.25%...",
+  "close_time": "2026-04-29T17:55:00Z",
+  "rules_primary": "If the upper bound of the target federal funds rate... [prose]",
+  "settlement_sources": [{"name": "Federal Reserve Board of Governors", "url": "..."}]
+}
+```
+
+Empty `resolutionSource`. Rules buried in prose. No catalyst calendar. And nothing telling you these are two of fifteen markets pricing the same Fed meeting.
+
+### What ClearMarket gives you
+
+```json
+{
+  "event_id": "CMKD3L8N2PRT",
+  "slug": "fed-april-2026-rate-decision",
+  "question": "What will the Federal Reserve announce at the April 2026 FOMC meeting?",
+  "category": "macro",
+  "tags": ["macro", "fed-rate-decisions", "fomc", "monetary-policy", "2026"],     // canonical cross-platform taxonomy
+
+  "venues_covered": ["polymarket", "kalshi"],
+  "cross_platform_link": {                                                         // binds 15 markets across 2 platforms under one event
+    "polymarket": {"market_count": 4},
+    "kalshi": {"market_count": 11}
+  },
+
+  "catalyst_dates": [                                                              // scheduled events that move price before resolution
+    {"date": "2026-04-29", "event": "FOMC meeting Day 1"},
+    {"date": "2026-04-30", "event": "FOMC statement + press conference"}
+  ],
+
+  "editorial_notes": "These markets price the Fed's April 29, 2026 target rate decision. Polymarket has four directional questions; Kalshi has eleven rate-level strike markets. Both cite the Federal Reserve Board of Governors as the source."
+}
+```
+
+One canonical event. Fifteen markets bound across both platforms. The FOMC meeting on the catalyst calendar. The Federal Reserve identified as the underlying source.
+
+Full record (markets, daily marks, per-field provenance) at [`samples/fed-apr-2026/specimen.json`](samples/fed-apr-2026/specimen.json).
 
 ---
 
@@ -258,6 +319,6 @@ This release uses public data from [Polymarket](https://polymarket.com) and [Kal
 
 ## Status
 
-Pre-MVP. 20 enriched records in the main branch are being replaced with the four v0.1.0 specimens as of this release. Design-stage feedback welcome via GitHub issues or direct contact.
+Pre-MVP. v0.1.0 ships the schema, enhancement pipeline, and four worked specimens. Design-stage feedback welcome via GitHub issues or direct contact.
 
 **Built by:** Jeremy Dietz. Ran Digital Products at the Toronto Stock Exchange. VP Product at Coinsquare, the first fully regulated crypto exchange in Canada. Independently built Catalyst Signal, an AI research platform covering 220+ public equities. Now building ClearMarket.
