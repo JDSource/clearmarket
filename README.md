@@ -56,15 +56,15 @@ Empty `resolutionSource`. Rules buried in prose. No catalyst calendar. And nothi
   "slug": "fed-april-2026-rate-decision",
   "question": "What will the Federal Reserve announce at the April 2026 FOMC meeting?",
   "category": "macro",
-  "tags": ["macro", "fed-rate-decisions", "fomc", "monetary-policy", "2026"],     // canonical cross-platform taxonomy
+  "tags": ["macro", "fed-rate-decisions", "fomc", "monetary-policy", "2026"],     // shared labels for searching across both platforms
 
   "venues_covered": ["polymarket", "kalshi"],
-  "cross_platform_link": {                                                         // binds 15 markets across 2 platforms under one event
+  "cross_platform_link": {                                                         // links the 4 Polymarket and 11 Kalshi markets pricing this event
     "polymarket": {"market_count": 4},
     "kalshi": {"market_count": 11}
   },
 
-  "catalyst_dates": [                                                              // scheduled events that move price before resolution
+  "catalyst_dates": [                                                              // real-world events that move the price
     {"date": "2026-04-29", "event": "FOMC meeting Day 1"},
     {"date": "2026-04-30", "event": "FOMC statement + press conference"}
   ],
