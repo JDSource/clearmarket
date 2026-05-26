@@ -2,7 +2,7 @@
   "_meta": {
     "specimen_id": "sp500-2026",
     "generated_at": "2026-04-24T17:46:38.970094+00:00",
-    "schema_version": "v0.1.0",
+    "schema_version": "v0.2.0",
     "event_count": 1,
     "market_count": 27,
     "mark_count": 27,
@@ -10,12 +10,12 @@
     "editor_stubs_remaining": 0,
     "ai_drafted_counts": {
       "markets.underlying_reference": 27,
-      "markets.resolution_source_name": 0,
+      "markets.resolution_source": 0,
       "events.editorial_notes": 1,
       "events.tags": 1,
       "events.question": 0
     },
-    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 27 \u00d7 markets.underlying_reference\n  - 1 \u00d7 events.editorial_notes\n  - 1 \u00d7 events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source_name` and `resolution_source_url` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source_name` uses an editorial default ('Credible news reporting \u2014 subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
+    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 27 × markets.underlying_reference\n  - 1 × events.editorial_notes\n  - 1 × events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting — subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
   },
   "events": [
     {
@@ -36,11 +36,17 @@
       "catalyst_dates": [
         {
           "date": "2026-12-15",
-          "event": "December FOMC meeting (last meaningful catalyst)"
+          "event": "December FOMC meeting (last meaningful catalyst)",
+          "type": "fomc",
+          "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+          "verified_at": "2026-05-21"
         },
         {
           "date": "2026-12-31",
-          "event": "S&P 500 final close of year"
+          "event": "S&P 500 final close of year",
+          "type": "one_off",
+          "source_url": "https://www.spglobal.com/spdji/en/indices/equity/sp-500/",
+          "verified_at": "2026-05-21"
         }
       ],
       "published": true,
@@ -191,11 +197,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is above 9000, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -248,22 +254,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -272,6 +278,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -281,7 +293,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1029,
@@ -303,11 +317,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is below 4000, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -360,22 +374,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -384,6 +398,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -393,7 +413,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1030,
@@ -415,11 +437,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 8800-9000, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -472,22 +494,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -496,6 +518,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -505,7 +533,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1031,
@@ -527,11 +557,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 8600-8799.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -584,22 +614,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -608,6 +638,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -617,7 +653,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1032,
@@ -639,11 +677,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 8400-8599.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -696,22 +734,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -720,6 +758,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -729,7 +773,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1033,
@@ -751,11 +797,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 8200-8399.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -808,22 +854,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -832,6 +878,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -841,7 +893,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1034,
@@ -863,11 +917,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 8000-8199.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -920,22 +974,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -944,6 +998,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -953,7 +1013,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1035,
@@ -975,11 +1037,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 7800-7999.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1032,22 +1094,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1056,6 +1118,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1065,7 +1133,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1036,
@@ -1087,11 +1157,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 7600-7799.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1144,22 +1214,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1168,6 +1238,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1177,7 +1253,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1037,
@@ -1199,11 +1277,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 7400-7599.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1256,22 +1334,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1280,6 +1358,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1289,7 +1373,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1038,
@@ -1311,11 +1397,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 7200-7399.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1368,22 +1454,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1392,6 +1478,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1401,7 +1493,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1039,
@@ -1423,11 +1517,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 7000-7199.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1480,22 +1574,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1504,6 +1598,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1513,7 +1613,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1040,
@@ -1535,11 +1637,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 6800-6999.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1592,22 +1694,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1616,6 +1718,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1625,7 +1733,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1041,
@@ -1647,11 +1757,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 6600-6799.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1704,22 +1814,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1728,6 +1838,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1737,7 +1853,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1042,
@@ -1759,11 +1877,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 6400-6599.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1816,22 +1934,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1840,6 +1958,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1849,7 +1973,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1043,
@@ -1871,11 +1997,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 6200-6399.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -1928,22 +2054,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -1952,6 +2078,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -1961,7 +2093,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1044,
@@ -1983,11 +2117,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 6000-6199.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2040,22 +2174,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2064,6 +2198,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2073,7 +2213,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1045,
@@ -2095,11 +2237,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 5800-5999.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2152,22 +2294,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2176,6 +2318,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2185,7 +2333,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1046,
@@ -2207,11 +2357,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 5600-5799.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2264,22 +2414,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2288,6 +2438,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2297,7 +2453,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1047,
@@ -2319,11 +2477,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 5400-5599.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2376,22 +2534,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2400,6 +2558,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2409,7 +2573,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1048,
@@ -2431,11 +2597,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 5200-5399.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2488,22 +2654,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2512,6 +2678,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2521,7 +2693,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1049,
@@ -2543,11 +2717,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 5000-5199.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2600,22 +2774,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2624,6 +2798,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2633,7 +2813,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1050,
@@ -2655,11 +2837,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 4800-4999.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2712,22 +2894,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2736,6 +2918,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2745,7 +2933,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1051,
@@ -2767,11 +2957,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 4600-4799.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2824,22 +3014,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2848,6 +3038,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2857,7 +3053,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1052,
@@ -2879,11 +3077,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 4400-4599.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -2936,22 +3134,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -2960,6 +3158,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -2969,7 +3173,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1053,
@@ -2991,11 +3197,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 4200-4399.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -3048,22 +3254,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -3072,6 +3278,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -3081,7 +3293,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     },
     {
       "market_id": 1054,
@@ -3103,11 +3317,11 @@
       "status": "open",
       "resolution_rules_raw": "If the S&P 500 index value on Dec 31, 2026 at 4pm EST is between 4000-4199.99, then the market resolves to Yes.\n\nThe market will close on December 31, 2026. The market will expire at the sooner of the first release of the data, or one week after December 31, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
       "resolution_triggers": null,
-      "resolution_mechanism": "kalshi_staff",
-      "proposer_model": "platform_staff",
-      "resolution_source_name": "For example, Google Finance",
-      "resolution_source_url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
-      "resolution_source_type": "regulated_data_vendor",
+      "arbitration_model": "kalshi_staff",
+      "resolution_proposer": "platform_staff",
+      "resolution_source": "For example, Google Finance",
+      "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "source_type": "regulated_data_vendor",
       "contract_terms_url": "https://kalshi-public-docs.s3.amazonaws.com/contract_terms/INX.pdf",
       "resolution_outcome": null,
       "resolution_value": null,
@@ -3160,22 +3374,22 @@
         "contract_terms_url": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "platform_api"
         },
-        "resolution_source_url": {
+        "source_citation": {
           "source": "platform_api"
         },
         "underlying_reference": {
@@ -3184,6 +3398,12 @@
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -3193,7 +3413,9 @@
         "polymarket": {
           "market_count": 0
         }
-      }
+      },
+      "regulatory_class": "DCM",
+      "analyst_notes": "Mechanical application of published source; CFTC oversight on disputes. Verify time cutoff and index reference."
     }
   ],
   "marks": [

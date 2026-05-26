@@ -1,0 +1,45 @@
+/* ClearMarket v0.2 design tokens
+ * Reference: /Users/jdmac/jeremy-os/outputs/clearmarket/event-page-design-tokens.md
+ * Lock date: 2026-05-20
+ *
+ * Use these everywhere. Do NOT redefine inline. If a value isn't here,
+ * either add it here first or it doesn't exist.
+ */
+
+:root {
+  /* ---- BACKGROUNDS ---- */
+  --cm-bg-deep:         #0b0e13;
+  --cm-bg-surface:      #131820;
+  --cm-bg-surface-alt:  #171d27;
+  --cm-bg-callout:      #1a2230;
+
+  /* ---- BORDERS ---- */
+  --cm-border-hairline: #1c232e;
+  --cm-border-rule:     #2a3340;
+  --cm-border-emphasis: #3c4759;
+
+  /* ---- FOREGROUND ---- */
+  --cm-fg-primary:      #e6ebf2;
+  --cm-fg-secondary:    #b6bfcc;
+  --cm-fg-muted:        #8b94a3;
+  --cm-fg-faint:        #8b94a3;  /* was #525965 — bumped 2026-05-20 to match the subdued grey used in horizon labels */
+  --cm-fg-link:         #5c9dff;
+
+  /* ---- ACCENTS (carry meaning) ---- */
+  --cm-positive:        #10d894;  /* aligned / on-time / A-grade / fresh */
+  --cm-divergence:      #f0a830;  /* divergence / risk / C-grade / opacity */
+  --cm-negative:        #ef5d6a;  /* resolved-wrong / dispute-overturned */
+
+  /* ---- TYPE ---- */
+  --cm-font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --cm-font-sans: "Inter", "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* ---- SPACING ---- */
+  --cm-space-row:          28px;
+  --cm-space-row-tight:    24px;
+  --cm-space-section:      32px;
+  --cm-space-section-rule: 48px;
+  --cm-space-card-pad:     16px;
+  --cm-space-meta-row:     10px;
+  --cm-space-meta-col:     32px;
+}

@@ -1,0 +1,383 @@
+---
+import { getCollection, getEntry } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+
+export async function getStaticPaths() {
+  const signals = await getCollection('signals');
+  return signals.map((signal) => ({
+    params: { slug: signal.data.signal_slug },
+    props: { signal },
+  }));
+}
+
+const { signal } = Astro.props;
+const data = signal.data;
+const { Content } = await signal.render();
+
+const publishedDate = new Date(data.published_at);
+const formattedDate = publishedDate.toLocaleString('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  timeZoneName: 'short',
+});
+
+const priceChange = data.primary_market.price_24h_ago
+  ? data.primary_market.current_price - data.primary_market.price_24h_ago
+  : null;
+
+const machineRecord = {
+  signal_id: data.signal_id,
+  signal_slug: data.signal_slug,
+  published_at: data.published_at,
+  headline: data.headline,
+  category_tag: data.category_tag,
+  secondary_tags: data.secondary_tags ?? [],
+  detection_path: data.detection_path,
+  pre_news_classification: data.pre_news_classification,
+  event_id: data.event_id,
+  event_slug: data.event_slug,
+  event_question: data.event_question,
+  primary_market: data.primary_market,
+  related_markets: data.related_markets ?? [],
+  bullets: data.bullets,
+  sources: data.sources ?? [],
+  field_provenance: data.field_provenance ?? null,
+};
+
+const articleJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  headline: data.headline,
+  datePublished: data.published_at,
+  dateModified: data.published_at,
+  author: {
+    "@type": "Organization",
+    name: "ClearMarket Signal",
+    url: "https://clearmarket.fyi",
+  },
+  publisher: {
+    "@type": "Organization",
+    name: "ClearMarket",
+    url: "https://clearmarket.fyi",
+  },
+  description: data.bullets[0],
+  about: {
+    "@type": "Thing",
+    name: data.event_question,
+    identifier: data.event_id,
+  },
+  keywords: [data.category_tag, ...(data.secondary_tags ?? [])].join(', '),
+};
+
+const datasetJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  name: `ClearMarket Signal — ${data.signal_id}`,
+  description: `Atomic prediction-market intelligence record. ${data.headline}`,
+  identifier: data.signal_id,
+  dateCreated: data.published_at,
+  datePublished: data.published_at,
+  creator: {
+    "@type": "Organization",
+    name: "ClearMarket",
+    url: "https://clearmarket.fyi",
+  },
+  license: "https://github.com/JDSource/clearmarket/blob/main/LICENSE",
+  keywords: [data.category_tag, ...(data.secondary_tags ?? [])].join(', '),
+  distribution: {
+    "@type": "DataDownload",
+    encodingFormat: "application/json",
+    contentUrl: Astro.url.toString(),
+  },
+  variableMeasured: [
+    { "@type": "PropertyValue", name: "current_price", value: data.primary_market.current_price },
+    ...(data.primary_market.volume_24h_usd ? [{ "@type": "PropertyValue", name: "volume_24h_usd", value: data.primary_market.volume_24h_usd }] : []),
+  ],
+};
+
+const description = data.bullets[0];
+---
+<Base title={`${data.headline} · ClearMarket Signal`} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(articleJsonLd)} slot="head" />
+  <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
+
+  <div class="signal-header">
+    <div class="tags">
+      <span class="tag tag-primary">{data.category_tag}</span>
+      {(data.secondary_tags ?? []).map((tag) => <span class="tag">{tag}</span>)}
+      <span class="tag tag-detection">via {data.detection_path.replace(/_/g, ' ')}</span>
+      <span class={`tag tag-classification tag-${data.pre_news_classification}`}>{data.pre_news_classification.replace(/_/g, '-')}</span>
+    </div>
+    <div class="published">{formattedDate}</div>
+  </div>
+
+  <h1>{data.headline}</h1>
+
+  <ol class="bullets">
+    {data.bullets.map((bullet) => <li>{bullet}</li>)}
+  </ol>
+
+  <div class="market-card">
+    <div class="market-card-label">Primary market</div>
+    <div class="market-card-content">
+      <div class="market-platform">{data.primary_market.platform}</div>
+      <div class="market-question">{data.primary_market.question_raw}</div>
+      <div class="market-stats">
+        <div><span class="stat-label">Price</span><span class="stat-value">{(data.primary_market.current_price * 100).toFixed(1)}%</span></div>
+        {priceChange !== null && (
+          <div>
+            <span class="stat-label">24h</span>
+            <span class={`stat-value ${priceChange >= 0 ? 'stat-up' : 'stat-down'}`}>
+              {priceChange >= 0 ? '+' : ''}{(priceChange * 100).toFixed(1)}pp
+            </span>
+          </div>
+        )}
+        {data.primary_market.volume_24h_usd && (
+          <div>
+            <span class="stat-label">24h vol</span>
+            <span class="stat-value">${(data.primary_market.volume_24h_usd / 1_000_000).toFixed(2)}M</span>
+          </div>
+        )}
+        {data.primary_market.volume_cumulative_usd && (
+          <div>
+            <span class="stat-label">Cumulative</span>
+            <span class="stat-value">${(data.primary_market.volume_cumulative_usd / 1_000_000).toFixed(2)}M</span>
+          </div>
+        )}
+      </div>
+      <div class="market-meta">
+        <div><span class="meta-label">Event ID</span> <code>{data.event_id}</code></div>
+        {data.primary_market.arbitration_model && (
+          <div><span class="meta-label">Resolution</span> {data.primary_market.arbitration_model}</div>
+        )}
+        {data.primary_market.resolves_at && (
+          <div><span class="meta-label">Resolves</span> {new Date(data.primary_market.resolves_at).toLocaleDateString()}</div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <Content />
+  </div>
+
+  {data.sources && data.sources.length > 0 && (
+    <div class="sources">
+      <h3>Sources</h3>
+      <ul>
+        {data.sources.map((source) => (
+          <li><a href={source.url}>{source.label}</a>{source.retrieved_at && <span class="retrieved"> · retrieved {new Date(source.retrieved_at).toISOString().split('T')[0]}</span>}</li>
+        ))}
+      </ul>
+    </div>
+  )}
+
+  <div class="for-machines">
+    <div class="for-machines-header">
+      <h3>For machines: same data</h3>
+      <span class="pill">application/json</span>
+    </div>
+    <pre><code>{JSON.stringify(machineRecord, null, 2)}</code></pre>
+  </div>
+
+  <style>
+    .signal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--border-strong);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      font-size: 11px;
+    }
+    .tag-primary {
+      background: var(--fg);
+      color: var(--bg);
+      border-color: var(--fg);
+    }
+    .tag-detection { font-style: italic; text-transform: none; }
+    .tag-classification { text-transform: none; }
+    .tag-pre_news { border-color: #1d6f42; color: #1d6f42; }
+    .tag-concurrent { border-color: var(--fg-muted); color: var(--fg-muted); }
+    .tag-lagging { border-color: #b34a4a; color: #b34a4a; }
+    .published {
+      color: var(--fg-faint);
+      white-space: nowrap;
+    }
+
+    h1 {
+      margin: 4px 0 28px;
+      line-height: 1.2;
+    }
+
+    ol.bullets {
+      list-style: none;
+      counter-reset: bullet;
+      padding-left: 0;
+      margin: 0 0 32px;
+    }
+    ol.bullets li {
+      counter-increment: bullet;
+      padding-left: 28px;
+      position: relative;
+      margin-bottom: 14px;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    ol.bullets li::before {
+      content: counter(bullet);
+      position: absolute;
+      left: 0;
+      top: 2px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--fg-faint);
+      border: 1px solid var(--border-strong);
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .market-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin: 0 0 32px;
+      background: var(--code-bg);
+    }
+    .market-card-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+      margin-bottom: 8px;
+    }
+    .market-platform {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg-muted);
+      margin-bottom: 4px;
+    }
+    .market-question {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 14px;
+    }
+    .market-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px 28px;
+      margin-bottom: 14px;
+    }
+    .market-stats > div {
+      display: flex;
+      flex-direction: column;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+    }
+    .stat-value {
+      font-size: 17px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-up { color: #1d6f42; }
+    .stat-down { color: #b34a4a; }
+    .market-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 20px;
+      font-size: 12px;
+      color: var(--fg-muted);
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .meta-label {
+      color: var(--fg-faint);
+      margin-right: 4px;
+    }
+
+    .prose {
+      margin: 0 0 32px;
+      color: var(--fg-muted);
+      font-size: 15px;
+    }
+
+    .sources {
+      margin: 0 0 32px;
+    }
+    .sources h3 {
+      font-size: 13px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+      margin: 0 0 8px;
+    }
+    .sources ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+      font-size: 14px;
+    }
+    .retrieved {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--fg-faint);
+    }
+
+    .for-machines {
+      margin-top: 48px;
+      padding-top: 24px;
+      border-top: 1px dashed var(--border);
+    }
+    .for-machines-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .for-machines h3 {
+      margin: 0;
+      font-size: 13px;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--fg-faint);
+    }
+    .for-machines pre {
+      max-height: 480px;
+      overflow: auto;
+      font-size: 12px;
+    }
+  </style>
+</Base>

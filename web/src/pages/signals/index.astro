@@ -1,0 +1,884 @@
+---
+/* ClearMarket Signal — wire index at /signals/
+ *
+ * Active-only wire feed. Default sort: chronological descending. Optional
+ * magnitude sort via ?sort=magnitude. Filter via ?type=<wire_type> and/or
+ * ?venue=<venue>. URL params drive client-side row visibility; all rows
+ * render server-side so crawlers see the full feed.
+ *
+ * Sibling layout to /events-v2/[slug] and /signals-preview/[slug] —
+ * monospace, hairline borders, no card frames. Terminal ledger aesthetic.
+ *
+ * Schema: each <tr> carries data-cms-* attributes for crawler parsing.
+ * Whole index wrapped in JSON-LD @type: DataCatalog with each row as a Dataset.
+ */
+import { getCollection } from 'astro:content';
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+
+const allSignals = await getCollection('signals');
+
+// Active-only filter: for now, all 8 specimens are unresolved.
+// When wire items track resolution state, add: .filter(s => s.data.status !== 'resolved')
+const activeSignals = allSignals
+  .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime());
+
+// ---------- helpers ----------
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${mm} UTC`;
+}
+
+function isoDate(iso: string): string {
+  return iso.slice(0, 10);
+}
+
+// Group signals by date (yyyy-mm-dd). Returns array of {date, label, items}
+// sorted by date descending. Label is "TODAY" / "YESTERDAY" / "N DAYS AGO" / "yyyy-mm-dd".
+function groupByDate(signals: typeof activeSignals) {
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const groups = new Map<string, typeof activeSignals>();
+  for (const s of signals) {
+    const d = isoDate(s.data.published_at);
+    if (!groups.has(d)) groups.set(d, []);
+    groups.get(d)!.push(s);
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([date, items]) => {
+      let label: string;
+      if (date === today) label = 'TODAY';
+      else if (date === yesterday) label = 'YESTERDAY';
+      else {
+        const daysAgo = Math.round((Date.parse(today) - Date.parse(date)) / 86400000);
+        label = `${daysAgo} DAYS AGO`;
+      }
+      return { date, label, items };
+    });
+}
+
+const dateGroups = groupByDate(activeSignals);
+
+// Wire-type label mapping — human label visible, enum value in data-cms-class attr
+const wireTypeLabel: Record<string, string> = {
+  cross_venue_divergence: 'cross-venue',
+  benchmark_drift: 'benchmark-drift',
+  news_cycle: 'news-cycle',
+  volume_spike: 'volume-spike',
+};
+
+const categoryToEnum: Record<string, string> = {
+  cross_venue_divergence: 'CROSS_VENUE_DIVERGENCE',
+  benchmark_drift: 'VS_BENCHMARK_DRIFT',
+  news_cycle: 'NEWS_CYCLE_COVERAGE',
+  volume_spike: 'VOLUME_SPIKE',
+};
+
+// Venue shortcode mapping — fixed-width codes for the ledger column
+function venueShortcodes(s: any): { display: string; raw: string[] } {
+  const codes: string[] = [];
+  const raw: string[] = [];
+  if (s.data.primary_market?.platform) {
+    const p = s.data.primary_market.platform;
+    raw.push(p);
+    codes.push(p === 'polymarket' ? 'POLY' : p === 'kalshi' ? 'KAL' : p.slice(0, 4).toUpperCase());
+  }
+  for (const m of s.data.related_markets ?? []) {
+    if (!raw.includes(m.platform)) {
+      raw.push(m.platform);
+      codes.push(m.platform === 'polymarket' ? 'POLY' : m.platform === 'kalshi' ? 'KAL' : m.platform.slice(0, 4).toUpperCase());
+    }
+  }
+  return { display: codes.join(' · '), raw };
+}
+
+// Activity score for sort=activity. Underlying primary-market 24h volume in USD —
+// same unit across all wire types, honest cross-type comparison. Bloomberg/Reuters
+// convention: VOLUME/VALUE is the standard institutional alternative to TIME.
+function activityScore(s: any): number {
+  return s.data.primary_market?.volume_24h_usd ?? 0;
+}
+
+// ---------- JSON-LD DataCatalog ----------
+const canonicalURL = 'https://clearmarket.fyi/signals/';
+const dataCatalogJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'DataCatalog',
+  '@id': canonicalURL,
+  name: 'ClearMarket Signal — wire index',
+  description: 'Atomic wire bulletins on prediction-market activity across Polymarket, Kalshi, and other venues. Active feed of unresolved signals.',
+  url: canonicalURL,
+  publisher: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  dataset: activeSignals.slice(0, 50).map((s) => ({
+    '@type': 'Dataset',
+    '@id': `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
+    name: s.data.headline,
+    identifier: s.data.signal_id,
+    url: `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
+    datePublished: s.data.published_at,
+    keywords: [s.data.category_tag, s.data.detection_path],
+  })),
+};
+---
+<Site title="ClearMarket Signal · wire index" description="Atomic wire bulletins on prediction-market activity. Wire feed, updated daily." canonical={canonicalURL}>
+  <script type="application/ld+json" set:html={JSON.stringify(dataCatalogJsonLd)} slot="head" />
+  <link rel="alternate" type="application/rss+xml" title="ClearMarket Signal wire feed" href="/signals/rss.xml" slot="head" />
+
+  <nav class="cm-subnav" aria-label="Signal index sections" slot="subnav">
+    <a href="#feed" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Feed</a>
+    <a href="#filters" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Filters</a>
+    <a href="#api" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>API</a>
+    <span class="cm-subnav-snapshot">live <span class="cm-dot-positive">&#9679;</span> {activeSignals.length} active</span>
+  </nav>
+
+  <article class="cm-v2">
+
+    <h1 class="cm-h1">
+      <span class="cm-h1-brand">CLEARMARKET SIGNAL</span>
+      <span class="cm-h1-sep">//</span>
+      <span class="cm-h1-role">WIRE LEDGER</span>
+    </h1>
+
+    <p class="cm-index-lede">Atomic wire bulletins · prediction-market surveillance · polymarket, kalshi, others · daily · permanent URLs</p>
+
+    <div class="cm-horizon">
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">active:</span>
+        <span class="cm-horizon-value">{activeSignals.length}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">cadence:</span>
+        <span class="cm-horizon-value">daily</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">resolved:</span>
+        <a class="cm-horizon-value cm-horizon-link" href="/signals/archive/">archive &rarr;</a>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">feed:</span>
+        <a class="cm-horizon-value cm-horizon-link" href="/signals/rss.xml">rss</a>
+      </span>
+    </div>
+
+    {/* ===== FILTERS ===== */}
+    <section id="filters" class="cm-section">
+      <div class="cm-section-h">filters <span class="cm-section-tag">| url-driven, bookmarkable</span></div>
+
+      <div class="cm-filter-row">
+        <span class="cm-filter-label">TYPE</span>
+        <a class="cm-filter cm-filter-active" href="/signals/" data-filter-type="all">all</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?type=cross_venue_divergence" data-filter-type="cross_venue_divergence">cross-venue</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?type=benchmark_drift" data-filter-type="benchmark_drift">benchmark-drift</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?type=news_cycle" data-filter-type="news_cycle">news-cycle</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?type=volume_spike" data-filter-type="volume_spike">volume-spike</a>
+      </div>
+
+      <div class="cm-filter-row">
+        <span class="cm-filter-label">VENUE</span>
+        <a class="cm-filter cm-filter-active" href="/signals/" data-filter-venue="all">all</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?venue=polymarket" data-filter-venue="polymarket">polymarket</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?venue=kalshi" data-filter-venue="kalshi">kalshi</a>
+        <span class="cm-filter-sep">|</span>
+        <span class="cm-filter cm-filter-disabled" title="More venues coming">+ ext_inbound</span>
+      </div>
+
+      <div class="cm-filter-row">
+        <span class="cm-filter-label">SORT</span>
+        <a class="cm-filter cm-filter-active" href="/signals/" data-filter-sort="chronological">chronological</a>
+        <span class="cm-filter-sep">|</span>
+        <a class="cm-filter" href="/signals/?sort=activity" data-filter-sort="activity">activity (24h vol)</a>
+      </div>
+    </section>
+
+    {/* ===== FEED — ledger table grouped by date ===== */}
+    <section id="feed" class="cm-section">
+      <div class="cm-section-h">wire feed <span class="cm-section-tag">| {activeSignals.length} active, descending chrono</span></div>
+
+      {dateGroups.map((group) => (
+        <div class="cm-ledger-group" data-cms-date={group.date}>
+          <table class="cm-ledger">
+            <colgroup>
+              <col style="width: 80px" />
+              <col style="width: 160px" />
+              <col style="width: 140px" />
+              <col />
+              <col style="width: 110px" />
+              <col style="width: 100px" />
+            </colgroup>
+            <tbody>
+              <tr class="cm-ledger-cap">
+                <td colspan="6">
+                  <span class="cm-cap-date">{group.date}</span>
+                  <span class="cm-cap-sep">·</span>
+                  <span class="cm-cap-label">{group.label}</span>
+                  <span class="cm-cap-count" data-count-total={group.items.length}>[ {group.items.length} {group.items.length === 1 ? 'wire' : 'wires'} ]</span>
+                </td>
+              </tr>
+              {group.items.map((s) => {
+                const venues = venueShortcodes(s);
+                const activity = activityScore(s);
+                return (
+                  <tr class="cm-ledger-row"
+                      data-cms-id={s.data.signal_id}
+                      data-cms-class={categoryToEnum[s.data.detection_path] ?? s.data.category_tag}
+                      data-cms-detection-path={s.data.detection_path}
+                      data-cms-target={s.data.event_id}
+                      data-cms-venues={venues.raw.join(',')}
+                      data-cms-published-at={s.data.published_at}
+                      data-cms-activity={activity}>
+                    <td class="cm-ledger-time">{formatTime(s.data.published_at)}</td>
+                    <td class="cm-ledger-id">{s.data.signal_id}</td>
+                    <td class={`cm-ledger-type cm-type-${s.data.detection_path}`}>{(wireTypeLabel[s.data.detection_path] ?? s.data.detection_path).toUpperCase()}</td>
+                    <td class="cm-ledger-headline">
+                      <a href={`/signals-preview/${s.data.signal_slug}/`}>{s.data.headline}</a>
+                    </td>
+                    <td class="cm-ledger-venues">{venues.display}</td>
+                    <td class="cm-ledger-formats">
+                      <a href={`/signals-preview/${s.data.signal_slug}/`} class="cm-fmt-link">html</a>
+                      <span class="cm-fmt-sep">·</span>
+                      <a href={`/signals/${s.data.signal_slug}.json`} class="cm-fmt-link">json</a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      <p class="cm-ledger-empty cm-hidden-by-filter" id="empty-state">
+        No wires match the current filter. <a href="/signals/">Reset filters</a>.
+      </p>
+    </section>
+
+    {/* ===== API SURFACES ===== */}
+    <section id="api" class="cm-section cm-section-machine">
+      <div class="cm-section-h">programmatic access &middot; four surfaces, same payload</div>
+      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers query REST. Agentic AI clients call MCP tools. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
+      <table class="cm-endpoints-table">
+        <tbody>
+          <tr><td class="cm-fmt">HTML</td><td>this page &mdash; embedded JSON-LD <code class="cm-inline-code">@type: DataCatalog</code></td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>REST API list endpoint with filters</td><td><a href="https://api.clearmarket.fyi/v1/signals"><code class="cm-endpoint-url">https://api.clearmarket.fyi/v1/signals</code></a></td></tr>
+          <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.list_signals(filters)</code></td></tr>
+          <tr><td class="cm-fmt">RSS</td><td>auto-discovered feed for indexers (Perplexity etc.)</td><td><a href="/signals/rss.xml"><code class="cm-endpoint-url">/signals/rss.xml</code></a></td></tr>
+          <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <div class="cm-event-foot">
+      <span><span class="cm-meta-l">view</span> <a href="/signals/archive/">resolved archive &rarr;</a></span>
+      <span><span class="cm-meta-l">events</span> <a href="/events-v2/">event catalog &rarr;</a></span>
+      <a href="/">&larr; home</a>
+    </div>
+
+  </article>
+
+  <style>
+    .cm-v2 {
+      max-width: 1280px;
+      width: calc(100vw - 80px);
+      margin-left: calc((1080px - 1280px) / 2);
+      margin-right: calc((1080px - 1280px) / 2);
+    }
+    @media (max-width: 1280px) {
+      .cm-v2 { margin: 0; width: 100%; }
+    }
+    .cm-v2 pre, .cm-v2 code {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
+    }
+    .cm-v2 a { text-decoration: none; }
+    /* Reset: kill any rounded corners or soft shadows on every descendant.
+       Institutional terminals are flat geometry, full stop. */
+    .cm-v2 *,
+    .cm-v2 *::before,
+    .cm-v2 *::after {
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    /* ===== Sub-nav (matches event/signal page) ===== */
+    .cm-subnav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 10px 40px;
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      background: var(--cm-bg-surface);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-subnav a {
+      color: var(--cm-fg-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cm-subnav a:hover { color: var(--cm-fg-primary); }
+    .cm-subnav-link.cm-subnav-active { color: var(--cm-fg-primary); }
+    .cm-active-mark {
+      color: var(--cm-positive);
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.12s ease, width 0.12s ease;
+    }
+    .cm-subnav-active .cm-active-mark { opacity: 1; width: auto; }
+    .cm-subnav-snapshot {
+      margin-left: auto;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.08em;
+    }
+    .cm-dot-positive { color: var(--cm-positive); }
+
+    /* ===== H1 + lede — tight terminal header, no consumer breathing room.
+       H1 split into brand/sep/role spans so the brand lands first visually
+       and the page role reads as subordinate (Bloomberg-style "WSJ HOME // MARKETS"). */
+    .cm-h1 {
+      font-family: var(--cm-font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 12px 0 4px;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .cm-h1-brand { color: var(--cm-fg-primary); }
+    .cm-h1-sep   { color: var(--cm-border-rule); font-weight: 400; }
+    .cm-h1-role  { color: var(--cm-fg-muted); font-weight: 400; letter-spacing: 0.12em; }
+    .cm-index-lede {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      line-height: 1.4;
+      color: var(--cm-fg-muted);
+      max-width: 100%;
+      margin: 0 0 12px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ===== Horizon strip (matches event/signal page exactly) ===== */
+    .cm-horizon {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      min-height: 28px;
+      margin-top: 14px;
+      margin-bottom: 22px;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      padding: 4px 2px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .cm-horizon-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cm-horizon-pipe {
+      color: var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 400;
+      user-select: none;
+    }
+    .cm-horizon-label {
+      font-family: var(--cm-font-sans);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--cm-fg-muted);
+      text-transform: lowercase;
+    }
+    .cm-horizon-value {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-link);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-horizon-link:hover { color: var(--cm-fg-primary); }
+
+    /* ===== Section headers — flanking-rule pattern + asymmetric spacing.
+       Section name reads between two hairlines (── FILTERS ──────────────).
+       Bigger gap above the header (eye lands here), tight gap below
+       (content reads as one block under the header). System-log style. ===== */
+    .cm-section { margin: 32px 0 14px; }
+    .cm-section:first-of-type { margin-top: 22px; }
+    #feed { scroll-margin-top: 120px; }
+    #filters { scroll-margin-top: 120px; }
+    #api { scroll-margin-top: 120px; }
+
+    .cm-section-h {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-fg-muted);
+      padding-bottom: 0;
+      border-bottom: 0;
+      margin-bottom: 10px;
+    }
+    .cm-section-h::before {
+      content: "";
+      flex: 0 0 24px;
+      border-top: 1px solid var(--cm-border-rule);
+    }
+    .cm-section-h::after {
+      content: "";
+      flex: 1;
+      border-top: 1px solid var(--cm-border-rule);
+    }
+    .cm-section-tag {
+      color: var(--cm-fg-faint);
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      margin-left: 4px;
+      text-transform: lowercase;
+    }
+    .cm-section-summary {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.45;
+      margin: 0 0 10px;
+      max-width: 100%;
+    }
+
+    /* ===== Filter rows — Bloomberg-strip style, no pills, no chips, pipe separators ===== */
+    .cm-filter-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 2px 0;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.02em;
+    }
+    .cm-filter-label {
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.14em;
+      font-weight: 700;
+      min-width: 56px;
+      font-size: 10.5px;
+    }
+    .cm-filter {
+      color: var(--cm-fg-faint);
+      padding: 0;
+      border: 0;
+      background: transparent;
+      border-radius: 0;
+    }
+    .cm-filter:hover { color: var(--cm-fg-primary); }
+    .cm-filter.cm-filter-active {
+      color: var(--cm-fg-primary);
+      font-weight: 700;
+    }
+    /* Brackets are ALWAYS in the DOM with reserved space — only their visibility
+       toggles. Prevents the chip from changing width on hover (which caused
+       adjacent chips to jump sideways in the previous implementation). */
+    .cm-filter::before { content: "[ "; color: var(--cm-fg-link); font-weight: 400; visibility: hidden; }
+    .cm-filter::after  { content: " ]"; color: var(--cm-fg-link); font-weight: 400; visibility: hidden; }
+    .cm-filter.cm-filter-active::before,
+    .cm-filter.cm-filter-active::after,
+    .cm-filter:not(.cm-filter-disabled):hover::before,
+    .cm-filter:not(.cm-filter-disabled):hover::after {
+      visibility: visible;
+    }
+    .cm-filter.cm-filter-disabled {
+      color: var(--cm-fg-faint);
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .cm-filter-sep {
+      color: var(--cm-border-rule);
+      font-weight: 400;
+      user-select: none;
+    }
+
+    /* ===== Ledger table — Bloomberg/Reuters density, mono-everything, hairlines only ===== */
+    .cm-ledger-group { margin-bottom: 14px; }
+    .cm-ledger-group:last-child { margin-bottom: 0; }
+
+    .cm-ledger {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      border-radius: 0;
+    }
+    .cm-ledger td {
+      padding: 3px 12px 3px 0;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      vertical-align: middle;
+      border-radius: 0;
+    }
+    .cm-ledger tr:last-child td { border-bottom: 0; }
+
+    /* Section cap row — full-width tinted divider inside the table.
+       Strong visual anchor for date boundaries. Bg tint creates separation
+       without adding vertical space. Borders top + bottom give it the
+       "system header" feel. */
+    .cm-ledger-cap td {
+      background: var(--cm-bg-surface);
+      border-top: 1px solid var(--cm-border-rule);
+      border-bottom: 1px solid var(--cm-border-rule);
+      padding: 5px 12px;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-cap-date  { color: var(--cm-fg-link); font-variant-numeric: tabular-nums; }
+    .cm-cap-sep   { color: var(--cm-border-rule); margin: 0 6px; }
+    .cm-cap-label { color: var(--cm-fg-primary); font-weight: 700; }
+    .cm-cap-count { color: var(--cm-fg-faint); float: right; font-weight: 400; }
+
+    /* Data row affordance — Bloomberg/Reuters pattern: subtle hover bg + pointer cursor
+       signals row is clickable. No animation (we're not a SaaS), just a clean state flip. */
+    .cm-ledger-row { cursor: pointer; }
+    .cm-ledger-row:hover { background: var(--cm-bg-surface); }
+    .cm-ledger-row.cm-hidden-by-filter { display: none; }
+
+    .cm-ledger-time {
+      color: var(--cm-fg-faint);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    .cm-ledger-id {
+      color: var(--cm-fg-link);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+    /* Wire-type column: flat uppercase text, no pill, no background, no border.
+       Color is the only hierarchy — used sparingly per type for scannability,
+       but applied to the TEXT only, not to a container. */
+    .cm-ledger-type {
+      font-weight: 700;
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+      color: var(--cm-fg-primary);
+    }
+    .cm-type-cross_venue_divergence { color: var(--cm-fg-link); }
+    .cm-type-benchmark_drift        { color: var(--cm-divergence); }
+    .cm-type-news_cycle             { color: var(--cm-positive); }
+    .cm-type-volume_spike           { color: var(--cm-negative); }
+
+    .cm-ledger-headline a {
+      color: var(--cm-fg-primary);
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.35;
+      letter-spacing: 0;
+    }
+    .cm-ledger-headline a:hover { color: var(--cm-fg-link); }
+    .cm-ledger-venues {
+      color: var(--cm-fg-secondary);
+      font-size: 10.5px;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+    .cm-ledger-formats { white-space: nowrap; }
+    /* Format chips muted by default — they're secondary actions; the headline is
+       the primary click target. Light up sharp on hover with underline to signal
+       the click action explicitly. */
+    .cm-fmt-link {
+      color: var(--cm-fg-muted);
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+    }
+    .cm-fmt-link:hover { color: var(--cm-fg-primary); text-decoration: underline; }
+    .cm-fmt-sep {
+      color: var(--cm-border-rule);
+      margin: 0 3px;
+    }
+
+    .cm-ledger-empty {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-muted);
+      padding: 12px 0;
+    }
+    .cm-ledger-empty.cm-hidden-by-filter { display: none; }
+
+    /* ===== API surfaces table (matches event/signal page) ===== */
+    .cm-section-machine .cm-section-summary { max-width: 720px; }
+    .cm-endpoints-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      margin-bottom: 16px;
+    }
+    .cm-endpoints-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      vertical-align: middle;
+    }
+    .cm-endpoints-table tr:last-child td { border-bottom: 0; }
+    .cm-endpoints-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-fmt {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.03);
+      width: 80px;
+    }
+    .cm-endpoint-url {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+    }
+    .cm-endpoints-table a { color: var(--cm-fg-link); text-decoration: none; }
+    .cm-endpoints-table a:hover { text-decoration: underline; }
+    .cm-inline-code {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1px 5px;
+      color: var(--cm-fg-primary);
+    }
+
+    /* ===== Footer ===== */
+    .cm-event-foot {
+      display: flex;
+      gap: 24px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      padding: 20px 0 32px;
+      margin-top: 32px;
+      border-top: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-muted);
+    }
+    .cm-event-foot a {
+      color: var(--cm-fg-link);
+    }
+    .cm-event-foot a:hover { color: var(--cm-fg-primary); }
+    .cm-meta-l {
+      color: var(--cm-fg-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-right: 4px;
+    }
+    .cm-event-foot > a:last-child { margin-left: auto; }
+  </style>
+
+  {/* ===== Client-side filter + sort ===== */}
+  <script is:inline>
+    (function() {
+      // ----- read URL params on load -----
+      const params = new URLSearchParams(window.location.search);
+      let activeType = params.get('type') || 'all';
+      let activeVenue = params.get('venue') || 'all';
+      let activeSort = params.get('sort') || 'chronological';
+
+      // ----- helpers -----
+      function setActiveChip(scope, value) {
+        document.querySelectorAll(`[data-filter-${scope}]`).forEach((chip) => {
+          chip.classList.toggle('cm-filter-active', chip.getAttribute(`data-filter-${scope}`) === value);
+        });
+      }
+
+      function applyFilters() {
+        const rows = document.querySelectorAll('.cm-ledger-row');
+        let visibleCount = 0;
+        rows.forEach((row) => {
+          const rowType = row.getAttribute('data-cms-detection-path');
+          const rowVenues = (row.getAttribute('data-cms-venues') || '').split(',');
+          const typeMatch = activeType === 'all' || rowType === activeType;
+          const venueMatch = activeVenue === 'all' || rowVenues.includes(activeVenue);
+          const matches = typeMatch && venueMatch;
+          row.classList.toggle('cm-hidden-by-filter', !matches);
+          if (matches) visibleCount++;
+        });
+
+        // Hide empty groups and recompute per-group counts (label respects total when no filter,
+        // shows N of M when filter is active and excluding some).
+        const filterActive = activeType !== 'all' || activeVenue !== 'all';
+        document.querySelectorAll('.cm-ledger-group').forEach((group) => {
+          const visibleRows = group.querySelectorAll('.cm-ledger-row:not(.cm-hidden-by-filter)');
+          group.style.display = visibleRows.length === 0 ? 'none' : '';
+          const countEl = group.querySelector('.cm-cap-count');
+          if (countEl) {
+            const total = parseInt(countEl.getAttribute('data-count-total') || '0', 10);
+            const visible = visibleRows.length;
+            const wireLabel = (n) => n === 1 ? 'wire' : 'wires';
+            if (filterActive && visible !== total) {
+              countEl.textContent = `[ ${visible} / ${total} ${wireLabel(total)} ]`;
+            } else {
+              countEl.textContent = `[ ${total} ${wireLabel(total)} ]`;
+            }
+          }
+        });
+
+        // Show empty state
+        const empty = document.getElementById('empty-state');
+        if (empty) empty.classList.toggle('cm-hidden-by-filter', visibleCount > 0);
+      }
+
+      function applySort() {
+        if (activeSort === 'activity') {
+          // Flatten: pull every data row out of its date-grouped tbody and rank
+          // globally by 24h vol. Hide date caps (they imply chronology, which is
+          // gone). Move all rows into the first tbody so they render as one list.
+          const allRows = Array.from(document.querySelectorAll('.cm-ledger-row'));
+          allRows.sort((a, b) => {
+            const aVol = parseFloat(a.getAttribute('data-cms-activity') || '0');
+            const bVol = parseFloat(b.getAttribute('data-cms-activity') || '0');
+            return bVol - aVol;
+          });
+          const firstTbody = document.querySelector('.cm-ledger tbody');
+          if (firstTbody) {
+            allRows.forEach((r) => firstTbody.appendChild(r));
+          }
+          document.querySelectorAll('.cm-ledger-cap').forEach((cap) => {
+            cap.style.display = 'none';
+          });
+          // Hide any now-empty trailing groups
+          document.querySelectorAll('.cm-ledger-group').forEach((group, idx) => {
+            if (idx > 0) group.style.display = 'none';
+          });
+        } else {
+          // chronological — restore per-group sorting and bring back date caps.
+          // Re-sort each tbody by published_at descending and reset visibility.
+          document.querySelectorAll('.cm-ledger-cap').forEach((cap) => {
+            cap.style.display = '';
+          });
+          document.querySelectorAll('.cm-ledger-group').forEach((group) => {
+            group.style.display = '';
+          });
+          document.querySelectorAll('.cm-ledger tbody').forEach((tbody) => {
+            const cap = tbody.querySelector('.cm-ledger-cap');
+            const rows = Array.from(tbody.querySelectorAll('.cm-ledger-row'));
+            // Restore rows to their original tbody if they were moved
+            const tbodyDate = cap?.querySelector('.cm-cap-date')?.textContent;
+            // Find rows whose published_at date matches this tbody's date
+            if (tbodyDate) {
+              const ownedRows = Array.from(document.querySelectorAll('.cm-ledger-row')).filter((r) => {
+                const rDate = (r.getAttribute('data-cms-published-at') || '').slice(0, 10);
+                return rDate === tbodyDate;
+              });
+              ownedRows.sort((a, b) => {
+                const aTime = a.getAttribute('data-cms-published-at') || '';
+                const bTime = b.getAttribute('data-cms-published-at') || '';
+                return bTime.localeCompare(aTime);
+              });
+              ownedRows.forEach((r) => tbody.appendChild(r));
+            }
+          });
+        }
+        // After re-sort, re-apply filters so empty-group hides take into account the new layout
+        applyFilters();
+      }
+
+      function updateUrl() {
+        const newParams = new URLSearchParams();
+        if (activeType !== 'all') newParams.set('type', activeType);
+        if (activeVenue !== 'all') newParams.set('venue', activeVenue);
+        if (activeSort !== 'chronological') newParams.set('sort', activeSort);
+        const query = newParams.toString();
+        const url = query ? `/signals/?${query}` : '/signals/';
+        window.history.replaceState({}, '', url);
+      }
+
+      // ----- wire up chip clicks -----
+      document.querySelectorAll('[data-filter-type]').forEach((chip) => {
+        chip.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          activeType = chip.getAttribute('data-filter-type');
+          setActiveChip('type', activeType);
+          applyFilters();
+          updateUrl();
+        });
+      });
+      document.querySelectorAll('[data-filter-venue]').forEach((chip) => {
+        chip.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          activeVenue = chip.getAttribute('data-filter-venue');
+          setActiveChip('venue', activeVenue);
+          applyFilters();
+          updateUrl();
+        });
+      });
+      document.querySelectorAll('[data-filter-sort]').forEach((chip) => {
+        chip.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          activeSort = chip.getAttribute('data-filter-sort');
+          setActiveChip('sort', activeSort);
+          applySort();
+          updateUrl();
+        });
+      });
+
+      // ----- click-anywhere-on-row navigation (Bloomberg/Reuters convention).
+      // Real <a> on the headline remains the canonical click target for keyboard +
+      // screen-reader users; this just makes the rest of the row clickable for mouse
+      // users. Skip when the click was on an actual link inside the row (so html/json
+      // chips still work independently). -----
+      document.querySelectorAll('.cm-ledger-row').forEach((row) => {
+        row.addEventListener('click', (ev) => {
+          if (ev.target.closest('a')) return;
+          const headline = row.querySelector('.cm-ledger-headline a');
+          if (headline) window.location.href = headline.getAttribute('href');
+        });
+      });
+
+      // ----- initialize on load -----
+      setActiveChip('type', activeType);
+      setActiveChip('venue', activeVenue);
+      setActiveChip('sort', activeSort);
+      applyFilters();
+      applySort();
+    })();
+  </script>
+</Site>

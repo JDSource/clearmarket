@@ -2,7 +2,7 @@
   "_meta": {
     "specimen_id": "netanyahu",
     "generated_at": "2026-04-24T17:46:38.970094+00:00",
-    "schema_version": "v0.1.0",
+    "schema_version": "v0.2.0",
     "event_count": 4,
     "market_count": 4,
     "mark_count": 4,
@@ -10,12 +10,12 @@
     "editor_stubs_remaining": 0,
     "ai_drafted_counts": {
       "markets.underlying_reference": 4,
-      "markets.resolution_source_name": 0,
+      "markets.resolution_source": 0,
       "events.editorial_notes": 4,
       "events.tags": 4,
       "events.question": 4
     },
-    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 4 \u00d7 markets.underlying_reference\n  - 4 \u00d7 events.editorial_notes\n  - 4 \u00d7 events.tags\n  - 4 \u00d7 events.question\n\nProvenance rules:\n  - Kalshi `resolution_source_name` and `resolution_source_url` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source_name` uses an editorial default ('Credible news reporting \u2014 subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
+    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 4 × markets.underlying_reference\n  - 4 × events.editorial_notes\n  - 4 × events.tags\n  - 4 × events.question\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting — subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
   },
   "events": [
     {
@@ -554,7 +554,7 @@
       "event_id": "CM304GHQNP43",
       "platform_event_id": null,
       "question_raw": "Netanyahu out by end of 2026?",
-      "description_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "description_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -565,13 +565,13 @@
       "last_trading_date": "2026-12-31T00:00:00Z",
       "resolve_at": "2026-12-31T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "resolution_rules_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "resolution_triggers": null,
-      "resolution_mechanism": "uma_oracle",
-      "proposer_model": "managed_whitelist",
-      "resolution_source_name": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
-      "resolution_source_url": null,
-      "resolution_source_type": "subjective",
+      "arbitration_model": "uma_oracle",
+      "resolution_proposer": "managed_whitelist",
+      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "source_citation": null,
+      "source_type": "subjective",
       "contract_terms_url": null,
       "resolution_outcome": null,
       "resolution_value": null,
@@ -612,13 +612,13 @@
         "resolution_rules_raw": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
@@ -628,11 +628,17 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "clearmarket_editorial"
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -642,7 +648,9 @@
         "polymarket": {
           "market_count": 1
         }
-      }
+      },
+      "regulatory_class": "DeFi",
+      "analyst_notes": "No fixed source URL; UMA voters interpret rules language. High dispute exposure on ambiguous outcomes."
     },
     {
       "market_id": 1025,
@@ -651,7 +659,7 @@
       "event_id": "CM32BKF8CG64",
       "platform_event_id": null,
       "question_raw": "Netanyahu out by March 31?",
-      "description_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "description_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -662,13 +670,13 @@
       "last_trading_date": "2026-03-31T00:00:00Z",
       "resolve_at": "2026-04-05T06:13:09Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "resolution_rules_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "resolution_triggers": null,
-      "resolution_mechanism": "uma_oracle",
-      "proposer_model": "managed_whitelist",
-      "resolution_source_name": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
-      "resolution_source_url": null,
-      "resolution_source_type": "subjective",
+      "arbitration_model": "uma_oracle",
+      "resolution_proposer": "managed_whitelist",
+      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "source_citation": null,
+      "source_type": "subjective",
       "contract_terms_url": null,
       "resolution_outcome": null,
       "resolution_value": null,
@@ -709,13 +717,13 @@
         "resolution_rules_raw": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
@@ -728,11 +736,17 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "clearmarket_editorial"
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -742,7 +756,9 @@
         "polymarket": {
           "market_count": 1
         }
-      }
+      },
+      "regulatory_class": "DeFi",
+      "analyst_notes": "No fixed source URL; UMA voters interpret rules language. High dispute exposure on ambiguous outcomes."
     },
     {
       "market_id": 1026,
@@ -751,7 +767,7 @@
       "event_id": "CMSNKGNT4PD7",
       "platform_event_id": null,
       "question_raw": "Netanyahu out by June 30?",
-      "description_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "description_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -762,13 +778,13 @@
       "last_trading_date": "2026-06-30T00:00:00Z",
       "resolve_at": "2026-06-30T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "resolution_rules_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "resolution_triggers": null,
-      "resolution_mechanism": "uma_oracle",
-      "proposer_model": "managed_whitelist",
-      "resolution_source_name": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
-      "resolution_source_url": null,
-      "resolution_source_type": "subjective",
+      "arbitration_model": "uma_oracle",
+      "resolution_proposer": "managed_whitelist",
+      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "source_citation": null,
+      "source_type": "subjective",
       "contract_terms_url": null,
       "resolution_outcome": null,
       "resolution_value": null,
@@ -809,13 +825,13 @@
         "resolution_rules_raw": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
@@ -825,11 +841,17 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "clearmarket_editorial"
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -839,7 +861,9 @@
         "polymarket": {
           "market_count": 1
         }
-      }
+      },
+      "regulatory_class": "DeFi",
+      "analyst_notes": "No fixed source URL; UMA voters interpret rules language. High dispute exposure on ambiguous outcomes."
     },
     {
       "market_id": 1027,
@@ -848,7 +872,7 @@
       "event_id": "CML119VC38X5",
       "platform_event_id": null,
       "question_raw": "Netanyahu out by April 30?",
-      "description_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "description_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -859,13 +883,13 @@
       "last_trading_date": "2026-04-30T00:00:00Z",
       "resolve_at": "2026-04-30T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \u201cYes\u201d if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to \u201cNo\u201d.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
+      "resolution_rules_raw": "This market will resolve to “Yes” if Benjamin Netanyahu ceases to be Prime Minister of Israel for any period of time between market creation and the specified date (ET). Otherwise, this market will resolve to “No”.\n\nAn announcement of Benjamin Netanyahu's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nThe resolution source for this market will be official information from Benjamin Netanyahu and the government of Israel; however, a consensus of credible reporting may also be used.",
       "resolution_triggers": null,
-      "resolution_mechanism": "uma_oracle",
-      "proposer_model": "managed_whitelist",
-      "resolution_source_name": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
-      "resolution_source_url": null,
-      "resolution_source_type": "subjective",
+      "arbitration_model": "uma_oracle",
+      "resolution_proposer": "managed_whitelist",
+      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "source_citation": null,
+      "source_type": "subjective",
       "contract_terms_url": null,
       "resolution_outcome": null,
       "resolution_value": null,
@@ -906,13 +930,13 @@
         "resolution_rules_raw": {
           "source": "platform_api"
         },
-        "resolution_mechanism": {
+        "arbitration_model": {
           "source": "clearmarket_editorial"
         },
-        "proposer_model": {
+        "resolution_proposer": {
           "source": "clearmarket_editorial"
         },
-        "resolution_source_type": {
+        "source_type": {
           "source": "clearmarket_editorial"
         },
         "event_id": {
@@ -922,11 +946,17 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "resolution_source_name": {
+        "resolution_source": {
           "source": "clearmarket_editorial"
         },
         "cross_platform_link": {
           "source": "derived"
+        },
+        "regulatory_class": {
+          "source": "derived"
+        },
+        "analyst_notes": {
+          "source": "clearmarket_editorial"
         }
       },
       "cross_platform_link": {
@@ -936,7 +966,9 @@
         "polymarket": {
           "market_count": 1
         }
-      }
+      },
+      "regulatory_class": "DeFi",
+      "analyst_notes": "No fixed source URL; UMA voters interpret rules language. High dispute exposure on ambiguous outcomes."
     }
   ],
   "marks": [

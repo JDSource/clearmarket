@@ -1,0 +1,69 @@
+---
+export interface Props {
+  current: 'a' | 'b' | 'c' | 'd' | 'e' | 'f';
+}
+const { current } = Astro.props;
+const variants = [
+  { id: 'a', label: 'A — Cityscape dark', desc: 'Toronto FiDi + Mono · current' },
+  { id: 'e', label: 'E — Wire feed', desc: 'Axios/BFW · secondary' },
+  { id: 'd', label: 'D — Data table', desc: 'Bloomberg Terminal · secondary' },
+];
+---
+<div class="demo-banner">
+  <div class="demo-banner-label">DEMO · MOCK DATA · NOT INDEXED</div>
+  <div class="demo-banner-switch">
+    {variants.map((v) => (
+      <a href={`/demo/${v.id}/`} class={current === v.id ? 'active' : ''}>
+        <strong>{v.label}</strong>
+        <span>{v.desc}</span>
+      </a>
+    ))}
+  </div>
+</div>
+<style>
+  .demo-banner {
+    background: #fff8e6;
+    border-bottom: 1px solid #e8d77a;
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #6b5400;
+  }
+  .demo-banner-label {
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .demo-banner-switch {
+    display: flex;
+    gap: 0;
+    border: 1px solid #c9b14a;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .demo-banner-switch a {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 12px;
+    text-decoration: none;
+    color: #6b5400;
+    border-right: 1px solid #c9b14a;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  .demo-banner-switch a:last-child { border-right: none; }
+  .demo-banner-switch a.active { background: #6b5400; color: #fff; }
+  .demo-banner-switch a strong { font-size: 11px; }
+  .demo-banner-switch a span { font-size: 10px; opacity: 0.7; }
+  @media (prefers-color-scheme: dark) {
+    .demo-banner { background: #2b2510; border-bottom-color: #5a4a14; color: #e0c97a; }
+    .demo-banner-switch { border-color: #5a4a14; background: #1a1408; }
+    .demo-banner-switch a { color: #e0c97a; border-right-color: #5a4a14; }
+    .demo-banner-switch a.active { background: #e0c97a; color: #1a1408; }
+  }
+</style>

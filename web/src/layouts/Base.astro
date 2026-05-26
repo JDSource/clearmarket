@@ -1,0 +1,313 @@
+---
+export interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  noindex?: boolean;
+  bare?: boolean;
+}
+
+const { title, description, canonical, noindex, bare } = Astro.props;
+const canonicalURL = canonical ?? new URL(Astro.url.pathname, Astro.site).toString();
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "ClearMarket",
+  url: "https://clearmarket.fyi",
+  description: "Institutional reference layer for prediction market data.",
+  publisher: {
+    "@type": "Organization",
+    name: "ClearMarket",
+    url: "https://clearmarket.fyi",
+  },
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={canonicalURL} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:site_name" content="ClearMarket" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
+    <slot name="head" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <style is:global>
+      :root {
+        --bg: #ffffff;
+        --fg: #111418;
+        --fg-muted: #555c66;
+        --fg-faint: #8b929a;
+        --border: #e3e6ea;
+        --border-strong: #c8ccd1;
+        --accent: #1a1a1a;
+        --code-bg: #f6f7f9;
+        --max-width: 720px;
+        --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        padding: 48px 24px 96px;
+      }
+
+      main {
+        max-width: var(--max-width);
+        margin: 0 auto;
+      }
+
+      header.site {
+        max-width: var(--max-width);
+        margin: 0 auto 48px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 16px;
+      }
+
+      header.site .brand {
+        font-weight: 600;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+
+      header.site nav {
+        display: flex;
+        gap: 20px;
+        font-size: 14px;
+      }
+
+      header.site nav a {
+        color: var(--fg-muted);
+        text-decoration: none;
+      }
+
+      header.site nav a:hover {
+        color: var(--fg);
+      }
+
+      h1, h2, h3 {
+        letter-spacing: -0.02em;
+        line-height: 1.25;
+      }
+
+      h1 {
+        font-size: 34px;
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+
+      h2 {
+        font-size: 22px;
+        font-weight: 600;
+        margin: 56px 0 16px;
+      }
+
+      h3 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: 28px 0 8px;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: var(--fg);
+      }
+
+      p.lede {
+        font-size: 20px;
+        line-height: 1.5;
+        color: var(--fg-muted);
+        margin-bottom: 32px;
+      }
+
+      ul, ol {
+        padding-left: 22px;
+        margin: 0 0 16px;
+      }
+
+      li {
+        margin-bottom: 8px;
+      }
+
+      a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-decoration-color: var(--border-strong);
+        text-underline-offset: 3px;
+      }
+
+      a:hover {
+        text-decoration-color: var(--fg);
+      }
+
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.92em;
+        background: var(--code-bg);
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+
+      pre {
+        font-family: var(--font-mono);
+        font-size: 13.5px;
+        line-height: 1.5;
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        padding: 16px 18px;
+        border-radius: 6px;
+        overflow-x: auto;
+        margin: 0 0 16px;
+      }
+
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 56px 0;
+      }
+
+      .pill {
+        display: inline-block;
+        font-size: 12px;
+        font-family: var(--font-mono);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--fg-muted);
+        border: 1px solid var(--border-strong);
+        padding: 2px 8px;
+        border-radius: 3px;
+      }
+
+      .signal-card {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 20px 22px;
+        margin-bottom: 16px;
+        background: #fff;
+      }
+
+      .signal-card h3 {
+        margin-top: 0;
+      }
+
+      .signal-card .meta {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--fg-faint);
+        margin-bottom: 12px;
+      }
+
+      footer.site {
+        max-width: var(--max-width);
+        margin: 96px auto 0;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        font-size: 14px;
+        color: var(--fg-muted);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px 32px;
+        justify-content: space-between;
+      }
+
+      footer.site .group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      footer.site .group-label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--fg-faint);
+        margin-bottom: 4px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0e1116;
+          --fg: #e6e8eb;
+          --fg-muted: #9aa1aa;
+          --fg-faint: #6c727a;
+          --border: #232830;
+          --border-strong: #3a414b;
+          --code-bg: #161b22;
+        }
+        .signal-card { background: #11151b; }
+      }
+    </style>
+  </head>
+  <body>
+    {!bare && (
+      <header class="site">
+        <a class="brand" href="/">ClearMarket</a>
+        <nav>
+          <a href="/methodology/">Methodology</a>
+          <a href="/api/">API</a>
+          <a href="https://github.com/JDSource/clearmarket">GitHub</a>
+        </nav>
+      </header>
+    )}
+    {bare ? <slot /> : <main><slot /></main>}
+    {!bare && (
+    <footer class="site">
+      <div class="group">
+        <span class="group-label">Open methodology</span>
+        <a href="/methodology/">How signals are detected</a>
+      </div>
+      <div class="group">
+        <span class="group-label">Public schema</span>
+        <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>
+      </div>
+      <div class="group">
+        <span class="group-label">Contact</span>
+        <a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a>
+      </div>
+    </footer>
+    )}
+  </body>
+</html>

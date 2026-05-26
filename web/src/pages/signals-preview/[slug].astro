@@ -1,0 +1,1397 @@
+---
+/* PREVIEW ROUTE — CM Signal page, telemetry-node primitive.
+ * Inherits event-page chrome (Site.astro layout, sub-nav, horizon strip,
+ * lowercase mono pattern). Body is typed atomic-claim fields with per-claim
+ * provenance. No card chrome. No editorial brand watermarks. No prose bullets.
+ *
+ * Compare side-by-side with /events-v2/fed-april-2026-rate-decision/ —
+ * the two pages should look like siblings of one product.
+ *
+ * Field structure mirrors the canonical atomic-field telemetry mapping
+ * locked 2026-05-22; fields tagged [schema_extension_pending] are not yet
+ * in the signal content collection schema but render here so the layout
+ * can be validated. Promote to real schema fields when the signal page
+ * leaves preview. */
+
+import { getCollection } from 'astro:content';
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import { createHash } from 'node:crypto';
+
+// Canonical-JSON serializer (deterministic key ordering) for the SHA-256 watermark.
+// Two consumers that hash the same record must get the same digest regardless of
+// the order keys happen to appear in the source. Recursive sort.
+function canonicalize(value: any): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
+  const keys = Object.keys(value).sort();
+  return '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalize(value[k])).join(',') + '}';
+}
+
+export async function getStaticPaths() {
+  const signals = await getCollection('signals');
+  return signals.map((signal) => ({
+    params: { slug: signal.data.signal_slug },
+    props: { signal },
+  }));
+}
+
+const { signal } = Astro.props;
+const data = signal.data;
+
+// Tier definitions — short-form, used as <abbr title=...> tooltips on inline tier
+// labels AND echoed in the JSON-LD cm:provenanceRegistry + REST JSON _provenance_registry.
+// Full spec ships at /schema/provenance/v1 when build item #16 lands.
+const tierDefs = {
+  direct: 'Unaltered extraction from primary venue/source API (e.g., polymarket_clob_api, kalshi_api, BLS, FRED). Highest trust tier.',
+  mediated: 'Information fetched via grounded agentic retrieval (e.g., perplexity_grounded). MUST carry source_url to the underlying primary source.',
+  derived: 'Algorithmic computation from listed inputs. Chain only as fresh as the oldest input timestamp (see as_of).',
+  editorial: 'Interpretive classification produced by a versioned LLM prompt template (prompts auditable in github.com/JDSource/clearmarket/prompts).',
+};
+
+// ----- per-field provenance hint renderer.
+// Returns a bracketed inline hint showing tier · method · source · retrieved_at
+// for any value field that carries a field_provenance entry. Pattern matches
+// Marconi's atomic-claim-with-provenance frame + Terminalist's "preserve fragmentation"
+// (we don't blend, we label each value with where it came from).
+// Tiers: direct (venue API) / mediated (Perplexity → external) / derived (computed) / editorial (LLM/human).
+// effectiveAsOf — for a given field, return the most-conservative timestamp:
+// - if the field's provenance has retrieved_at directly, use it
+// - if the field is derived from upstream inputs, walk them and return the OLDEST
+//   (the chain is only as fresh as its weakest input). Recursive.
+function effectiveAsOf(claim: any, fieldName: string): string | undefined {
+  const fp = claim?.field_provenance?.[fieldName];
+  if (!fp) return undefined;
+  if (fp.retrieved_at) return fp.retrieved_at;
+  if (fp.tier === 'derived' && fp.inputs?.length) {
+    const inputTimes: string[] = [];
+    for (const inp of fp.inputs) {
+      // inputs may carry parentheticals like "poly_price (cm_marks_history)" —
+      // strip to the bare field name before lookup
+      const base = (inp.split(' ')[0] || '').replace(/[(),]/g, '');
+      const t = effectiveAsOf(claim, base);
+      if (t) inputTimes.push(t);
+    }
+    if (inputTimes.length) return inputTimes.sort()[0]; // oldest
+  }
+  return undefined;
+}
+
+function provBracket(claim: any, fieldName: string): { tier: string; rest: string; url?: string } | null {
+  const fp = claim?.field_provenance?.[fieldName];
+  if (!fp || !fp.tier) return null;
+  const head: string[] = [];
+  if (fp.method) head.push(fp.method);
+  if (fp.source) head.push(fp.source);
+  let rest = head.join(' → ');
+  if (fp.inputs?.length) rest += ` ← ${fp.inputs.join(', ')}`;
+  const ts = effectiveAsOf(claim, fieldName);
+  if (ts) rest += ` · as_of ${ts}`;
+  if (fp.note) rest += ` · ${fp.note}`;
+  return { tier: fp.tier, rest, url: fp.source_url };
+}
+
+// ----- formatting helpers -----
+function fmtPct(p: number | null | undefined): string {
+  if (p == null) return '—';
+  return `${(p * 100).toFixed(1)}%`;
+}
+function fmtVol(v: number | null | undefined): string {
+  if (v == null) return '—';
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+function fmtPp(left: number | null | undefined, right: number | null | undefined): string {
+  if (left == null || right == null) return '—';
+  return `${Math.abs(left - right) * 100}pp`;
+}
+
+// ----- derived spread (for Bucket A) -----
+const primary = data.primary_market;
+const related = data.related_markets?.[0] ?? null;
+// Right-side price is not in schema yet for related markets; pull from headline for demo.
+// (Schema extension: related_markets[].current_price)
+const headlineNums = (data.headline.match(/\d+(?:\.\d+)?%/g) ?? []).map((s) => parseFloat(s) / 100);
+const leftPrice = primary.current_price;
+const rightPrice = headlineNums.length >= 2
+  ? (primary.platform === 'polymarket' ? headlineNums[1] : headlineNums[0])
+  : null;
+const spreadPp = (leftPrice != null && rightPrice != null)
+  ? Math.abs(leftPrice - rightPrice) * 100
+  : null;
+
+// ----- 30d historical boundary (mocked for demo; schema extension) -----
+const priorMaxPp = 7.2;
+const priorMaxDate = '2026-05-04';
+const deltaPp = spreadPp != null ? spreadPp - priorMaxPp : null;
+
+// ----- benchmark (Bucket B) — read from the structured benchmark_divergence claim,
+// NOT a label regex or a hardcoded mock. The claim is the authoritative origin for
+// benchmark_source / benchmark_source_url / benchmark_value; trust it, don't re-guess.
+// (Fixed 2026-05-25: prior code regex-matched /fedwatch|cme/ over source labels, which
+// mis-cited the benchmark on every non-Fed-rate wire, and hardcoded benchmarkValue=0.36.)
+const benchmarkClaim = data.atomic_claims?.find((c: any) => c.type === 'benchmark_divergence') ?? null;
+const benchmarkSource = benchmarkClaim?.benchmark_source_url
+  ? { label: benchmarkClaim.benchmark_source ?? 'benchmark', url: benchmarkClaim.benchmark_source_url }
+  : null;
+const benchmarkValue: number | null = benchmarkClaim?.benchmark_value ?? null;
+const polyOffsetPp = (leftPrice != null && benchmarkValue != null) ? (leftPrice - benchmarkValue) * 100 : null;
+const kalshiOffsetPp = (rightPrice != null && benchmarkValue != null) ? (rightPrice - benchmarkValue) * 100 : null;
+
+// ----- velocity (mocked for demo; bullets carry this in prose form) -----
+const polyVolWow = 0.43;
+const kalshiVolWow = -0.08;
+
+// ----- evaluation — detection_path aware -----
+// Cross-venue + benchmark-drift wires pass through an LLM judge gate ("is this divergence
+// worth surfacing?"). News-cycle wires do NOT — per PRD §5.1 news-cycle is
+// deterministic-floor: top-5 stories scanned daily 04:00 ET → mechanical entity match →
+// publish. No editorial gate. Coverage is the product. So judge fields are null for those.
+const isNewsCycle = data.detection_path === 'news_cycle';
+const isBenchmarkDrift = data.detection_path === 'benchmark_drift';
+const isVolumeSpike = data.detection_path === 'volume_spike';
+// judge_engine uses llm_judge_ prefix so the reader knows it's an LLM without
+// being locked to a specific model name. Specific model + version lives in the
+// changelog at /schema/judge/v1 (when shipped).
+const judgeEngine = isNewsCycle
+  ? 'none — deterministic news-cycle scan (04:00 ET)'
+  : 'llm_judge_cm_signal_v1';
+const judgeVerdict = isNewsCycle ? 'auto_published' : 'wire_eligible';
+const judgeConfidence: number | null = isNewsCycle
+  ? null
+  : (isBenchmarkDrift ? data.judge_confidence ?? 0.78
+     : isVolumeSpike ? data.judge_confidence ?? 0.81
+     : data.judge_confidence ?? 0.84);
+const promptTemplate = data.prompt_template ?? (
+  isNewsCycle ? 'news_cycle_v1'
+  : isBenchmarkDrift ? 'benchmark_drift_v1'
+  : isVolumeSpike ? 'volume_spike_v1'
+  : 'cross_venue_v1'
+);
+const matchMethod = isNewsCycle ? 'entity_slug_match (mechanical)' : null;
+
+// ----- citation graph -----
+const eventHref = `/events-v2/${data.event_slug}/`;
+const venueAUrl = primary.platform === 'polymarket'
+  ? `https://polymarket.com/market/${primary.platform_market_id}`
+  : `https://kalshi.com/markets/${primary.platform_market_id}`;
+const venueBUrl = related
+  ? (related.platform === 'polymarket'
+      ? `https://polymarket.com/market/${related.platform_market_id}`
+      : `https://kalshi.com/markets/${related.platform_market_id}`)
+  : null;
+
+// ----- canonical URLs + JSON-LD -----
+const canonicalURL = `https://clearmarket.fyi/signals/${data.signal_slug}/`;
+const jsonURL = `https://api.clearmarket.fyi/v1/signals/${data.signal_slug}`;
+
+// ----- helpers to map per-field provenance + significance into JSON-LD =====
+// Marconi/Terminalist standard: the structured-data layer must carry the same
+// provenance the visible HTML shows. Crawlers reading only <script type="application/ld+json">
+// (and there are many) should see tier/method/source/inputs per value.
+//
+// PROV-O mapping:
+//   direct    → prov:wasGeneratedBy (the API/source-of-truth produced it)
+//   mediated  → prov:wasDerivedFrom (linked to underlying source URL)
+//   derived   → prov:wasDerivedFrom (linked to upstream field IDs)
+//   editorial → prov:wasAttributedTo (the LLM/human agent responsible)
+function unitFor(fieldName: string): string | undefined {
+  if (fieldName.endsWith('_pp')) return 'pp';
+  if (fieldName.endsWith('_usd')) return 'USD';
+  if (fieldName.endsWith('_ratio') || fieldName.endsWith('_vs_baseline')) return 'ratio';
+  if (fieldName.startsWith('corr_') || fieldName === 'percentile_30d') return 'index';
+  if (fieldName.endsWith('_at') || fieldName.endsWith('_date')) return 'iso8601';
+  if (fieldName.endsWith('_minutes_poly') || fieldName.endsWith('_minutes_kalshi')) return 'minutes';
+  return undefined;
+}
+function buildVariablesMeasured(claims: any[]) {
+  const vars: any[] = [];
+  for (const claim of claims) {
+    const fp = claim.field_provenance ?? {};
+    for (const fieldName of Object.keys(fp)) {
+      const value = claim[fieldName];
+      if (value === undefined || value === null) continue;
+      const prov = fp[fieldName];
+      const pv: any = {
+        '@type': 'PropertyValue',
+        '@id': `#${claim.type}/${fieldName}`,
+        propertyID: fieldName,
+        name: fieldName,
+        'cm:claimType': claim.type,
+        'cm:tier': prov.tier,
+        'cm:method': prov.method,
+      };
+      if (typeof value === 'number' || typeof value === 'string') {
+        pv.value = value;
+      } else if (typeof value === 'object') {
+        pv.valueReference = value;
+      }
+      const unit = unitFor(fieldName);
+      if (unit) pv.unitText = unit;
+      if (prov.source) pv['cm:source'] = prov.source;
+      if (prov.source_url) pv['cm:sourceUrl'] = prov.source_url;
+      if (prov.retrieved_at) pv['cm:retrievedAt'] = prov.retrieved_at;
+      if (prov.note) pv['cm:note'] = prov.note;
+      if (prov.inputs?.length) pv['cm:inputs'] = prov.inputs;
+      // PROV-O mapping
+      if (prov.tier === 'mediated' && prov.source_url) {
+        pv['prov:wasDerivedFrom'] = { '@id': prov.source_url, 'cm:source': prov.source };
+      } else if (prov.tier === 'derived' && prov.inputs?.length) {
+        pv['prov:wasDerivedFrom'] = prov.inputs.map((inp: string) => ({ '@id': `#${claim.type}/${inp}` }));
+      } else if (prov.tier === 'direct') {
+        pv['prov:wasGeneratedBy'] = {
+          '@type': 'prov:Activity',
+          'prov:atTime': prov.retrieved_at,
+          'cm:method': prov.method,
+        };
+      } else if (prov.tier === 'editorial') {
+        pv['prov:wasAttributedTo'] = { '@type': 'prov:Agent', name: prov.method };
+      }
+      vars.push(pv);
+    }
+  }
+  return vars;
+}
+function buildAtomicClaims(claims: any[]) {
+  return claims.map((claim: any) => {
+    const fp = claim.field_provenance ?? {};
+    const entry: any = {
+      '@type': 'cm:AtomicClaim',
+      'cm:type': claim.type,
+      'cm:fields': Object.keys(fp),
+    };
+    if (claim.significance) {
+      entry['cm:significance'] = {
+        threshold: claim.significance.threshold,
+        thresholdUnit: claim.significance.threshold_unit,
+        current: claim.significance.current,
+        passed: claim.significance.passed,
+        percentile30d: claim.significance.percentile_30d,
+        reason: claim.significance.reason,
+      };
+    }
+    return entry;
+  });
+}
+
+const datasetJsonLd = {
+  '@context': [
+    'https://schema.org',
+    {
+      'cm': 'https://clearmarket.fyi/schema/v1#',
+      'prov': 'http://www.w3.org/ns/prov#',
+    },
+  ],
+  '@type': 'Dataset',
+  '@id': canonicalURL,
+  name: data.headline,
+  description: `CM Signal wire item: ${data.category_tag.toLowerCase().replace(/_/g, ' ')} detection on event ${data.event_id}`,
+  identifier: data.signal_id,
+  url: canonicalURL,
+  keywords: [data.category_tag, ...(data.secondary_tags ?? [])],
+  datePublished: data.published_at,
+  variableMeasured: buildVariablesMeasured(data.atomic_claims ?? []),
+  'cm:atomicClaims': buildAtomicClaims(data.atomic_claims ?? []),
+  measurementTechnique: 'Mechanical detection on cross-venue + benchmark + news-cycle + volume axes; LLM judge classification (except news-cycle which is deterministic-floor). Per-field provenance with four-tier model (direct/mediated/derived/editorial) at variableMeasured; per-claim significance at cm:atomicClaims.',
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  distribution: [
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
+  ],
+  isBasedOn: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
+};
+
+const claimReviewJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'ClaimReview',
+  url: canonicalURL,
+  datePublished: data.published_at,
+  claimReviewed: data.headline,
+  reviewBody: data.bullets.join(' '),
+  author: { '@type': 'Organization', name: 'ClearMarket' },
+  itemReviewed: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
+};
+
+// ----- visible JSON record (round-trip check for the four-format rule) =====
+// Mirrors the on-page atomic claims exactly — both surfaces read from
+// data.atomic_claims. Same payload, different presentation.
+const machineRecord = {
+  $schema: 'https://clearmarket.fyi/schema/signal/v1.json',
+  provenance_version: '0.2.0',
+  record_id: data.signal_id,
+  published_at: data.published_at,
+  detection: data.detection_path,
+  category_tag: data.category_tag,
+  secondary_tags: data.secondary_tags ?? [],
+  pre_news_classification: data.pre_news_classification,
+  target_event_id: data.event_id,
+  target_event_slug: data.event_slug,
+  event_question: data.event_question,
+  bullets: data.bullets,
+  atomic_claims: data.atomic_claims ?? [],
+  evaluation: {
+    judge_engine: judgeEngine,
+    judge_verdict: judgeVerdict,
+    judge_confidence: judgeConfidence,
+    prompt_template: promptTemplate,
+  },
+  citations: {
+    internal: { cm_event: `/events/${data.event_slug}/`, related: data.linked_event_ids ?? [] },
+    external: {
+      venue_a: venueAUrl,
+      venue_b: venueBUrl,
+      benchmark: benchmarkSource?.url ?? null,
+    },
+  },
+  sources: data.sources ?? [],
+  field_provenance: data.field_provenance ?? null,
+};
+
+// SHA-256 watermark of the canonical record. Lets downstream consumers verify the
+// wire wasn't modified post-publication. Hash is computed AFTER the record is built
+// from the immutable specimen frontmatter; deterministic key ordering via canonicalize().
+const canonicalRecord = canonicalize(machineRecord);
+const signature = 'sha256-' + createHash('sha256').update(canonicalRecord).digest('hex');
+
+// Patch the signature into the dataset JSON-LD — done here rather than in the
+// datasetJsonLd literal above because the signature can only be computed AFTER
+// machineRecord is built (and machineRecord depends on derived values from earlier
+// in the file). Order matters; don't try to inline this back into the literal.
+(datasetJsonLd as any)['cm:signature'] = signature;
+(datasetJsonLd as any)['cm:signatureAlgorithm'] = 'sha256-canonicalJSON';
+// Inline provenance registry so AI crawlers don't need a secondary HTTP fetch to
+// resolve tier vocabulary. Canonical URL also exposed for the full DefinedTermSet.
+(datasetJsonLd as any)['cm:provenanceRegistry'] = tierDefs;
+(datasetJsonLd as any)['cm:provenanceCanonical'] = 'https://clearmarket.fyi/schema/provenance/v1';
+
+function colorizeJson(obj: unknown): string {
+  return JSON.stringify(obj, null, 2)
+    .replace(/("[^"]+")\s*:/g, '<span class="t-key">$1</span>:')
+    .replace(/: (".*?")/g, ': <span class="t-str">$1</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="t-num">$1</span>')
+    .replace(/: (true|false|null)/g, ': <span class="t-num">$1</span>');
+}
+
+const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
+---
+
+<Site title={`${data.headline} · CM Signal`} description={`Atomic-claim wire item for ${data.event_question}`} canonical={canonicalURL}>
+  <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
+  <script type="application/ld+json" set:html={JSON.stringify(claimReviewJsonLd)} slot="head" />
+
+  <nav class="cm-subnav" aria-label="Signal sections" slot="subnav">
+    <a href="#briefs" data-section="briefs" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Briefs</a>
+    <a href="#evaluation" data-section="evaluation" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Evaluation</a>
+    <a href="#citations" data-section="citations" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Citations</a>
+    <a href="#api" data-section="api" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>API</a>
+    <span class="cm-subnav-snapshot">published <span class="cm-dot-positive">&#9679;</span> {data.published_at.slice(0, 10)}</span>
+  </nav>
+
+  <article class="cm-v2" data-cm-signal-id={data.signal_id}>
+
+    <h1 class="cm-h1" data-cm-field="headline">{data.headline}</h1>
+
+    {/* Internal taxonomy fields (bucket, detection_path, pre_news_classification)
+        live in JSON-LD + the .json endpoint only — they're not reader-facing.
+        Chrome shows: canonical record ID, human-readable category, event back-link
+        (closes the citation loop), and published timestamp. */}
+    <div class="cm-horizon">
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">record:</span>
+        <span class="cm-horizon-value" data-cm-field="signal_id">{data.signal_id}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">category:</span>
+        <span class="cm-horizon-value" data-cm-field="category_tag">{categoryDisplay}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">target:</span>
+        <a class="cm-horizon-value cm-horizon-link" href={eventHref} data-cm-field="event_id">{data.event_id}</a>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">published:</span>
+        <span class="cm-horizon-value" data-cm-field="published_at">{data.published_at.slice(0, 10)}</span>
+      </span>
+    </div>
+
+    {/* ===== WIRE BODY — the 5-bullet prose summary (canonical PRD §4 + §6.5.5) =====
+         Narrative layer. LinkedIn-shareable. Sits above the typed atomic claims so
+         a first-time reader gets the human-readable read, then drills into the
+         structured fields below. The bullets here populate JSON-LD ClaimReview.reviewBody. */}
+    <section class="cm-wire-body" data-cm-field="bullets">
+      <div class="cm-callout-label">5-bullet brief <span class="cm-callout-tag">| narrative</span></div>
+      <ul class="cm-wire-bullets">
+        {data.bullets.map((b: string) => <li>{b}</li>)}
+      </ul>
+    </section>
+
+    {/* ===== ATOMIC CLAIMS — data-driven, rendered per claim.type =====
+         Each bucket carries 2 claims (the measurement + the context that explains it).
+         Bucket A: cross_venue_spread + divergence_context
+         Bucket B: benchmark_wedge + wedge_context
+         Bucket C: news_event + pm_response */}
+    <section id="briefs" class="cm-section">
+      <div class="cm-section-h">atomic briefs <span class="cm-section-tag">| structured for retrieval</span></div>
+
+      {(data.atomic_claims ?? []).map((claim: any, idx: number) => {
+        const num = String(idx + 1).padStart(2, '0');
+        return (
+          <div class="cm-claim" data-cm-claim-type={claim.type}>
+            <div class="cm-claim-head">
+              <span class="cm-claim-num">[{num}]</span>
+              <span class="cm-claim-type">{claim.type}</span>
+            </div>
+            {/* Liquidity context — verification variable for price-move claims.
+                A 16pp move on $5K of volume reads differently from the same move
+                on $5M. Rendered as a compact strip so consumers don't have to
+                scroll to the wire envelope for the signal-vs-noise check. */}
+            {claim.liquidity_context && (
+              <div class="cm-liquidity">
+                <span class="cm-sig-label">liquidity</span>
+                {claim.liquidity_context.poly_vol_24h_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">poly_vol_24h:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.poly_vol_24h_usd)}</span></span>
+                )}
+                {claim.liquidity_context.kalshi_vol_24h_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">kalshi_vol_24h:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.kalshi_vol_24h_usd)}</span></span>
+                )}
+                {claim.liquidity_context.poly_vol_7d_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">poly_vol_7d:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.poly_vol_7d_usd)}</span></span>
+                )}
+                {claim.liquidity_context.kalshi_vol_7d_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">kalshi_vol_7d:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.kalshi_vol_7d_usd)}</span></span>
+                )}
+                {claim.liquidity_context.poly_open_interest_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">poly_oi:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.poly_open_interest_usd)}</span></span>
+                )}
+                {claim.liquidity_context.depth_to_100bp_usd != null && (
+                  <span class="cm-sig-metric"><span class="cm-sig-aside">depth_100bp:</span> <span class="cm-num">{fmtVol(claim.liquidity_context.depth_to_100bp_usd)}</span></span>
+                )}
+              </div>
+            )}
+
+            {/* Significance sub-block — "why this wire crossed the bar."
+                Uniform across main claims regardless of wire type. Machine reads
+                claim.significance for the standard "is this important + why" signal
+                without having to know per-type semantics. */}
+            {claim.significance && (
+              <div class="cm-significance" data-cm-significance="true">
+                <span class="cm-sig-label">significance</span>
+                {claim.significance.threshold != null && claim.significance.current != null && (
+                  <span class="cm-sig-metric">
+                    <span class="cm-num-emphasis">{claim.significance.current}</span>
+                    <span class="cm-sig-aside">{claim.significance.threshold_unit}</span>
+                    <span class="cm-sig-aside"> vs threshold </span>
+                    <span class="cm-num">{claim.significance.threshold}</span>
+                    <span class="cm-sig-aside">{claim.significance.threshold_unit}</span>
+                    {claim.significance.passed && <span class="cm-kv-pass">passed</span>}
+                  </span>
+                )}
+                {claim.significance.percentile_30d != null && (
+                  <span class="cm-sig-metric">
+                    <span class="cm-sig-aside">percentile_30d:</span>
+                    <span class="cm-num-emphasis">{claim.significance.percentile_30d}th</span>
+                  </span>
+                )}
+                <div class="cm-sig-reason">{claim.significance.reason}</div>
+              </div>
+            )}
+            <dl class="cm-kv">
+              {claim.type === 'cross_venue_spread' && (
+                <>
+                  {claim.spread_pp != null && (() => { const p = provBracket(claim, "spread_pp"); return (
+                    <div class="cm-kv-row"><dt>spread</dt><dd><span class="cm-num-emphasis">{claim.spread_pp.toFixed(1)}pp</span> <span class="cm-kv-aside">cross_venue</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.threshold_pp != null && <div class="cm-kv-row"><dt>threshold</dt><dd><span class="cm-num">{claim.threshold_pp.toFixed(1)}pp</span> <span class="cm-kv-pass">passed</span></dd></div>}
+                  {claim.percentile_30d != null && (() => { const p = provBracket(claim, "percentile_30d"); return (
+                    <div class="cm-kv-row"><dt>percentile_30d</dt><dd><span class="cm-num-emphasis">{claim.percentile_30d}th</span> <span class="cm-kv-aside">of last 30 days</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.prior_max_pp != null && (() => { const p = provBracket(claim, "prior_max_pp"); return (
+                    <div class="cm-kv-row"><dt>prior_max_30d</dt><dd><span class="cm-num">{claim.prior_max_pp.toFixed(1)}pp</span>{claim.prior_max_date && <span class="cm-kv-aside"> on {claim.prior_max_date}</span>}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.days_above_threshold_30d != null && <div class="cm-kv-row"><dt>days_above_threshold</dt><dd><span class="cm-num">{claim.days_above_threshold_30d}</span> <span class="cm-kv-aside">of 30</span></dd></div>}
+                </>
+              )}
+
+              {claim.type === 'divergence_context' && (
+                <>
+                  {claim.poly_vol_24h_usd != null && (() => { const p = provBracket(claim, "poly_vol_24h_usd"); return (
+                    <div class="cm-kv-row"><dt>poly_vol_24h</dt><dd><span class="cm-num">{fmtVol(claim.poly_vol_24h_usd)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.kalshi_vol_24h_usd != null && (() => { const p = provBracket(claim, "kalshi_vol_24h_usd"); return (
+                    <div class="cm-kv-row"><dt>kalshi_vol_24h</dt><dd><span class="cm-num">{fmtVol(claim.kalshi_vol_24h_usd)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.volume_ratio != null && <div class="cm-kv-row"><dt>volume_ratio</dt><dd><span class="cm-num-emphasis">{claim.volume_ratio.toFixed(1)}x</span> <span class="cm-kv-aside">polymarket lead</span></dd></div>}
+                  {claim.next_catalyst && (() => { const p = provBracket(claim, "next_catalyst"); return (
+                    <div class="cm-kv-row"><dt>next_catalyst</dt><dd><span class="cm-kv-tag">{claim.next_catalyst.type}</span> <span class="cm-num">{claim.next_catalyst.date}</span> <span class="cm-kv-aside">T−{claim.next_catalyst.days_out}d</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.fomc_date && <div class="cm-kv-row"><dt>fomc</dt><dd><span class="cm-num">{claim.fomc_date}</span>{claim.fomc_days_out != null && <span class="cm-kv-aside"> T−{claim.fomc_days_out}d</span>}</dd></div>}
+                  {claim.audience_note && (() => { const p = provBracket(claim, "audience_note"); return (
+                    <div class="cm-kv-row"><dt>interp</dt><dd>{claim.audience_note}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {claim.type === 'benchmark_divergence' && (
+                <>
+                  {/* Origin data first — per-venue PM prices BEFORE the blended consensus.
+                      Preserves vendor fragmentation per Terminalist's frame. */}
+                  {claim.poly_price != null && (() => { const p = provBracket(claim, "poly_price"); return (
+                    <div class="cm-kv-row"><dt>poly_price</dt><dd><span class="cm-num">{fmtPct(claim.poly_price)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.kalshi_price != null && (() => { const p = provBracket(claim, "kalshi_price"); return (
+                    <div class="cm-kv-row"><dt>kalshi_price</dt><dd><span class="cm-num">{fmtPct(claim.kalshi_price)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.pm_consensus_24h_vw != null && (() => { const p = provBracket(claim, "pm_consensus_24h_vw"); return (
+                    <div class="cm-kv-row"><dt>pm_consensus</dt><dd><span class="cm-num-emphasis">{fmtPct(claim.pm_consensus_24h_vw)}</span> <span class="cm-kv-aside">24h vol-weighted</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.benchmark_source && <div class="cm-kv-row"><dt>benchmark_source</dt><dd>{claim.benchmark_source_url ? <a class="cm-kv-link" href={claim.benchmark_source_url} rel="noopener nofollow">{claim.benchmark_source}</a> : claim.benchmark_source}</dd></div>}
+                  {claim.benchmark_value != null && (() => { const p = provBracket(claim, "benchmark_value"); return (
+                    <div class="cm-kv-row"><dt>benchmark_value</dt><dd><span class="cm-num">{fmtPct(claim.benchmark_value)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.divergence_pp != null && (() => { const p = provBracket(claim, "divergence_pp"); return (
+                    <div class="cm-kv-row"><dt>divergence</dt><dd><span class="cm-num-emphasis">{claim.divergence_pp >= 0 ? '+' : ''}{claim.divergence_pp.toFixed(1)}pp</span> <span class="cm-kv-aside">{claim.divergence_pp >= 0 ? 'PMs above' : 'PMs below'}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {claim.type === 'benchmark_context' && (
+                <>
+                  {claim.corr_30d_poly != null && (() => { const p = provBracket(claim, "corr_30d_poly"); return (
+                    <div class="cm-kv-row"><dt>corr_30d_poly</dt><dd><span class="cm-num">{claim.corr_30d_poly.toFixed(2)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.corr_30d_kalshi != null && (() => { const p = provBracket(claim, "corr_30d_kalshi"); return (
+                    <div class="cm-kv-row"><dt>corr_30d_kalshi</dt><dd><span class="cm-num">{claim.corr_30d_kalshi.toFixed(2)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.corr_breakpoint_date && (() => { const p = provBracket(claim, "corr_breakpoint_date"); return (
+                    <div class="cm-kv-row"><dt>corr_breakpoint</dt><dd><span class="cm-num">{claim.corr_breakpoint_date}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.poly_offset_pp != null && <div class="cm-kv-row"><dt>poly_offset</dt><dd><span class="cm-num">{claim.poly_offset_pp >= 0 ? '+' : ''}{claim.poly_offset_pp.toFixed(1)}pp</span></dd></div>}
+                  {claim.kalshi_offset_pp != null && <div class="cm-kv-row"><dt>kalshi_offset</dt><dd><span class="cm-num">{claim.kalshi_offset_pp >= 0 ? '+' : ''}{claim.kalshi_offset_pp.toFixed(1)}pp</span></dd></div>}
+                  {claim.interp && (() => { const p = provBracket(claim, "interp"); return (
+                    <div class="cm-kv-row"><dt>interp</dt><dd>{claim.interp}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {claim.type === 'news_event' && (
+                <>
+                  {claim.story && (() => { const p = provBracket(claim, "story"); return (
+                    <div class="cm-kv-row"><dt>story</dt><dd>{claim.story}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.publisher && <div class="cm-kv-row"><dt>publisher</dt><dd>{claim.publisher}</dd></div>}
+                  {claim.published_at && <div class="cm-kv-row"><dt>published_at</dt><dd><span class="cm-num">{claim.published_at}</span></dd></div>}
+                  {claim.source_url && (() => { const p = provBracket(claim, "source_url"); return (
+                    <div class="cm-kv-row"><dt>source_url</dt><dd><a class="cm-kv-link" href={claim.source_url} rel="noopener nofollow">{claim.source_url}</a>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {claim.type === 'pm_response' && (
+                <>
+                  {claim.poly_price_change_pp != null && (() => { const p = provBracket(claim, "poly_price_change_pp"); return (
+                    <div class="cm-kv-row"><dt>poly_move</dt><dd><span class="cm-num-emphasis">{claim.poly_price_change_pp >= 0 ? '+' : ''}{claim.poly_price_change_pp.toFixed(1)}pp</span> <span class="cm-kv-aside">since story</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.kalshi_price_change_pp != null && (() => { const p = provBracket(claim, "kalshi_price_change_pp"); return (
+                    <div class="cm-kv-row"><dt>kalshi_move</dt><dd><span class="cm-num-emphasis">{claim.kalshi_price_change_pp >= 0 ? '+' : ''}{claim.kalshi_price_change_pp.toFixed(1)}pp</span> <span class="cm-kv-aside">since story</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.lead_lag_minutes_poly != null && <div class="cm-kv-row"><dt>lead_lag_poly</dt><dd><span class="cm-num">{claim.lead_lag_minutes_poly >= 0 ? '+' : ''}{claim.lead_lag_minutes_poly}min</span> <span class="cm-kv-aside">{claim.lead_lag_minutes_poly < 0 ? 'before headline' : 'after headline'}</span></dd></div>}
+                  {claim.lead_lag_minutes_kalshi != null && <div class="cm-kv-row"><dt>lead_lag_kalshi</dt><dd><span class="cm-num">{claim.lead_lag_minutes_kalshi >= 0 ? '+' : ''}{claim.lead_lag_minutes_kalshi}min</span> <span class="cm-kv-aside">{claim.lead_lag_minutes_kalshi < 0 ? 'before headline' : 'after headline'}</span></dd></div>}
+                  {claim.notes && (() => { const p = provBracket(claim, "notes"); return (
+                    <div class="cm-kv-row"><dt>interp</dt><dd>{claim.notes}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {claim.type === 'volume_anomaly' && (
+                <>
+                  {claim.current_vol_24h_usd != null && (() => { const p = provBracket(claim, "current_vol_24h_usd"); return (
+                    <div class="cm-kv-row"><dt>vol_24h</dt><dd><span class="cm-num-emphasis">{fmtVol(claim.current_vol_24h_usd)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.baseline_vol_7d_avg_usd != null && (() => { const p = provBracket(claim, "baseline_vol_7d_avg_usd"); return (
+                    <div class="cm-kv-row"><dt>baseline_7d_avg</dt><dd><span class="cm-num">{fmtVol(claim.baseline_vol_7d_avg_usd)}</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.volume_ratio_vs_baseline != null && (() => { const p = provBracket(claim, "volume_ratio_vs_baseline"); return (
+                    <div class="cm-kv-row"><dt>spike_ratio</dt><dd><span class="cm-num-emphasis">{claim.volume_ratio_vs_baseline.toFixed(1)}x</span> <span class="cm-kv-aside">vs 7d baseline</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.prior_max_ratio_30d != null && <div class="cm-kv-row"><dt>prior_max_30d</dt><dd><span class="cm-num">{claim.prior_max_ratio_30d.toFixed(1)}x</span>{claim.prior_max_ratio_date && <span class="cm-kv-aside"> on {claim.prior_max_ratio_date}</span>}</dd></div>}
+                </>
+              )}
+
+              {claim.type === 'volume_context' && (
+                <>
+                  {claim.venue && <div class="cm-kv-row"><dt>venue</dt><dd><span class="cm-kv-tag">{claim.venue}</span></dd></div>}
+                  {claim.price_change_during_spike_pp != null && (() => { const p = provBracket(claim, "price_change_during_spike_pp"); return (
+                    <div class="cm-kv-row"><dt>price_move</dt><dd><span class="cm-num-emphasis">{claim.price_change_during_spike_pp >= 0 ? '+' : ''}{claim.price_change_during_spike_pp.toFixed(1)}pp</span> <span class="cm-kv-aside">during spike window</span>{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.associated_catalyst && (() => { const p = provBracket(claim, "associated_catalyst"); return (
+                    <div class="cm-kv-row"><dt>catalyst</dt><dd>{claim.associated_catalyst}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                  {claim.notes && (() => { const p = provBracket(claim, "notes"); return (
+                    <div class="cm-kv-row"><dt>interp</dt><dd>{claim.notes}{p && <span class="cm-prov-inline">{p.url ? <a class="cm-prov-link" href={p.url} rel="noopener nofollow">{p.rest}</a> : p.rest}</span>}</dd>{p && <span class="cm-tier-stamp">[<abbr class="cm-tier-abbr" title={tierDefs[p.tier as keyof typeof tierDefs]}>{p.tier}</abbr>]</span>}</div>
+                  ); })()}
+                </>
+              )}
+
+              {/* Legacy single-string provenance fallback — only render if no per-field
+                  provenance is populated. Per-field hints inline next to each value
+                  are the locked pattern as of 2026-05-23. */}
+              {!claim.field_provenance && claim.provenance && (
+                <div class="cm-kv-row cm-kv-prov"><dt>provenance</dt><dd>{claim.provenance}</dd></div>
+              )}
+            </dl>
+          </div>
+        );
+      })}
+
+      {(!data.atomic_claims || data.atomic_claims.length === 0) && (
+        <p class="cm-section-summary cm-kv-aside">No atomic claims populated for this specimen yet.</p>
+      )}
+    </section>
+
+    {/* ===== EVALUATION — methodology per detection_path ===== */}
+    <section id="evaluation" class="cm-section">
+      <div class="cm-section-h">evaluation</div>
+      <p class="cm-section-summary">{isNewsCycle
+        ? 'Methodology made explicit. News-cycle wires publish on coverage, not editorial selection — top-5 daily stories matched mechanically to PM markets pricing them. No judge gate.'
+        : 'Non-determinism made explicit. The judge engine, prompt template, and confidence are first-class fields so downstream consumers can re-evaluate.'}</p>
+      <dl class="cm-kv cm-kv-wide">
+        <div class="cm-kv-row"><dt>judge_engine</dt><dd><code class="cm-kv-id">{judgeEngine}</code></dd></div>
+        <div class="cm-kv-row"><dt>judge_verdict</dt><dd><span class="cm-kv-pass">{judgeVerdict}</span></dd></div>
+        {judgeConfidence !== null ? (
+          <div class="cm-kv-row"><dt>judge_confidence</dt><dd><span class="cm-num-emphasis">{judgeConfidence.toFixed(2)}</span> <span class="cm-kv-aside">/ 1.00</span></dd></div>
+        ) : (
+          <div class="cm-kv-row"><dt>judge_confidence</dt><dd><span class="cm-kv-aside">n/a — no judge gate (deterministic publishing)</span></dd></div>
+        )}
+        <div class="cm-kv-row"><dt>prompt_template</dt><dd><a class="cm-kv-link" href={`https://github.com/JDSource/clearmarket/blob/main/prompts/${promptTemplate}.txt`} rel="noopener nofollow" target="_blank"><code class="cm-kv-id">{promptTemplate}</code></a> <span class="cm-kv-aside">github · auditable</span></dd></div>
+        {matchMethod && <div class="cm-kv-row"><dt>match_method</dt><dd><code class="cm-kv-id">{matchMethod}</code></dd></div>}
+      </dl>
+    </section>
+
+    {/* ===== CITATION GRAPH ===== */}
+    <section id="citations" class="cm-section">
+      <div class="cm-section-h">citation graph</div>
+      <p class="cm-section-summary">Internal: back-link to the CM event page (closes the PRD &sect;6.5.4 citation loop). External: venue ingress + benchmark source for audit.</p>
+
+      <div class="cm-citation-group">
+        <div class="cm-citation-group-label">internal</div>
+        <dl class="cm-kv">
+          <div class="cm-kv-row"><dt>cm_event</dt><dd><a class="cm-kv-link" href={eventHref}>{eventHref}</a></dd></div>
+          {data.linked_event_ids && data.linked_event_ids.length > 0 && (
+            <div class="cm-kv-row"><dt>related</dt><dd>{data.linked_event_ids.map((id) => <code class="cm-kv-id">{id}</code>)}</dd></div>
+          )}
+        </dl>
+      </div>
+
+      <div class="cm-citation-group">
+        <div class="cm-citation-group-label">external</div>
+        <dl class="cm-kv">
+          <div class="cm-kv-row"><dt>venue_a</dt><dd><a class="cm-kv-link" href={venueAUrl} rel="noopener nofollow">{venueAUrl}</a></dd></div>
+          {venueBUrl && (
+            <div class="cm-kv-row"><dt>venue_b</dt><dd><a class="cm-kv-link" href={venueBUrl} rel="noopener nofollow">{venueBUrl}</a></dd></div>
+          )}
+          {benchmarkSource && (
+            <div class="cm-kv-row"><dt>benchmark</dt><dd><a class="cm-kv-link" href={benchmarkSource.url} rel="noopener nofollow">{benchmarkSource.url}</a></dd></div>
+          )}
+        </dl>
+      </div>
+    </section>
+
+    {/* ===== PROGRAMMATIC ACCESS ===== */}
+    <section id="api" class="cm-section cm-section-machine">
+      <div class="cm-section-h">programmatic access &middot; four surfaces, same payload</div>
+      <p class="cm-section-summary">AI grounded search reads embedded JSON-LD in HTML. Developers query REST. Agentic AI clients (Claude Desktop, Cursor) call MCP tools. AI crawlers index via <code class="cm-inline-code">/llms.txt</code>. Same canonical record at every surface.</p>
+      <table class="cm-endpoints-table">
+        <tbody>
+          <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (contains embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code> + <code class="cm-inline-code">ClaimReview</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}.json`}><code class="cm-endpoint-url">{jsonURL}.json</code></a></td></tr>
+          <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.get_signal("{data.signal_slug}")</code></td></tr>
+          <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
+        </tbody>
+      </table>
+      <p class="cm-provenance-note">Detection cycle: daily 04:00 ET. PM data: platform APIs (hourly refresh). Benchmark + news context: Perplexity-grounded with citations. Editorial judgment: LLM judge with prompt template versioned per wire type. Per-claim provenance inline above; full per-field provenance map at the JSON endpoint under <code>field_provenance</code>.</p>
+      <div class="cm-json-block">
+        <div class="cm-json-block-head"><span class="cm-json-block-label">raw JSON record &middot; same payload returned by REST endpoint</span></div>
+        <pre class="cm-machine-json"><code set:html={colorizeJson(machineRecord)}></code></pre>
+      </div>
+
+      {/* Provenance protocol legend — short-form definitions of the 4 tiers.
+          Self-contained payload: humans printing the page to PDF still get the
+          glossary; AI crawlers parsing only the HTML body see the canonical
+          definition without needing a secondary HTTP fetch. Full spec lives at
+          /schema/provenance/v1 (build item #16). */}
+      <div class="cm-prov-legend">
+        <span class="cm-prov-legend-head">PROVENANCE PROTOCOL v0.2</span>
+        <span class="cm-prov-legend-sep">·</span>
+        <span class="cm-prov-legend-item"><span class="cm-prov-legend-tag">[direct]</span> venue api</span>
+        <span class="cm-prov-legend-sep">·</span>
+        <span class="cm-prov-legend-item"><span class="cm-prov-legend-tag">[mediated]</span> grounded web fetch + source url</span>
+        <span class="cm-prov-legend-sep">·</span>
+        <span class="cm-prov-legend-item"><span class="cm-prov-legend-tag">[derived]</span> computed from listed inputs</span>
+        <span class="cm-prov-legend-sep">·</span>
+        <span class="cm-prov-legend-item"><span class="cm-prov-legend-tag">[editorial]</span> versioned llm judgment</span>
+        <span class="cm-prov-legend-sep">·</span>
+        <a class="cm-prov-legend-link" href="https://clearmarket.fyi/schema/provenance/v1">full spec /schema/provenance/v1</a>
+      </div>
+    </section>
+
+    {/* ===== FOOTER ===== */}
+    <div class="cm-event-foot">
+      <span><span class="cm-meta-l">record</span> <code>{data.signal_id}</code></span>
+      <span><span class="cm-meta-l">published</span> <code>{data.published_at}</code></span>
+      <span><span class="cm-meta-l">signature</span> <code title="SHA-256 of canonical JSON record · verifiable post-publication" data-signature={signature} data-cm-field="signature">{signature.slice(0, 18)}…</code></span>
+      <span><a href={eventHref}>&larr; underlying event</a></span>
+      <a href="/signals/">all signals &rarr;</a>
+    </div>
+
+  </article>
+
+  <style>
+    /* Container — match event page width */
+    .cm-v2 {
+      max-width: 1280px;
+      width: calc(100vw - 80px);
+      margin-left: calc((1080px - 1280px) / 2);
+      margin-right: calc((1080px - 1280px) / 2);
+    }
+    @media (max-width: 1280px) {
+      .cm-v2 { margin: 0; width: 100%; }
+    }
+    .cm-v2 pre, .cm-v2 code {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
+    }
+    .cm-v2 a { text-decoration: none; }
+
+    /* Preview note */
+    .preview-note {
+      margin: 16px 0 24px;
+      padding: 8px 12px;
+      background: var(--cm-bg-surface);
+      border-left: 2px solid var(--cm-divergence);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-muted);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .preview-note-label {
+      color: var(--cm-divergence);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    /* Sub-nav (matches event page) */
+    .cm-subnav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 10px 40px;
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      background: var(--cm-bg-surface);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-subnav a {
+      color: var(--cm-fg-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cm-subnav a:hover { color: var(--cm-fg-primary); }
+    .cm-subnav-link.cm-subnav-active { color: var(--cm-fg-primary); }
+    .cm-active-mark {
+      color: var(--cm-positive);
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.12s ease, width 0.12s ease;
+    }
+    .cm-subnav-active .cm-active-mark { opacity: 1; width: auto; }
+    .cm-subnav-snapshot {
+      margin-left: auto;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.08em;
+    }
+    .cm-dot-positive { color: var(--cm-positive); }
+
+    /* H1 */
+    .cm-h1 {
+      font-family: var(--cm-font-mono);
+      font-size: clamp(17px, 1.7vw, 22px);
+      font-weight: 600;
+      color: var(--cm-fg-primary);
+      letter-spacing: -0.005em;
+      margin: 16px 0 12px;
+      white-space: normal;
+      line-height: 1.35;
+    }
+
+    /* Horizon meta strip — sibling of /events-v2/[slug] horizon.
+       Bloomberg/Eikon pattern: top + bottom hairlines, min-height 28px,
+       tokens distributed across width via justify-content:space-between,
+       sans-serif lowercase labels in muted, mono uppercase values in link. */
+    .cm-horizon {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      min-height: 28px;
+      margin-top: 14px;
+      margin-bottom: 22px;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      padding: 4px 2px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .cm-horizon-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cm-horizon-pipe {
+      color: var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 400;
+      user-select: none;
+    }
+    .cm-horizon-label {
+      font-family: var(--cm-font-sans);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--cm-fg-muted);
+      text-transform: lowercase;
+      letter-spacing: 0;
+    }
+    .cm-horizon-value {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-link);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-horizon-link { text-decoration: none; }
+    .cm-horizon-link:hover { color: var(--cm-fg-primary); }
+
+    /* Event question - secondary */
+    .cm-event-question {
+      font-family: var(--cm-font-sans);
+      font-size: 14px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.5;
+      margin: 0 0 28px;
+    }
+
+    /* Wire body — narrative summary. Mirrors /events-v2/[slug] editorial callout
+       so the two pages read as siblings of one product. Callout label uses
+       events-page chrome: bottom hairline + flex + 0.15em letter-spacing.
+       Bullets use the events-page tiny-bar ::before marker, not a literal em-dash. */
+    .cm-wire-body {
+      display: block;
+      padding: 0;
+      margin-bottom: 32px;
+    }
+    .cm-callout-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--cm-fg-muted);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cm-callout-tag {
+      font-weight: 400;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.1em;
+    }
+    .cm-wire-bullets {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .cm-wire-bullets li {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--cm-fg-primary);
+      padding-left: 14px;
+      position: relative;
+    }
+    .cm-wire-bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 6px;
+      height: 1px;
+      background: var(--cm-fg-faint);
+    }
+
+    /* Section header */
+    .cm-section {
+      margin: 32px 0;
+    }
+    .cm-section-h {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-fg-muted);
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-rule);
+      margin-bottom: 16px;
+    }
+    .cm-section-tag {
+      color: var(--cm-fg-faint);
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      margin-left: 4px;
+      text-transform: lowercase;
+    }
+    .cm-section-summary {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.5;
+      margin: 0 0 16px;
+      max-width: 880px;
+    }
+
+    /* Atomic claim block */
+    .cm-claim {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--cm-border-hairline);
+    }
+    .cm-claim:last-of-type { border-bottom: 0; }
+    .cm-claim-head {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .cm-claim-num {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.08em;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-claim-type {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.06em;
+    }
+
+    /* Key-value rows */
+    .cm-kv {
+      margin: 0;
+      padding: 0 0 0 16px;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .cm-kv-row {
+      display: grid;
+      grid-template-columns: 140px 1fr auto;
+      column-gap: 16px;
+      align-items: baseline;
+    }
+    .cm-kv-wide .cm-kv-row {
+      grid-template-columns: 180px 1fr auto;
+    }
+    /* Tier stamp lives in the right-most grid column — plain text, right-aligned,
+       no chip/pill/badge. Same visual register as the existing bracket-active
+       filters and the active-marker on subnav. Scans cleanly down the right edge
+       of a multi-field claim — eye reads [direct] [direct] [derived] [mediated]
+       in one pass without engaging the individual values. */
+    .cm-tier-stamp {
+      color: var(--cm-fg-faint);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+      text-align: right;
+      white-space: nowrap;
+      padding-left: 24px;
+    }
+    .cm-kv-row dt {
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    .cm-kv-row dd {
+      color: var(--cm-fg-secondary);
+      margin: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-kv-prov dd {
+      color: var(--cm-fg-faint);
+      font-size: 11px;
+    }
+    .cm-kv-prov dt {
+      color: var(--cm-fg-faint);
+    }
+    .cm-kv-aside {
+      color: var(--cm-fg-faint);
+      font-size: 11px;
+      margin-left: 4px;
+    }
+    /* Liquidity context — same visual register as significance (left bar marker,
+       muted label, tabular metrics). Distinct from significance by the "liquidity"
+       label so reader sees them as parallel verification blocks. */
+    .cm-liquidity {
+      margin: 0 0 8px 0;
+      padding: 4px 0;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    /* Significance sub-block — uniform "why this wire crossed the bar" panel.
+       Sits above the atomic-claim KV rows. Tight, mono, with a leading vertical
+       bar marker (matches subnav active-mark style). Tells the machine + reader
+       the trigger/threshold/percentile/reason without scanning the body. */
+    .cm-significance {
+      margin: 0 0 10px 0;
+      padding: 4px 0;
+      background: transparent;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+    .cm-sig-label {
+      color: var(--cm-fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 10.5px;
+      font-weight: 700;
+      margin-right: 12px;
+    }
+    .cm-sig-metric {
+      color: var(--cm-fg-secondary);
+      margin-right: 16px;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-sig-aside {
+      color: var(--cm-fg-faint);
+      font-size: 10.5px;
+      margin: 0 4px;
+    }
+    .cm-sig-reason {
+      color: var(--cm-fg-secondary);
+      margin-top: 4px;
+      font-size: 11.5px;
+    }
+
+    /* abbr tooltip — hover reveals the tier definition. Native browser tooltip,
+       no JS, screen-reader-friendly. Removes the default dotted underline so the
+       inline [tier] label looks identical to the non-abbr version. */
+    .cm-tier-abbr {
+      text-decoration: none;
+      border: 0;
+      cursor: help;
+    }
+
+    /* Provenance legend strip — single-line slug-style glossary at the bottom of
+       the page below the JSON block. Tight terminal aesthetic. Self-contained
+       payload: humans printing to PDF or AI crawlers parsing only the HTML body
+       both see the tier vocabulary inline without a secondary fetch. */
+    .cm-prov-legend {
+      margin-top: 14px;
+      padding: 8px 12px;
+      border: 1px solid var(--cm-border-hairline);
+      background: var(--cm-bg-surface);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      line-height: 1.6;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.02em;
+      /* Flex-wrap so items break at clean boundaries instead of mid-sentence.
+         Each item + its trailing · stays together via cm-prov-legend-item nowrap. */
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 0;
+    }
+    .cm-prov-legend-head {
+      color: var(--cm-fg-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      margin-right: 6px;
+    }
+    .cm-prov-legend-sep {
+      color: var(--cm-border-rule);
+      margin: 0 4px;
+    }
+    .cm-prov-legend-tag {
+      color: var(--cm-fg-link);
+      font-weight: 600;
+    }
+    .cm-prov-legend-item {
+      white-space: nowrap;
+    }
+    .cm-prov-legend-link {
+      color: var(--cm-fg-link);
+      margin-left: 4px;
+    }
+    .cm-prov-legend-link:hover {
+      color: var(--cm-fg-primary);
+      text-decoration: underline;
+    }
+
+    /* Per-field provenance hint — bracketed inline label after the value.
+       Dimmer color and smaller font so it labels the value without competing
+       with it. Mediated-tier sources link out to the underlying URL. */
+    .cm-prov-inline {
+      color: var(--cm-fg-faint);
+      font-size: 10.5px;
+      margin-left: 10px;
+      letter-spacing: 0.04em;
+      white-space: normal;
+    }
+    .cm-prov-link {
+      color: var(--cm-fg-faint);
+      text-decoration: underline;
+      text-decoration-color: var(--cm-border-rule);
+    }
+    .cm-prov-link:hover {
+      color: var(--cm-fg-link);
+      text-decoration-color: var(--cm-fg-link);
+    }
+    .cm-kv-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      background: var(--cm-bg-surface-alt);
+      color: var(--cm-fg-link);
+      font-size: 10.5px;
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
+      margin-right: 4px;
+    }
+    .cm-kv-id {
+      color: var(--cm-fg-link);
+      font-size: 11.5px;
+      letter-spacing: 0.04em;
+      margin: 0 4px;
+    }
+    .cm-kv-pass {
+      color: var(--cm-positive);
+      text-transform: lowercase;
+      font-weight: 600;
+    }
+    .cm-kv-link {
+      color: var(--cm-fg-link);
+      word-break: break-all;
+    }
+    .cm-kv-link:hover { text-decoration: underline; }
+    .cm-num {
+      color: var(--cm-fg-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-num-emphasis {
+      color: var(--cm-fg-primary);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Citation group */
+    .cm-citation-group {
+      margin-bottom: 20px;
+    }
+    .cm-citation-group:last-child { margin-bottom: 0; }
+    .cm-citation-group-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-fg-muted);
+      margin-bottom: 8px;
+      padding-left: 16px;
+    }
+
+    /* Programmatic access — ported from /events-v2/[slug] verbatim for sibling parity */
+    .cm-section-machine .cm-section-summary { max-width: 720px; }
+    .cm-endpoints-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      margin-bottom: 16px;
+    }
+    .cm-endpoints-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      vertical-align: middle;
+    }
+    .cm-endpoints-table tr:last-child td { border-bottom: 0; }
+    .cm-endpoints-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-fmt {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.03);
+      width: 80px;
+    }
+    .cm-endpoint-url {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+    }
+    .cm-endpoints-table a { color: var(--cm-fg-link); text-decoration: none; }
+    .cm-endpoints-table a:hover { text-decoration: underline; }
+    .cm-inline-code {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1px 5px;
+      color: var(--cm-fg-primary);
+    }
+    .cm-provenance-note {
+      font-family: var(--cm-font-sans);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-fg-link);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .cm-provenance-note code {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0 4px;
+    }
+    .cm-json-block {
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-json-block-head {
+      padding: 8px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-json-block-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-machine-json {
+      margin: 0;
+      padding: 14px var(--cm-space-card-pad);
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .cm-machine-json :global(.t-key)  { color: #7faedb; }
+    .cm-machine-json :global(.t-str)  { color: var(--cm-fg-secondary); }
+    .cm-machine-json :global(.t-num)  { color: #d4b850; }
+
+    /* Scroll-margin offsets so anchor jumps land at the section header rather than
+       halfway down. Matches /events-v2/[slug] convention (~120px = sticky chrome height). */
+    #briefs { scroll-margin-top: 120px; }
+    #evaluation { scroll-margin-top: 120px; }
+    #citations { scroll-margin-top: 120px; }
+    #api { scroll-margin-top: 120px; }
+
+    /* Footer */
+    .cm-event-foot {
+      display: flex;
+      gap: 24px;
+      align-items: baseline;
+      flex-wrap: wrap;
+      padding: 20px 0 32px;
+      margin-top: 24px;
+      border-top: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-muted);
+    }
+    .cm-event-foot a {
+      color: var(--cm-fg-link);
+      margin-left: auto;
+    }
+    .cm-meta-l {
+      color: var(--cm-fg-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-right: 4px;
+    }
+  </style>
+
+  <script is:inline>
+    (function() {
+      var subnavLinks = document.querySelectorAll('.cm-subnav-link');
+      if (subnavLinks.length === 0) return;
+      var sectionMap = {};
+      subnavLinks.forEach(function(link) {
+        var sectionId = link.getAttribute('data-section');
+        var section = document.getElementById(sectionId);
+        if (section) sectionMap[sectionId] = link;
+      });
+      var activate = function(sectionId) {
+        subnavLinks.forEach(function(l) { l.classList.remove('cm-subnav-active'); });
+        if (sectionMap[sectionId]) sectionMap[sectionId].classList.add('cm-subnav-active');
+      };
+      var observer = new IntersectionObserver(function(entries) {
+        var visible = entries.filter(function(e) { return e.isIntersecting; });
+        if (visible.length === 0) return;
+        visible.sort(function(a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+        activate(visible[0].target.id);
+      }, { rootMargin: '-120px 0px -60% 0px', threshold: 0 });
+      Object.keys(sectionMap).forEach(function(id) {
+        var section = document.getElementById(id);
+        if (section) observer.observe(section);
+      });
+    })();
+  </script>
+</Site>

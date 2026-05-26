@@ -129,7 +129,7 @@
         }
       }
     },
-    "resolution_mechanism": {
+    "arbitration_model": {
       "type": ["string", "null"],
       "enum": [
         "uma_oracle",
@@ -142,7 +142,7 @@
       ],
       "description": "Who arbitrates disputes. Stored column (not derived)."
     },
-    "proposer_model": {
+    "resolution_proposer": {
       "type": ["string", "null"],
       "enum": [
         "permissionless",
@@ -153,16 +153,16 @@
       ],
       "description": "Who can propose resolution outcomes. 'managed_whitelist' captures UMA MOOV2 (Aug 2025 — whitelist of 37 proposers)."
     },
-    "resolution_source_name": {
+    "resolution_source": {
       "type": ["string", "null"],
       "description": "What data is cited. Editorial fill for Polymarket where API is blank or prose is vague ('consensus of credible reporting')."
     },
-    "resolution_source_url": {
+    "source_citation": {
       "type": ["string", "null"],
       "format": "uri",
       "description": "Link to the data source itself (not the arbiter's admin page)."
     },
-    "resolution_source_type": {
+    "source_type": {
       "type": ["string", "null"],
       "enum": [
         "gov_stat_agency",
@@ -177,6 +177,20 @@
         null
       ],
       "description": "Objectivity classification of the data source."
+    },
+    "regulatory_class": {
+      "type": ["string", "null"],
+      "enum": [
+        "DCM",
+        "DeFi",
+        "Other",
+        null
+      ],
+      "description": "Regulatory class of the venue. DCM: CFTC-regulated Designated Contract Market. DeFi: token-vote-arbitrated decentralized protocol. Other: anything not in those two buckets (e.g., Manifold, Augur, Zeitgeist, prediction-market projects without CFTC registration or token-vote arbitration)."
+    },
+    "analyst_notes": {
+      "type": ["string", "null"],
+      "description": "ClearMarket editorial note surfacing operational edge cases, dispute risks, or time-cutoff details for the market. v0.2: populated via per-venue fallback in render layer. v0.3+: populate via resolution_triggers.resolution_risks in enhance.py."
     },
     "contract_terms_url": {
       "type": ["string", "null"],

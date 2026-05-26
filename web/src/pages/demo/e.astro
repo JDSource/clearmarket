@@ -1,0 +1,404 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import DemoSwitcher from '../../components/DemoSwitcher.astro';
+
+const signals = (await getCollection('signals'))
+  .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime());
+
+function topicFromEventId(eventId: string): string {
+  const id = eventId.toUpperCase();
+  if (id.includes('FED') || id.includes('CPI') || id.includes('ARG')) return 'macro';
+  if (id.includes('IRIL') || id.includes('IRAN') || id.includes('RUCN')) return 'geopolitics';
+  if (id.includes('ETF') || id.includes('CITI')) return 'crypto';
+  return 'macro';
+}
+
+const TYPE_CODE: Record<string, string> = {
+  CROSS_VENUE_DIVERGENCE: 'XVD',
+  MOMENTUM_REPRICING: 'MOM',
+  VS_BENCHMARK_DRIFT: 'BND',
+  VOLUME_SPIKE: 'VOL',
+  PRE_NEWS_PRICING: 'PRE',
+  COVERAGE_GAP: 'COV',
+  RESOLUTION_DISPUTED: 'DSP',
+  NEW_LISTING: 'NEW',
+};
+const TYPE_LABEL: Record<string, string> = {
+  XVD: 'cross-venue divergence',
+  MOM: 'news-driven repricing',
+  BND: 'vs-benchmark drift',
+  VOL: 'volume spike',
+  PRE: 'pre-news pricing',
+  COV: 'coverage gap',
+  DSP: 'resolution disputed',
+  NEW: 'new listing',
+};
+const MECH_CODE: Record<string, string> = {
+  uma_oracle: 'UMA',
+  kalshi_staff: 'KAL',
+  polymarket_staff: 'POL',
+  platform_auto: 'AUTO',
+  determinations_committee: 'DC',
+  other: 'OTH',
+};
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) + ' ET';
+}
+function formatRes(iso: string | undefined) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric' });
+}
+function fmtProb(n: number) { return (n * 100).toFixed(1) + '%'; }
+function fmtVol(n: number | undefined) {
+  if (!n) return '—';
+  if (n >= 1_000_000) return `$${(n/1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n/1_000).toFixed(0)}K`;
+  return `$${n}`;
+}
+function sparkline(currentPrice: number, prev: number | undefined, seed: number): string {
+  const points = 12;
+  const start = prev ?? currentPrice;
+  const range = currentPrice - start;
+  const noise = (i: number) => Math.sin(seed * 7 + i * 1.7) * 0.012;
+  const pts: [number, number][] = [];
+  for (let i = 0; i < points; i++) {
+    const t = i / (points - 1);
+    const v = start + range * t + noise(i);
+    pts.push([i * (80 / (points - 1)), 20 - v * 18]);
+  }
+  return pts.map(([x, y], i) => (i === 0 ? `M${x.toFixed(1)},${y.toFixed(1)}` : `L${x.toFixed(1)},${y.toFixed(1)}`)).join(' ');
+}
+
+// Brief interpretive dek per signal — what's interesting in 1-2 sentences
+const dekByEventId: Record<string, string> = {
+  CMFEDJUN25C1: "Both venues bracket the FedWatch implied path but on opposite sides; the spread has widened from 4pp on May 4 to 9pp today. A pricing-population divergence as much as a directional view.",
+  CMCPI26MAYHI: "Bloomberg consensus economist median sits at 28%; futures-implied path at 26%. Either the prediction market is reading something the consensus is missing, or arbitrage compresses ahead of the June 12 BLS release.",
+  CMARGAPRINFL: "Volume is 5.2× the trailing 7-day daily baseline ahead of the INDEC release on May 14. Private-sector nowcasts (Orlando Ferreres) at 3.1–3.3%, above Bloomberg consensus 2.8%. Polymarket the sole liquid venue for LatAm CPI.",
+  CMRUCNMAYSUM: "Move tracks Reuters reporting of pre-summit working-group text widely read as referring to the US. CFTC political-event restrictions structurally bar Kalshi from listing — Polymarket is the sole liquid read for institutional research.",
+  CMETHETF26Q2: "Reuters scoop reports SEC staff dropped the staking-feature objection from final review; Bloomberg confirms via separate sourcing. Polymarket parallel at 61% — cross-venue convergence supports the read.",
+  CMCITICEOEOY: "12 wallets responsible for 78% of YES purchases over the 24-hour move. No public catalyst identified in any major outlet. Two 2025 analogs (Boeing, BP CEO resignations) preceded announcements by 3–7 days.",
+  CMIRILCEASEM: "Spread has not narrowed in 7 days despite identical resolution language and overlapping news flow. Suggests structural pricing-population divergence (international USDC flow vs US-onshore USD) and resolution-mechanism difference (UMA news-consensus vs Kalshi staff with named sources).",
+  CMI3R4N4P5C1: "Pricing tracks the proposal-review phase reported May 7: Trump's 'very possible' comment, US 20-year enrichment-ban demand, Iran foreign-ministry confirmation. Kalshi structurally cannot list — leaves Polymarket as the sole liquid institutional read on this catalyst.",
+};
+
+const enriched = signals.map((s, idx) => ({
+  ...s,
+  topic: topicFromEventId(s.data.event_id),
+  typeCode: TYPE_CODE[s.data.category_tag] ?? '—',
+  mechCode: MECH_CODE[s.data.primary_market.arbitration_model ?? ''] ?? '—',
+  spark: sparkline(s.data.primary_market.current_price, s.data.primary_market.price_24h_ago, idx),
+  sparkUp: s.data.primary_market.price_24h_ago !== undefined && s.data.primary_market.current_price >= s.data.primary_market.price_24h_ago,
+  dek: dekByEventId[s.data.event_id] ?? '',
+}));
+
+const totalSignals = signals.length;
+const preNewsCount = signals.filter((s) => s.data.pre_news_classification === 'pre_news').length;
+
+const todaysBrief = `Cross-venue divergence dominates today's set: Polymarket prices the Fed June 25bp cut 9pp wider than Kalshi (41% vs 32%), and the Iran–Israel ceasefire spread sits at 14pp after a week with no convergence. Two flow-only signals — Argentina April CPI and a Citigroup CEO resignation contract — repriced with no public catalyst, flagged pre-news. May CPI on Kalshi prints 10pp below FedWatch consensus, the strongest benchmark-divergence signal of the week.`;
+---
+<Base title="ClearMarket Signal — Demo E (wire feed)" description="Wire-shape feed of daily signals" noindex bare>
+  <DemoSwitcher current="e" />
+
+  <div class="variant-e">
+    <header class="ehead">
+      <div class="ehead-row">
+        <a class="ebrand" href="/demo/e/">
+          <span class="ebrand-mark">CM</span>
+          <span class="ebrand-text">ClearMarket Signal</span>
+        </a>
+        <nav>
+          <a href="/methodology/">Methodology</a>
+          <a href="https://github.com/JDSource/clearmarket/tree/main/schema">Schema</a>
+          <a href="/api/">API</a>
+          <a href="/llms.txt">llms.txt</a>
+          <a href="https://github.com/JDSource/clearmarket">GitHub</a>
+        </nav>
+      </div>
+      <p class="eabout">
+        Daily structured signals on prediction markets. Built on the open-source <strong>ClearMarket</strong> schema (events, markets, marks, resolution_log). Free public publication; data feed available for institutional redistribution.
+      </p>
+    </header>
+
+    <div class="estatus">
+      <div class="es-cell"><span class="es-label">Cycle</span><span class="es-val">04:00 ET daily</span></div>
+      <div class="es-cell"><span class="es-label">Universe</span><span class="es-val">2,847 markets</span></div>
+      <div class="es-cell"><span class="es-label">Signals today</span><span class="es-val">{totalSignals}</span></div>
+      <div class="es-cell"><span class="es-label">Pre-news flagged</span><span class="es-val">{preNewsCount}</span></div>
+      <div class="es-cell ds-cell-right">
+        <a href="/feed.json" class="es-feed">JSON →</a>
+        <a href="/rss.xml" class="es-feed">RSS →</a>
+        <a href="/demo/d/" class="es-feed">Data view →</a>
+      </div>
+    </div>
+
+    <section class="ebrief">
+      <div class="ebrief-mark">TODAY'S BRIEF</div>
+      <p>{todaysBrief}</p>
+      <div class="ebrief-byline">ClearMarket Signal desk · Mon May 11, 2026 · 04:00 ET cycle</div>
+    </section>
+
+    <div class="efilters">
+      <span class="ef-label">TOPIC</span>
+      <button class="fp fp-active">All</button>
+      <button class="fp">macro</button>
+      <button class="fp">geopolitics</button>
+      <button class="fp">politics</button>
+      <button class="fp">crypto</button>
+      <button class="fp">sports</button>
+    </div>
+
+    <main class="efeed">
+      {enriched.map((s) => {
+        const m = s.data.primary_market;
+        const move = m.price_24h_ago !== undefined ? (m.current_price - m.price_24h_ago) * 100 : null;
+        return (
+          <article class="ewire">
+            <div class="ewire-meta">
+              <span class="meta-time">{formatTime(s.data.published_at)}</span>
+              <span class={`meta-topic topic-${s.topic}`}>{s.topic}</span>
+              <span class={`meta-type type-${s.typeCode}`} title={TYPE_LABEL[s.typeCode]}>{s.typeCode}</span>
+              {s.data.pre_news_classification === 'pre_news' && <span class="meta-prenews" title="Pre-news pricing — flow ahead of public catalyst">PRE</span>}
+            </div>
+
+            <h2 class="ewire-headline">
+              <a href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
+            </h2>
+
+            <p class="ewire-dek">{s.dek}</p>
+
+            <div class="ewire-data">
+              <div class="ed-cell">
+                <span class="ed-label">LAST</span>
+                <span class="ed-val ed-val-lg">{fmtProb(m.current_price)}</span>
+              </div>
+              <div class="ed-cell">
+                <span class="ed-label">24H</span>
+                <span class={`ed-val ${move !== null && move >= 0 ? 'up' : 'down'}`}>{move !== null ? (move >= 0 ? '+' : '') + move.toFixed(1) + 'pp' : '—'}</span>
+              </div>
+              <div class="ed-cell ed-cell-spark">
+                <span class="ed-label">7D</span>
+                <svg width="80" height="20" viewBox="0 0 80 20" class={`spark ${s.sparkUp ? 'spark-up' : 'spark-down'}`}>
+                  <path d={s.spark} fill="none" stroke="currentColor" stroke-width="1.4" />
+                </svg>
+              </div>
+              <div class="ed-cell">
+                <span class="ed-label">VOL 24H</span>
+                <span class="ed-val">{fmtVol(m.volume_24h_usd)}</span>
+              </div>
+              <div class="ed-cell">
+                <span class="ed-label">RES</span>
+                <span class="ed-val">{formatRes(m.resolves_at)}</span>
+              </div>
+              <div class="ed-cell">
+                <span class="ed-label">MECH</span>
+                <span class="ed-val">{s.mechCode}</span>
+              </div>
+              <div class="ed-cell">
+                <span class="ed-label">VENUE</span>
+                <span class="ed-val ed-venue">{m.platform}</span>
+              </div>
+              <div class="ed-cell ed-cell-right">
+                <a class="ewire-deep" href={`/signals/${s.data.signal_slug}/`}>5-bullet brief &amp; JSON →</a>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </main>
+
+    <section class="ecode">
+      <div class="ecode-label">FOR AGENTS · REAL ENDPOINTS</div>
+      <pre><code>curl https://clearmarket.fyi/feed.json          # atomic claims, last 24h
+curl https://clearmarket.fyi/api/v1/signals/recent
+mcp connect clearmarket-signal                  # tools: list_signals, get_signal_by_id
+# Schema: github.com/JDSource/clearmarket/tree/main/schema
+# Per-signal page: JSON-LD (Article + Dataset) + visible JSON block</code></pre>
+    </section>
+
+    <footer class="efooter">
+      <div class="efooter-row">
+        <a href="/methodology/">Methodology</a>
+        <a href="https://github.com/JDSource/clearmarket/tree/main/schema">Public schema</a>
+        <a href="/llms.txt">llms.txt</a>
+        <a href="mailto:hello@clearmarket.fyi">Contact</a>
+      </div>
+      <div class="ef-mono">
+        Daily cycle · Atomic claims · JSON-LD per page · MCP server · Open methodology · v0.1.0
+      </div>
+    </footer>
+  </div>
+
+  <style>
+    .variant-e {
+      --e-bg: #f7f8fa;
+      --e-surface: #fff;
+      --e-fg: #14181d;
+      --e-fg-muted: #555c66;
+      --e-fg-faint: #8b929a;
+      --e-border: #d8dde3;
+      --e-rule: #eaeef2;
+      --e-hover: #f0f3f7;
+      --e-up: #1d6f42;
+      --e-down: #b34a4a;
+      --e-accent: #1f3a5f;
+      --e-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --e-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      --e-serif: "Source Serif 4", "Iowan Old Style", "Charter", Georgia, serif;
+      background: var(--e-bg);
+      color: var(--e-fg);
+      font-family: var(--e-sans);
+      font-size: 14px;
+      min-height: 100vh;
+      margin: -48px -24px -96px;
+      padding: 0;
+    }
+    .variant-e a { color: inherit; }
+
+    .ehead { background: var(--e-surface); border-bottom: 1px solid var(--e-border); }
+    .ehead-row { max-width: 880px; margin: 0 auto; padding: 14px 24px 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    .ebrand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--e-serif); }
+    .ebrand-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; background: var(--e-fg); color: var(--e-surface); font-family: var(--e-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.04em; border-radius: 3px; }
+    .ebrand-text { font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }
+    .ehead nav { display: flex; gap: 18px; font-family: var(--e-mono); font-size: 11px; }
+    .ehead nav a { color: var(--e-fg-muted); text-decoration: none; letter-spacing: 0.04em; }
+    .ehead nav a:hover { color: var(--e-fg); }
+    .eabout { max-width: 880px; margin: 0 auto; padding: 8px 24px 16px; font-size: 13px; color: var(--e-fg-muted); line-height: 1.55; }
+    .eabout strong { color: var(--e-fg); font-weight: 600; }
+
+    .estatus { max-width: 880px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 22px; align-items: center; border-bottom: 1px solid var(--e-border); background: var(--e-surface); font-family: var(--e-mono); font-size: 12px; }
+    .es-cell { display: flex; flex-direction: column; gap: 2px; }
+    .ds-cell-right { margin-left: auto; flex-direction: row; gap: 14px; align-items: center; }
+    .es-label { color: var(--e-fg-faint); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .es-val { color: var(--e-fg); font-weight: 600; }
+    .es-feed { color: var(--e-fg-muted); text-decoration: none; font-size: 11px; letter-spacing: 0.04em; }
+    .es-feed:hover { color: var(--e-fg); }
+
+    .ebrief { max-width: 880px; margin: 0 auto; padding: 22px 24px 18px; background: var(--e-surface); border-bottom: 1px solid var(--e-border); }
+    .ebrief-mark { font-family: var(--e-mono); font-size: 10px; color: var(--e-accent); letter-spacing: 0.08em; margin-bottom: 10px; font-weight: 600; }
+    .ebrief p { margin: 0 0 8px; font-family: var(--e-serif); font-size: 17px; line-height: 1.55; color: var(--e-fg); }
+    .ebrief-byline { font-family: var(--e-mono); font-size: 10.5px; color: var(--e-fg-faint); letter-spacing: 0.04em; }
+
+    .efilters { max-width: 880px; margin: 0 auto; padding: 12px 24px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; background: #fcfcfd; border-bottom: 1px solid var(--e-border); }
+    .ef-label { font-family: var(--e-mono); font-size: 10px; color: var(--e-fg-faint); letter-spacing: 0.08em; margin-right: 4px; }
+    .fp { background: var(--e-surface); border: 1px solid var(--e-border); padding: 3px 9px; border-radius: 3px; font-family: var(--e-mono); font-size: 10px; color: var(--e-fg-muted); cursor: pointer; letter-spacing: 0.04em; text-transform: lowercase; }
+    .fp:hover { background: var(--e-hover); color: var(--e-fg); }
+    .fp-active { background: var(--e-fg); color: var(--e-bg); border-color: var(--e-fg); }
+
+    .efeed { max-width: 880px; margin: 0 auto; padding: 0 24px; background: var(--e-surface); }
+
+    .ewire {
+      padding: 24px 0;
+      border-bottom: 1px solid var(--e-rule);
+    }
+    .ewire:last-child { border-bottom: none; }
+
+    .ewire-meta {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      font-family: var(--e-mono); font-size: 11px; margin-bottom: 10px;
+    }
+    .meta-time { color: var(--e-fg-muted); }
+    .meta-topic {
+      display: inline-block; font-size: 10px; padding: 1px 7px;
+      letter-spacing: 0.06em; border-radius: 2px; text-transform: lowercase; font-weight: 500;
+    }
+    .meta-type {
+      display: inline-block; font-size: 10px; padding: 1px 6px;
+      letter-spacing: 0.06em; border-radius: 2px; font-weight: 600;
+    }
+    .meta-prenews {
+      display: inline-block; font-size: 10px; padding: 1px 6px;
+      letter-spacing: 0.06em; border-radius: 2px; font-weight: 700;
+      background: var(--e-up); color: #fff;
+    }
+    .topic-macro { background: #e0eaf5; color: #2c4d70; }
+    .topic-geopolitics { background: #fff4d6; color: #6b5400; }
+    .topic-politics { background: #ece0f0; color: #5b3576; }
+    .topic-crypto { background: #fae5e0; color: #7a3b2a; }
+    .topic-sports { background: #f0f0f0; color: #4a4a4a; }
+    .type-XVD { background: #fff4d6; color: #6b5400; border: 1px solid #e8d77a; }
+    .type-MOM { background: #e0eaf5; color: #2c4d70; border: 1px solid #a8c5e3; }
+    .type-BND { background: #ece0f0; color: #5b3576; border: 1px solid #b89cc5; }
+    .type-VOL { background: #fae5e0; color: #7a3b2a; border: 1px solid #d8a59a; }
+    .type-PRE { background: #d6f0dc; color: #1d6f42; border: 1px solid #6fb88a; }
+    .type-COV { background: #f0f0f0; color: #4a4a4a; border: 1px solid #c0c0c0; }
+
+    .ewire-headline {
+      font-family: var(--e-serif);
+      font-size: 22px;
+      line-height: 1.25;
+      font-weight: 600;
+      letter-spacing: -0.012em;
+      margin: 0 0 12px;
+    }
+    .ewire-headline a {
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+    }
+    .ewire-headline a:hover {
+      border-bottom-color: var(--e-fg);
+    }
+
+    .ewire-dek {
+      font-family: var(--e-sans);
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: var(--e-fg-muted);
+      margin: 0 0 16px;
+      max-width: 720px;
+    }
+
+    .ewire-data {
+      display: flex; gap: 22px; align-items: center; flex-wrap: wrap;
+      font-family: var(--e-mono); font-size: 12px;
+      padding: 12px 14px;
+      background: #fafbfc;
+      border-radius: 4px;
+    }
+    .ed-cell { display: flex; flex-direction: column; gap: 2px; }
+    .ed-cell-spark { flex-direction: column; align-items: flex-start; }
+    .ed-cell-right { margin-left: auto; }
+    .ed-label { color: var(--e-fg-faint); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; }
+    .ed-val { color: var(--e-fg); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .ed-val-lg { font-size: 16px; }
+    .ed-val.up { color: var(--e-up); }
+    .ed-val.down { color: var(--e-down); }
+    .ed-venue { text-transform: capitalize; font-family: var(--e-mono); }
+    .spark.spark-up { color: var(--e-up); }
+    .spark.spark-down { color: var(--e-down); }
+    .ewire-deep {
+      font-family: var(--e-mono); font-size: 11px; color: var(--e-accent);
+      letter-spacing: 0.04em; text-decoration: none;
+      padding: 4px 0;
+    }
+    .ewire-deep:hover { text-decoration: underline; }
+
+    .ecode { max-width: 880px; margin: 32px auto; padding: 18px 22px; background: #14181d; color: #cbd1d8; font-family: var(--e-mono); font-size: 12px; border-radius: 4px; }
+    .ecode-label { font-size: 10px; letter-spacing: 0.08em; color: #8b929a; margin-bottom: 12px; }
+    .ecode pre { margin: 0; }
+    .ecode code { color: #cbd1d8; line-height: 1.7; }
+
+    .efooter { max-width: 880px; margin: 24px auto 0; padding: 20px 24px 40px; border-top: 1px solid var(--e-border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--e-fg-muted); }
+    .efooter-row { display: flex; gap: 18px; flex-wrap: wrap; }
+    .efooter a { color: var(--e-fg); text-decoration: underline; text-underline-offset: 2px; }
+    .ef-mono { font-family: var(--e-mono); font-size: 11px; color: var(--e-fg-faint); }
+
+    @media (prefers-color-scheme: dark) {
+      .variant-e {
+        --e-bg: #0d1014; --e-surface: #11151b; --e-fg: #e6e8eb;
+        --e-fg-muted: #aab0b8; --e-fg-faint: #6c727a;
+        --e-border: #232830; --e-rule: #1a1e25; --e-hover: #1a1e25;
+        --e-accent: #8eb5d8;
+      }
+      .ehead, .estatus, .ebrief, .efilters, .efeed { background: var(--e-surface); }
+      .ewire-data { background: #14181f; }
+      .fp { background: #14181f; }
+      .topic-macro { background: #1a2535; color: #8eb5d8; }
+      .topic-geopolitics { background: #2b2510; color: #d4b850; }
+      .topic-politics { background: #2a1a35; color: #c898d8; }
+      .topic-crypto { background: #2a1812; color: #d89880; }
+      .ecode { background: #060709; }
+    }
+  </style>
+</Base>

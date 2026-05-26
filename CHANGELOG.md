@@ -61,11 +61,11 @@ First public release. Schema + enrichment pipeline + four reference specimens.
 
 **Architecture decisions (locked this release)**
 - Flat events with tag-based thematic grouping (no parent/child hierarchy)
-- `resolution_mechanism` separated from `resolution_source_type` (who arbitrates vs. what data is cited)
-- `proposer_model` enum capturing UMA MOOV2 whitelist (August 2025) vs. permissionless vs. platform-staff
+- `arbitration_model` separated from `source_type` (who arbitrates vs. what data is cited)
+- `resolution_proposer` enum capturing UMA MOOV2 whitelist (August 2025) vs. permissionless vs. platform-staff
 - `editorial_notes` public-facing (surfaced in API responses, not internal-only)
 - Unified `field_provenance` enum across all four tables
-- `subjective` enum value on `resolution_source_type` for markets lacking a named authoritative data source
+- `subjective` enum value on `source_type` for markets lacking a named authoritative data source
 
 ### Known limitations in v0.1.0
 

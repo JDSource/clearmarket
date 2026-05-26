@@ -188,7 +188,7 @@ What AI drafts vs. what the platform ships, per record:
 
 **Markets table, AI-drafted fields:**
 - `underlying_reference`: a one-sentence identification of the real-world data source
-- `resolution_source_name`: only when the platform API ships empty (Polymarket only; Kalshi is always authoritative via `settlement_sources`)
+- `resolution_source`: only when the platform API ships empty (Polymarket only; Kalshi is always authoritative via `settlement_sources`)
 
 **Events table, AI-drafted fields:**
 - `editorial_notes`: 2-3 sentence institutional framing
@@ -199,8 +199,8 @@ What AI drafts vs. what the platform ships, per record:
 
 ### Rules the editorial layer respects
 
-- **Kalshi resolution_source_name and resolution_source_url are ALWAYS pulled from series `settlement_sources`.** No UMA-style subjective default ever. Kalshi has structured settlement metadata; use it.
-- **Polymarket resolution_source_name uses editorial default language ("Credible news reporting, subjective") ONLY when the Polymarket API ships an empty field.** Where Polymarket description prose names a specific URL (e.g., Fed markets citing federalreserve.gov), the platform-shipped value wins.
+- **Kalshi resolution_source and source_citation are ALWAYS pulled from series `settlement_sources`.** No UMA-style subjective default ever. Kalshi has structured settlement metadata; use it.
+- **Polymarket resolution_source uses editorial default language ("Credible news reporting, subjective") ONLY when the Polymarket API ships an empty field.** Where Polymarket description prose names a specific URL (e.g., Fed markets citing federalreserve.gov), the platform-shipped value wins.
 - **Index and data-product markets are normalized to the authoritative calculator**, not platform shorthand. "S&P 500" resolves to "S&P Dow Jones Indices," not "Google Finance," regardless of what Kalshi series metadata says.
 - **All generated prose anchors on `close_at` or `resolve_at` for the authoritative date.** The AI does not infer future years from present-day reasoning.
 
@@ -222,8 +222,8 @@ Four tables. Full definitions in `schema/`.
 ### Design decisions worth noting
 
 - **Flat events with tag-based grouping, not recursive hierarchy.** Every event has ≥1 market. Thematic families (Iran conflict, Fed decisions) are expressed via shared tags, not parent/child hierarchy. Matches Bloomberg / Stripe conventions. Consumers filter families with `GET /events?tag=<name>`.
-- **Resolution mechanism vs. resolution source type are separate fields.** `resolution_mechanism` is who arbitrates (UMA oracle, Kalshi staff, platform auto, etc.). `resolution_source_type` is what data is cited (central bank, regulated data vendor, media consensus, subjective, etc.). Previously conflated; split makes it possible to filter for "UMA-resolved but with a named central-bank source" (e.g., Poly Fed markets).
-- **`proposer_model` enum** on markets captures UMA's MOOV2 upgrade (August 2025, a managed whitelist of 37 proposers), distinct from Kalshi's platform-staff model or permissionless proposals.
+- **Resolution mechanism vs. resolution source type are separate fields.** `arbitration_model` is who arbitrates (UMA oracle, Kalshi staff, platform auto, etc.). `source_type` is what data is cited (central bank, regulated data vendor, media consensus, subjective, etc.). Previously conflated; split makes it possible to filter for "UMA-resolved but with a named central-bank source" (e.g., Poly Fed markets).
+- **`resolution_proposer` enum** on markets captures UMA's MOOV2 upgrade (August 2025, a managed whitelist of 37 proposers), distinct from Kalshi's platform-staff model or permissionless proposals.
 - **`field_provenance` on every row.** Per-field flag with five values: `platform_api`, `clearmarket_editorial`, `derived`, `imputed`, `null_by_venue_limitation`. Lets a consumer audit which fields are raw vs. enriched at field granularity.
 - **Derived fields are computed at API serve time, not stored.** `spread`, `mid`, `venues_covered`, `cross_platform_link`, `current_primary_mark`: all reshaped from the normalized tables on demand.
 

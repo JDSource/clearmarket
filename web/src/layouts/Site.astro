@@ -1,0 +1,238 @@
+---
+import Base from './Base.astro';
+
+export interface Props {
+  title: string;
+  description: string;
+  canonical?: string;
+  noindex?: boolean;
+  /**
+   * Skip the inner site chrome (nav + container).
+   * Use this when the page wants to fully control its own hero
+   * (e.g. demo/a.astro renders its own header inside .va).
+   */
+  bareChrome?: boolean;
+}
+
+const { title, description, canonical, noindex, bareChrome } = Astro.props;
+---
+<Base title={title} description={description} canonical={canonical} noindex={noindex} bare>
+  <Fragment slot="head">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    />
+    <slot name="head" />
+  </Fragment>
+
+  <div class="va">
+    {!bareChrome && (
+      <div class="va-sticky-chrome">
+        <header class="va-head">
+          <a class="va-brand" href="/">
+            <span class="va-mark">CM</span>
+            <span class="va-wordmark">ClearMarket</span>
+          </a>
+          <nav>
+            <a class="va-nav-product" href="/events/">CM Data</a>
+            <a class="va-nav-product" href="/signals/">CM Signal</a>
+            <span class="va-nav-sep" aria-hidden="true">·</span>
+            <a href="/methodology/">Methodology</a>
+            <a href="https://github.com/JDSource/clearmarket">GitHub</a>
+            <a class="va-cta-mini" href="mailto:hello@clearmarket.fyi">Contact</a>
+          </nav>
+        </header>
+        {/* Sub-nav slot — pages pass a <nav slot="subnav"> here. Renders directly under
+           main header, sticky together as a single chrome block per patch brief. */}
+        <slot name="subnav" />
+      </div>
+    )}
+
+    <main class="va-main">
+      <slot />
+    </main>
+
+    {!bareChrome && (
+      <footer class="va-foot">
+        <div class="va-foot-row">
+          <a href="/events/">Events</a>
+          <a href="/signals/">Signals</a>
+          <a href="/methodology/">Methodology</a>
+          <a href="/api/">API</a>
+          <a href="/mcp/">MCP</a>
+          <a href="/llms.txt">llms.txt</a>
+          <a href="https://github.com/JDSource/clearmarket">GitHub</a>
+          <a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a>
+        </div>
+        <div class="va-foot-mono">
+          Daily 04:00 ET · Atomic claims · v0.2.0
+        </div>
+      </footer>
+    )}
+  </div>
+
+  <style>
+    .va {
+      --va-bg: #0e1014;
+      --va-bg-2: #14181d;
+      --va-surface: #1a1e25;
+      --va-fg: #e6e8eb;
+      --va-fg-muted: #aab0b8;
+      --va-fg-faint: #6c727a;
+      --va-border: #232830;
+      --va-rule: #1d2128;
+      --va-accent: #76b8ff;
+      --va-up: #6fdd9d;
+      --va-down: #e08272;
+      --va-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      --va-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--va-bg);
+      color: var(--va-fg);
+      font-family: var(--va-sans);
+      min-height: 100vh;
+      /* break out of Base.astro's 48px / 24px / 96px padding */
+      margin: -48px -24px -96px;
+      padding: 0;
+    }
+    .va a { color: inherit; }
+
+    /* STICKY CHROME — main header + optional sub-nav slot, sticky together at top */
+    .va-sticky-chrome {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(14,16,20,0.96);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--va-border);
+      margin-bottom: 28px;
+    }
+    .va-head {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 18px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .va-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .va-mark {
+      width: 28px;
+      height: 28px;
+      background: var(--va-fg);
+      color: var(--va-bg);
+      font-family: var(--va-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      letter-spacing: 0.04em;
+    }
+    .va-wordmark {
+      font-family: var(--va-mono);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--va-accent);
+    }
+    .va-head nav {
+      display: flex;
+      gap: 22px;
+      align-items: center;
+    }
+    .va-head nav a {
+      font-family: var(--va-mono);
+      font-size: 11.5px;
+      color: var(--va-fg-muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .va-head nav a:hover { color: var(--va-fg); }
+    .va-nav-product {
+      color: var(--va-accent) !important;
+      font-weight: 600;
+    }
+    .va-nav-sep {
+      font-family: var(--va-mono);
+      font-size: 11.5px;
+      color: var(--va-fg-faint);
+      letter-spacing: 0.04em;
+    }
+    .va-cta-mini {
+      border: 1px solid var(--va-border);
+      padding: 6px 12px;
+      border-radius: 2px;
+    }
+    .va-cta-mini:hover { border-color: var(--va-fg); }
+
+    /* INNER PAGE MAIN — max-width container for inner pages */
+    .va-main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 24px 40px 40px;
+    }
+
+    /* FOOTER — shared */
+    .va-foot {
+      max-width: 1080px;
+      margin: 40px auto 0;
+      padding: 28px 40px 60px;
+      border-top: 1px solid var(--va-border);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .va-foot-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .va-foot-row a {
+      font-family: var(--va-mono);
+      font-size: 11px;
+      color: var(--va-fg-muted);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+    .va-foot-row a:hover { color: var(--va-fg); }
+    .va-foot-mono {
+      font-family: var(--va-mono);
+      font-size: 10.5px;
+      color: var(--va-fg-faint);
+      letter-spacing: 0.04em;
+    }
+
+    @media (max-width: 720px) {
+      .va-head { padding: 20px 20px; flex-wrap: wrap; gap: 12px; }
+      .va-head nav { gap: 14px; }
+      .va-main { padding: 16px 20px 40px; }
+      .va-foot { padding: 24px 20px 48px; }
+    }
+  </style>
+
+  <style is:global>
+    /* JSON syntax colors. Three categories: labels (keys), data (values), counts (numbers).
+       Defined globally because Astro scoping breaks set:html span scoping. */
+    .va-schema-code .t-key  { color: #7faedb; }
+    .va-schema-code .t-str  { color: #d4d7dc; }
+    .va-schema-code .t-num  { color: #d4b850; }
+    .va-schema-code .t-src  { color: #d4d7dc; }
+    .va-schema-code .t-prov { color: #d4d7dc; }
+    .va-schema-code .t-id   { color: #d4d7dc; font-weight: 600; }
+
+    /* Number emphasis in prose — used in wire bullets and similar */
+    .va .num {
+      color: var(--va-fg);
+      font-weight: 600;
+    }
+  </style>
+</Base>

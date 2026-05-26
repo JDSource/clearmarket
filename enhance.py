@@ -152,7 +152,7 @@ SPECIMENS = [
         "res_source_type_default": "subjective",
         "editorial_autofill": {
             "poly_underlying_reference":    "No single structured data feed — resolution by consensus of credible news reporting (UMA Optimistic Oracle, subjective mechanism).",
-            "poly_resolution_source_name":  "Credible news reporting (subjective — no specific feed cited in market description).",
+            "poly_resolution_source":  "Credible news reporting (subjective — no specific feed cited in market description).",
             "editorial_notes":              "One of 9 sub-questions in the iran-conflict family. Polymarket lists as distinct deadline/scenario variants; all resolve via UMA optimistic oracle with subjective 'consensus of credible reporting' language. No named data source. Dispute risk is non-trivial given the interpretive latitude on what counts as 'qualifying military action' and 'consensus.' Pull the full family with /events?tag=iran-conflict.",
         },
     },
@@ -168,7 +168,7 @@ SPECIMENS = [
         "canonical_slug": "fed-april-2026-rate-decision",
         "editorial_autofill": {
             "poly_underlying_reference":    "Federal Reserve FOMC statement (federalreserve.gov/monetarypolicy). Named in Polymarket description prose; mechanism is UMA optimistic oracle.",
-            "poly_resolution_source_name":  "Federal Reserve (per market description; UMA arbitrates).",
+            "poly_resolution_source":  "Federal Reserve (per market description; UMA arbitrates).",
             "poly_res_source_type_override":"central_bank",  # Fed Poly markets cite federalreserve.gov — NOT subjective
             "kalshi_underlying_reference":  "Upper bound of federal funds target rate per Federal Reserve Board of Governors (federalreserve.gov/monetarypolicy/fomccalendars.htm). Settled by Kalshi staff from Fed statement.",
             "editorial_notes":              "Cross-platform single event. 4 Polymarket directional markets (YES/NO on Fed actions) resolve via UMA optimistic oracle; 11 Kalshi strike markets (KXFED-26APR series) resolve via Kalshi staff against Federal Reserve Board of Governors releases. Both platforms point to the same real-world data source (Fed FOMC statement), but mechanism + arbiter differ. Primary market is a Kalshi strike for source clarity. Institutional buyers comparing across venues see uniform underlying + divergent mechanism — the canonical cross-venue normalization use case.",
@@ -183,7 +183,7 @@ SPECIMENS = [
         "res_source_type_default": "subjective",
         "editorial_autofill": {
             "poly_underlying_reference":    "No single structured data feed — resolution by consensus of credible news reporting (UMA Optimistic Oracle, subjective mechanism).",
-            "poly_resolution_source_name":  "Credible news reporting (subjective — no specific feed cited in market description).",
+            "poly_resolution_source":  "Credible news reporting (subjective — no specific feed cited in market description).",
             "editorial_notes":              "One of 4 sub-questions in the netanyahu family. Polymarket lists as deadline variants on Netanyahu's tenure as Israeli PM; all resolve via UMA optimistic oracle with subjective source language. No named data feed. Dispute risk concentrated in resolution-timing edge cases (caretaker PM, coalition collapse, etc.). Pull the full family with /events?tag=netanyahu.",
         },
     },
@@ -293,7 +293,7 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
 
     `autofill` (per-specimen editorial defaults) can supply:
       - poly_underlying_reference       → str
-      - poly_resolution_source_name     → str (used only when Poly ships empty)
+      - poly_resolution_source     → str (used only when Poly ships empty)
       - poly_res_source_type_override   → str (overrides res_source_type_default)
     """
     autofill = autofill or {}
@@ -317,16 +317,16 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
     # underlying_reference: autofill wins if provided, else stub
     underlying_ref = autofill.get("poly_underlying_reference", EDITORIAL_STUB)
 
-    # resolution_source_name: platform-shipped wins, else autofill, else stub
+    # resolution_source: platform-shipped wins, else autofill, else stub
     if poly_resolution_source:
-        resolution_source_name = poly_resolution_source
-        resolution_source_name_src = "platform_api"
-    elif "poly_resolution_source_name" in autofill:
-        resolution_source_name = autofill["poly_resolution_source_name"]
-        resolution_source_name_src = "clearmarket_editorial"
+        resolution_source = poly_resolution_source
+        resolution_source_src = "platform_api"
+    elif "poly_resolution_source" in autofill:
+        resolution_source = autofill["poly_resolution_source"]
+        resolution_source_src = "clearmarket_editorial"
     else:
-        resolution_source_name = EDITORIAL_STUB
-        resolution_source_name_src = None
+        resolution_source = EDITORIAL_STUB
+        resolution_source_src = None
 
     m = {
         "market_id":                next_market_id(),
@@ -348,11 +348,11 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
         "status":                   status,
         "resolution_rules_raw":     desc,  # Poly ships rules inline in description
         "resolution_triggers":      None,  # editor parses from description
-        "resolution_mechanism":     "uma_oracle",
-        "proposer_model":           "managed_whitelist",  # MOOV2 default Aug 2025+
-        "resolution_source_name":   resolution_source_name,
-        "resolution_source_url":    None,
-        "resolution_source_type":   res_source_type,
+        "arbitration_model":     "uma_oracle",
+        "resolution_proposer":           "managed_whitelist",  # MOOV2 default Aug 2025+
+        "resolution_source":   resolution_source,
+        "source_citation":    None,
+        "source_type":   res_source_type,
         "contract_terms_url":       None,
         "resolution_outcome":       None,
         "resolution_value":         None,
@@ -372,17 +372,17 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
         "resolve_at":              {"source": "platform_api"},
         "status":                  {"source": "platform_api"},
         "resolution_rules_raw":    {"source": "platform_api"},
-        "resolution_mechanism":    {"source": "clearmarket_editorial"},
-        "proposer_model":          {"source": "clearmarket_editorial"},
-        "resolution_source_type":  {"source": "clearmarket_editorial"},
+        "arbitration_model":    {"source": "clearmarket_editorial"},
+        "resolution_proposer":          {"source": "clearmarket_editorial"},
+        "source_type":  {"source": "clearmarket_editorial"},
         "event_id":                {"source": "clearmarket_editorial"},
     }
     if resolved_at:
         m["field_provenance"]["resolved_at"] = {"source": "platform_api"}
     if underlying_ref != EDITORIAL_STUB:
         m["field_provenance"]["underlying_reference"] = {"source": "clearmarket_editorial"}
-    if resolution_source_name_src:
-        m["field_provenance"]["resolution_source_name"] = {"source": resolution_source_name_src}
+    if resolution_source_src:
+        m["field_provenance"]["resolution_source"] = {"source": resolution_source_src}
     return m
 
 
@@ -394,7 +394,7 @@ def kalshi_market_to_cm(kalshi_market: dict, event_id: str, series_meta: dict,
       - kalshi_underlying_reference → str
 
     Kalshi NEVER falls back to UMA-style subjective defaults. If series metadata
-    lacks settlement_sources, resolution_source_name stays as EDITORIAL_STUB for
+    lacks settlement_sources, resolution_source stays as EDITORIAL_STUB for
     human review — do not paper over with Poly-style phrasing.
     """
     autofill = autofill or {}
@@ -444,11 +444,11 @@ def kalshi_market_to_cm(kalshi_market: dict, event_id: str, series_meta: dict,
         "status":                   status,
         "resolution_rules_raw":     rules_combined or None,
         "resolution_triggers":      None,
-        "resolution_mechanism":     "kalshi_staff",
-        "proposer_model":           "platform_staff",
-        "resolution_source_name":   source_name or EDITORIAL_STUB,
-        "resolution_source_url":    source_url,
-        "resolution_source_type":   res_source_type,
+        "arbitration_model":     "kalshi_staff",
+        "resolution_proposer":           "platform_staff",
+        "resolution_source":   source_name or EDITORIAL_STUB,
+        "source_citation":    source_url,
+        "source_type":   res_source_type,
         "contract_terms_url":       series_meta.get("contract_terms_url"),
         "resolution_outcome":       kalshi_market.get("result") or None,
         "resolution_value":         float(kalshi_market["expiration_value"]) if kalshi_market.get("expiration_value") not in (None, "") else None,
@@ -472,14 +472,14 @@ def kalshi_market_to_cm(kalshi_market: dict, event_id: str, series_meta: dict,
         "status":                  {"source": "platform_api"},
         "resolution_rules_raw":    {"source": "platform_api"},
         "contract_terms_url":      {"source": "platform_api"},
-        "resolution_mechanism":    {"source": "clearmarket_editorial"},
-        "proposer_model":          {"source": "clearmarket_editorial"},
-        "resolution_source_type":  {"source": "clearmarket_editorial"},
+        "arbitration_model":    {"source": "clearmarket_editorial"},
+        "resolution_proposer":          {"source": "clearmarket_editorial"},
+        "source_type":  {"source": "clearmarket_editorial"},
         "event_id":                {"source": "clearmarket_editorial"},
     }
     if source_name:
-        m["field_provenance"]["resolution_source_name"] = {"source": "platform_api"}
-        m["field_provenance"]["resolution_source_url"]  = {"source": "platform_api"}
+        m["field_provenance"]["resolution_source"] = {"source": "platform_api"}
+        m["field_provenance"]["source_citation"]  = {"source": "platform_api"}
     if underlying_ref != EDITORIAL_STUB:
         m["field_provenance"]["underlying_reference"] = {"source": "clearmarket_editorial"}
     return m
@@ -857,9 +857,9 @@ def llm_underlying_reference(market: dict) -> str:
         f"Platform: {market['platform']}\n"
         f"Question: {market.get('question_raw', '')}\n"
         f"Description (trimmed): {(market.get('description_raw') or '')[:600]}\n"
-        f"Resolution mechanism: {market.get('resolution_mechanism')}\n"
-        f"Platform-named source: {market.get('resolution_source_name') or '(none)'}\n"
-        f"Source URL: {market.get('resolution_source_url') or '(none)'}\n"
+        f"Resolution mechanism: {market.get('arbitration_model')}\n"
+        f"Platform-named source: {market.get('resolution_source') or '(none)'}\n"
+        f"Source URL: {market.get('source_citation') or '(none)'}\n"
         f"Market close_at (authoritative): {market.get('close_at')}\n"
         f"Market resolve_at (authoritative): {market.get('resolve_at')}\n"
         f"Market status: {market.get('status')}\n\n"
@@ -912,11 +912,11 @@ def llm_editorial_notes(event: dict, event_markets: list) -> str:
     )
     mkt_rows = event_markets[:20]
     # Pass underlying_reference (our editorial authoritative source) to the LLM,
-    # NOT resolution_source_name (raw platform text) — prevents e.g. "Google Finance"
+    # NOT resolution_source (raw platform text) — prevents e.g. "Google Finance"
     # from displacing "S&P Dow Jones Indices" in generated prose.
     markets_summary = "\n".join(
         f"  - [{m['platform']}] {(m.get('question_raw') or '')[:100]} | "
-        f"mechanism={m.get('resolution_mechanism')}, "
+        f"mechanism={m.get('arbitration_model')}, "
         f"authoritative source={(m.get('underlying_reference') or 'unknown')[:120]}"
         for m in mkt_rows
     )
@@ -1054,7 +1054,7 @@ def count_ai_drafted(events, markets):
     """
     counts = {
         "markets.underlying_reference":    0,
-        "markets.resolution_source_name":  0,
+        "markets.resolution_source":  0,
         "events.editorial_notes":          0,
         "events.tags":                     0,
         "events.question":                 0,
@@ -1067,8 +1067,8 @@ def count_ai_drafted(events, markets):
         fp = m.get("field_provenance", {})
         if is_ai(fp, "underlying_reference"):
             counts["markets.underlying_reference"] += 1
-        if is_ai(fp, "resolution_source_name"):
-            counts["markets.resolution_source_name"] += 1
+        if is_ai(fp, "resolution_source"):
+            counts["markets.resolution_source"] += 1
     for e in events:
         fp = e.get("field_provenance", {})
         if is_ai(fp, "editorial_notes"):
@@ -1093,8 +1093,8 @@ def build_review_note(counts: dict, stubs_remaining: int) -> str:
             lines.append(f"  - {v} × {k}")
     lines.append("")
     lines.append("Where AI draws the line (rules in enhance.py):")
-    lines.append("  - Kalshi `resolution_source_name` / `resolution_source_url` ALWAYS pulled from series `settlement_sources`. No UMA fallback ever.")
-    lines.append("  - Polymarket `resolution_source_name` uses editorial default ('Credible news reporting — subjective') ONLY when the Poly API ships empty.")
+    lines.append("  - Kalshi `resolution_source` / `source_citation` ALWAYS pulled from series `settlement_sources`. No UMA fallback ever.")
+    lines.append("  - Polymarket `resolution_source` uses editorial default ('Credible news reporting — subjective') ONLY when the Poly API ships empty.")
     lines.append("  - `underlying_reference`: per-market Haiku draft, anchored on market close_at for authoritative dates.")
     lines.append("  - `editorial_notes`: per-event Haiku draft, 2-3 sentences of institutional framing.")
     lines.append("  - `tags`: 4-6 per event, mix of thematic/attribute/entity, anchored on authoritative year from close_at.")

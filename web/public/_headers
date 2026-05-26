@@ -1,0 +1,11 @@
+/api/v1/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Methods: GET, OPTIONS
+  Cache-Control: public, max-age=600, s-maxage=3600
+  X-ClearMarket-Tier: free
+  X-ClearMarket-Version: v0.2.0-beta
+
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=600

@@ -1,0 +1,186 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../layouts/Base.astro';
+
+const signals = (await getCollection('signals'))
+  .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime());
+
+const title = 'ClearMarket Signal: Predictive intelligence on prediction markets';
+const description = 'Daily structured intelligence on what Kalshi and Polymarket are pricing, where consensus differs, and where the two communities disagree. Built on ClearMarket: the institutional reference layer for prediction market data.';
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+---
+<Base title={title} description={description}>
+  <span class="pill">v0.1 · daily publication</span>
+
+  <h1>The issues you already care about, now with a price.</h1>
+
+  <p class="lede">
+    Daily structured signals from Kalshi and Polymarket on the news, geopolitics, central-bank and macro events institutional investors track. Built on <a href="https://github.com/JDSource/clearmarket">ClearMarket</a>: the institutional reference layer for prediction market data.
+  </p>
+
+  <section class="signals-feed">
+    <div class="section-header">
+      <h2>Recent signals</h2>
+      <span class="signal-count">{signals.length} {signals.length === 1 ? 'signal' : 'signals'}</span>
+    </div>
+
+    {signals.length === 0 ? (
+      <p class="empty">No signals published yet. Daily publication begins shortly.</p>
+    ) : (
+      <ul class="signal-list">
+        {signals.map((signal) => (
+          <li class="signal-list-item">
+            <a href={`/signals/${signal.data.slug}/`}>
+              <div class="signal-list-meta">
+                <span class="tag-primary">{signal.data.category_tag}</span>
+                <span class="signal-list-date">{formatDate(signal.data.published_at)}</span>
+              </div>
+              <div class="signal-list-headline">{signal.data.headline}</div>
+              <div class="signal-list-summary">{signal.data.bullets[0]}</div>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+
+  <section class="how-it-works">
+    <h2>How signals are sourced</h2>
+
+    <p>Four independent detection paths run daily against the institutionally-relevant universe of prediction markets:</p>
+
+    <ol>
+      <li><strong>News-driven.</strong> The day's top stories are matched to live PM markets that price those events. Converts anecdotal news into a quantified probability.</li>
+      <li><strong>Benchmark divergence.</strong> PM consensus is compared to external benchmarks: FedWatch, polling averages, futures-implied paths, current news consensus.</li>
+      <li><strong>Cross-venue divergence.</strong> The same event priced materially differently on Kalshi versus Polymarket: the two communities disagreeing.</li>
+      <li><strong>Volume spike.</strong> Anomalous money flow on a single market. Often money moving before news catches up.</li>
+    </ol>
+
+    <p>Every candidate passes two materiality gates: is the signal informative to a Plane 1 investor, and is the PM pricing pre-news, news-concurrent, or news-lagging? Surviving signals are rendered into a five-bullet brief with full provenance, then published as both a human-readable page and a machine-readable JSON record.</p>
+  </section>
+
+  <section class="what-we-cover">
+    <h2>What we cover</h2>
+
+    <ul>
+      <li><strong>Geopolitics.</strong> Iran, Ukraine, Maduro, Israel: Polymarket is often the sole liquid institutional read, since CFTC restrictions prevent Kalshi from listing political-event contracts.</li>
+      <li><strong>Central bank and monetary policy.</strong> Federal Reserve, ECB, Bank of Canada decisions. Cross-venue divergence common.</li>
+      <li><strong>Macro economics.</strong> CPI, jobs reports, GDP, recession probability.</li>
+      <li><strong>Regulatory and policy events.</strong> CFTC, SEC, FDA decisions; CIRO-authorized event-contract categories.</li>
+      <li><strong>Named-firm or named-person financial events.</strong> CEO transitions, M&amp;A, enforcement actions.</li>
+      <li><strong>US politics.</strong> Polymarket-side only. Sentiment read for Plane 1 audiences, not trade-routing for Canadian dealers.</li>
+      <li><strong>Macro-shape crypto events.</strong> ETF approvals, regulatory decisions, halving consequences.</li>
+    </ul>
+
+    <p>Excluded: sports, entertainment, memes, prop bets, sub-volume markets.</p>
+  </section>
+
+  <section class="for-agents">
+    <h2>For AI agents</h2>
+
+    <p>Every signal is published in two synchronized forms on the same URL: a human-readable five-bullet brief and a machine-readable JSON record with full field-level provenance. Per-page Article and Dataset JSON-LD is embedded in every signal page. An MCP server exposing the same records is forthcoming.</p>
+
+    <p class="for-agents-surfaces">
+      <span class="pill">CM Signal API · coming</span>
+      <span class="pill">MCP server · coming · request access</span>
+      <span class="pill">RSS feed · coming</span>
+    </p>
+  </section>
+
+  <section class="provenance">
+    <h2>Provenance</h2>
+
+    <p>Built on <a href="https://github.com/JDSource/clearmarket">ClearMarket</a>: the institutional reference layer for prediction market data. The schema, ingest pipeline, and reproducible scripts behind the <a href="https://comments.cftc.gov/PublicComments/CommentList.aspx?id=7740">CFTC ANPRM comment</a> (RIN 3038-AF65, April 30, 2026) live in the public repo. Built by <a href="https://www.linkedin.com/in/jdietz/">Jeremy Dietz</a>. 20 years across fintech and capital markets at the Toronto Stock Exchange and Canada's first regulated crypto exchange.</p>
+
+    <p>Markit / CoinGecko / AppliedXL precedent: the reference layer is what gets cited, not what's necessarily best. For commercial inquiries or pilot conversations: <a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a>.</p>
+  </section>
+
+  <style>
+    .signals-feed { margin-top: 56px; }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    .section-header h2 { margin: 0; }
+    .signal-count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--fg-faint);
+      letter-spacing: 0.04em;
+    }
+
+    .empty {
+      color: var(--fg-muted);
+      font-style: italic;
+      padding: 24px 0;
+    }
+
+    .signal-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .signal-list-item {
+      border-bottom: 1px solid var(--border);
+      margin: 0;
+      padding: 0;
+    }
+    .signal-list-item:last-child { border-bottom: none; }
+    .signal-list-item a {
+      display: block;
+      padding: 20px 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .signal-list-item a:hover { background: var(--code-bg); margin: 0 -16px; padding: 20px 16px; }
+    .signal-list-meta {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .tag-primary {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      background: var(--fg);
+      color: var(--bg);
+      letter-spacing: 0.04em;
+    }
+    .signal-list-date {
+      color: var(--fg-faint);
+    }
+    .signal-list-headline {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+    .signal-list-summary {
+      color: var(--fg-muted);
+      font-size: 14px;
+    }
+
+    .how-it-works ol li { margin-bottom: 10px; }
+
+    .for-agents-surfaces {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+  </style>
+</Base>

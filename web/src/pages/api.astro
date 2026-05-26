@@ -1,0 +1,66 @@
+---
+import Base from '../layouts/Base.astro';
+import { getAllEvents, SPECIMEN_GENERATED_AT, SCHEMA_VERSION } from '../lib/specimens';
+
+const events = getAllEvents();
+const sampleSlug = 'fed-april-2026-rate-decision';
+---
+<Base title="ClearMarket API — v0.2.0-beta" description="Free-tier REST API for ClearMarket: reference data for prediction markets across Kalshi and Polymarket.">
+  <span class="pill">v0.2.0-beta</span>
+  <h1>API</h1>
+  <p class="lede">Free-tier JSON over HTTPS. {events.length} canonical events, refreshed daily. No auth. Soft rate limit at ~100 req/day per IP at the CDN edge.</p>
+
+  <p>Reference data layer for prediction markets. Same event priced on Kalshi and Polymarket is one <code>event_id</code> with markets attached from each venue. Marks are daily snapshots. The resolution log is append-only.</p>
+
+  <p>Snapshot date: <code>{SPECIMEN_GENERATED_AT}</code> · Schema version: <code>{SCHEMA_VERSION}</code></p>
+
+  <h2>Endpoints</h2>
+
+  <h3>Discovery</h3>
+  <pre><code>GET https://clearmarket.fyi/api/v1/index.json</code></pre>
+  <p>Returns endpoint list, version, schema URLs, rate-limit policy.</p>
+
+  <h3>Events list</h3>
+  <pre><code>GET https://clearmarket.fyi/api/v1/events.json</code></pre>
+  <p>Summary view of every published event with primary-market price snapshot.</p>
+  <pre><code>{`curl -s https://clearmarket.fyi/api/v1/events.json | jq '.events[] | .slug'`}</code></pre>
+
+  <h3>Event detail</h3>
+  <pre><code>GET https://clearmarket.fyi/api/v1/events/{`{slug}`}.json</code></pre>
+  <p>Full event record, all linked markets, current marks, resolution log.</p>
+  <pre><code>{`curl -s https://clearmarket.fyi/api/v1/events/${sampleSlug}.json | jq '.markets[] | {venue: .platform, mid: .yes_bid}'`}</code></pre>
+
+  <h3>Markets for an event</h3>
+  <pre><code>GET https://clearmarket.fyi/api/v1/events/{`{slug}`}/markets.json</code></pre>
+  <p>Markets only, for callers who don't need marks or the resolution log.</p>
+
+  <h2>Available slugs</h2>
+  <ul>
+    {events.slice(0, 10).map((e) => (
+      <li><a href={`/api/v1/events/${e.slug}.json`}><code>{e.slug}</code></a> &mdash; {e.question}</li>
+    ))}
+    {events.length > 10 && <li>&hellip; and {events.length - 10} more at <a href="/api/v1/events.json"><code>/api/v1/events.json</code></a></li>}
+  </ul>
+
+  <h2>Schema</h2>
+  <p>JSON Schema (draft 2020-12). The API response shapes are the schema with derived fields added at serve time.</p>
+  <ul>
+    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/events.schema.json"><code>events.schema.json</code></a></li>
+    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/markets.schema.json"><code>markets.schema.json</code></a></li>
+    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/marks.schema.json"><code>marks.schema.json</code></a></li>
+    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/resolution_log.schema.json"><code>resolution_log.schema.json</code></a></li>
+  </ul>
+
+  <h2>Status</h2>
+  <ul>
+    <li>v0.2 beta: static cached JSON, daily refresh, 15 canonical events</li>
+    <li>v0.3: live ingestion, expanded universe (~200 events), MCP server, agent registry</li>
+    <li>v0.4: licensable feed (Markit-shape) for institutional desks</li>
+  </ul>
+
+  <h2>For agents</h2>
+  <p><code><a href="/llms.txt">/llms.txt</a></code> describes endpoints in plain text for LLM-driven clients.</p>
+
+  <h2>Repository</h2>
+  <p><a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a></p>
+</Base>
