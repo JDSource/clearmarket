@@ -113,9 +113,10 @@ def ladder_read(markets):
     direction = strikes[0]["dir"]
     strikes.sort(key=lambda s: s["thr"])
     # Monotonicity guard: a real "above X" ladder has non-increasing probability as the strike rises
-    # (and "below X" non-decreasing). Gross violations (e.g. 6% above 3.9% then 82% above 4.0%) mean
-    # stale/illiquid/mixed strikes = dirty data. Skip rather than let the model narrate the glitch.
-    TOL = 0.15
+    # (and "below X" non-decreasing). Allow only small bid/ask/staleness noise (<=5pp); any larger
+    # INVERSION (e.g. 75% above 4.25% then 90% above 4.50%, or 6% above 3.9% then 82% above 4.0%) is
+    # mathematically impossible = dirty data -> reject the ladder (event stays BINARY), never narrate it.
+    TOL = 0.05
     probs = [s["prob"] for s in strikes]
     rises = [probs[k + 1] - probs[k] for k in range(len(probs) - 1)]
     if direction == "above" and max(rises, default=0) > TOL:

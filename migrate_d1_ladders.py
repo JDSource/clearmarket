@@ -16,7 +16,7 @@ b = json.loads((ROOT / "web/data/universe-enriched-linked.json").read_text())
 def esc(s):
     return str(s).replace("'", "''")
 
-lines = ["UPDATE events SET event_type='BINARY';"]
+lines = ["UPDATE events SET event_type='BINARY', ladder_distribution=NULL;"]
 n = 0
 for e in b["events"]:
     if e.get("event_type") == "LADDER" and e.get("ladder_distribution"):
