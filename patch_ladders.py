@@ -57,8 +57,11 @@ def llm_labels(rows):
                  "thing measured + the SPECIFIC period. Derive the period from the slug and resolve date "
                  "(e.g. slug 'kxfed-26jun' -> 'June 2026 meeting'; resolves 2026-05-31 -> 'May 31, 2026'). "
                  "Two events that differ only by period MUST get different labels, so always include the "
-                 "specific month/meeting/date, never just the year. NO '[X]' placeholders, no 'Will', no "
-                 "question mark. Examples: 'Federal funds rate upper bound, June 2026 meeting'; 'Core CPI "
+                 "specific month/meeting/date, never just the year. Describe the underlying METRIC ONLY, "
+                 "NEVER a specific price/strike/threshold/level (the event is a whole distribution, not one "
+                 "strike): write 'Bitcoin price, May 30, 2026' NOT 'Bitcoin price above $66,000'; 'Trump "
+                 "approval rating, Dec 31, 2026' NOT 'approval rating below 33%'. NO '[X]' placeholders, no "
+                 "'Will', no question mark. Examples: 'Federal funds rate upper bound, June 2026 meeting'; 'Core CPI "
                  "month-over-month, May 2026'; 'ICE removals, FY2026'. Return a STRICT JSON array of strings "
                  'in the same order, nothing else.')
         resp = client.messages.create(
