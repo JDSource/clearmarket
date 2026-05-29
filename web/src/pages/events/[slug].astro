@@ -1,17 +1,43 @@
 ---
+/* ClearMarket event page — v2
+ * Route: /events-v2/[slug]/ (A/B against canonical /events/[slug]/)
+ * Spec: ~/jeremy-os/outputs/clearmarket/event-page-design-tokens.md
+ *
+ * What's different vs v1:
+ *  - Tokens externalized to src/styles/tokens.css (no inline style soup)
+ *  - Container widens 1080 → 1280px (less letterboxing)
+ *  - Banner-shape header: atomic ID + divergence chip + snapshot ride on one line above H1
+ *  - editorial_notes rendered as a callout under H1 (was hidden)
+ *  - Compressed row heights, hairline column rules, single-accent meaning
+ *  - Per-row magnitude bars on cumulative-volume column (Nansen pattern)
+ *  - RCG C grade visually weighs more than A grade
+ *  - Before/After section between Resolution and Programmatic Access (README centerpiece)
+ *  - Programmatic Access elevated to peer-level (not buried below empty Signal section)
+ *  - data-cm-field annotations on every value cell (machine parsing)
+ *  - JSON-LD Dataset block in <head> (already correct shape)
+ *
+ * Schema fields rendered visibly: event_id, question, category, tags, venues_covered,
+ * vol cumulative, vol 24h, resolves, snapshot, editorial_notes, primary markets,
+ * all markets per venue with P(YES) + volumes + spreads + RCG + venue_id,
+ * arbitration_model, resolution_proposer, resolution_source + url, RCG distribution,
+ * catalyst_dates, recent CM Signal wire items, programmatic endpoints, raw JSON record.
+ *
+ * Schema fields invisible (JSON only): field_provenance per-cell, verified_at per
+ * catalyst, full tags array (one tag shown inline as category context).
+ */
 import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
 import {
   getAllEvents,
   getEventBySlug,
   getMarketsForEvent,
   getMarksForEvent,
-  getResolutionLogForEvent,
   SPECIMEN_GENERATED_AT,
   SCHEMA_VERSION,
   type Event,
   type Market,
   type Mark,
-} from '../../lib/specimens';
+} from '../../lib/universe';
 import { getCollection } from 'astro:content';
 
 export async function getStaticPaths() {
@@ -25,10 +51,9 @@ const { event } = Astro.props as { event: Event };
 
 const markets = getMarketsForEvent(event.event_id);
 const marks = getMarksForEvent(event.event_id);
-const resolution_log = getResolutionLogForEvent(event.event_id);
 
 // Latest mark per market
-const latestMarkByMarketId = new Map<number, Mark>();
+const latestMarkByMarketId = new Map<string, Mark>();
 for (const mark of marks) {
   const existing = latestMarkByMarketId.get(mark.market_id);
   if (!existing || new Date(mark.snapshot_at) > new Date(existing.snapshot_at)) {
@@ -36,690 +61,673 @@ for (const mark of marks) {
   }
 }
 
-// Group markets by platform — preserve venue fragmentation per Terminalist.
+// Venue grouping
 const marketsByPlatform: Record<'kalshi' | 'polymarket', Market[]> = {
   kalshi: markets.filter((m) => m.platform === 'kalshi'),
   polymarket: markets.filter((m) => m.platform === 'polymarket'),
 };
 
-// Group resolution sources by venue + source_name + source_url so we don't repeat identical rows.
-// Declared early so JSON-LD synthesis (below) can reference it.
-type GroupedSource = {
-  platform: string;
-  source_name: string | null;
-  source_url: string | null;
-  market_count: number;
-};
-function groupResolutionSources(): GroupedSource[] {
-  const map = new Map<string, GroupedSource>();
-  for (const m of markets) {
-    const key = `${m.platform}|${m.resolution_source ?? ''}|${m.source_citation ?? ''}`;
-    const existing = map.get(key);
-    if (existing) {
-      existing.market_count += 1;
-    } else {
-      map.set(key, {
-        platform: m.platform,
-        source_name: m.resolution_source,
-        source_url: m.source_citation,
-        market_count: 1,
-      });
+// ----- helpers -----
+function formatPrice(p: number | null | undefined): string {
+  if (p === null || p === undefined) return '—';
+  return `${(p * 100).toFixed(1)}%`;
+}
+function formatVol(v: number | null | undefined): string {
+  if (v === null || v === undefined) return '—';
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e4) return `$${(v / 1e3).toFixed(0)}K`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${(v / 1e3).toFixed(2)}K`;
+}
+function formatDate(d: string | null | undefined): string {
+  if (!d) return '—';
+  return d.slice(0, 10);
+}
+function formatSnapshot(d: string): string {
+  return d.slice(0, 10);
+}
+function spreadCents(bid: number | null | undefined, ask: number | null | undefined): string {
+  if (bid === null || bid === undefined || ask === null || ask === undefined) return '—';
+  return `${((ask - bid) * 100).toFixed(1)}¢`;
+}
+function truncateVenueId(id: string): { display: string; full: string } {
+  if (id.length <= 18) return { display: id, full: id };
+  if (id.startsWith('0x')) return { display: `${id.slice(0, 8)}…${id.slice(-4)}`, full: id };
+  return { display: `${id.slice(0, 14)}…${id.slice(-3)}`, full: id };
+}
+
+// Catalyst-row helpers — kept outside JSX so the parser doesn't choke on `<` comparisons.
+function catalystProximity(dDays: number): 'past' | 'near' | 'future' {
+  if (dDays < 0) return 'past';
+  if (dDays <= 7) return 'near';
+  return 'future';
+}
+function catalystDelta(dDays: number): string {
+  if (dDays === 0) return 'today';
+  if (dDays < 0) return `${Math.abs(dDays)}d ago`;
+  return `+${dDays}d`;
+}
+
+// Venue deep-link patterns. Best-effort only — return null if unsure.
+function venueMarketUrl(m: Market): string | null {
+  if (m.platform === 'kalshi') {
+    // Kalshi tickers route like https://kalshi.com/markets/KXFED-26APR-T3.00
+    return `https://kalshi.com/markets/${m.platform_market_id}`;
+  }
+  if (m.platform === 'polymarket') {
+    // Polymarket condition IDs route via https://polymarket.com/market/<conditionId>
+    return `https://polymarket.com/market/${m.platform_market_id}`;
+  }
+  return null;
+}
+function extractStrike(m: Market): number | null {
+  const match = m.platform_market_id.match(/T(\d+(?:\.\d+)?)$/);
+  return match ? parseFloat(match[1]) : null;
+}
+
+// Format a number with commas + sensible decimals
+function fmtNum(n: number): string {
+  if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { minimumFractionDigits: n % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 });
+  return n.toFixed(2);
+}
+
+// Extract market label from question_raw — strips boilerplate down to mathematical tokens.
+// Handles: range ("between X and Y"), below threshold, above threshold. Falls back to fulltext.
+// Returns a sortKey for option-chain-style numeric sorting when type !== 'fulltext'.
+function extractMarketLabel(q: string | null | undefined): { label: string; type: 'range' | 'threshold-below' | 'threshold-above' | 'fulltext'; sortKey: number | null } {
+  if (!q) return { label: '—', type: 'fulltext', sortKey: null };
+  // Basis-point delta: "decrease by X bps" / "increase by X bps" / "no change" (Fed monetary-policy events)
+  // Matches "by 50+ bps", "by 25 bps", "by 25 b" (truncated forms)
+  const decBpsMatch = q.match(/decreas\w*\s+(?:interest\s+rates?\s+)?by\s+(\d+(?:\.\d+)?)(\+)?\s*bp/i);
+  if (decBpsMatch) {
+    const val = parseFloat(decBpsMatch[1]);
+    const plus = decBpsMatch[2] ? '+' : '';
+    return { label: `−${val}${plus} bps`, type: 'threshold-below', sortKey: -val };
+  }
+  const incBpsMatch = q.match(/increas\w*\s+(?:interest\s+rates?\s+)?by\s+(\d+(?:\.\d+)?)(\+)?\s*bp/i);
+  if (incBpsMatch) {
+    const val = parseFloat(incBpsMatch[1]);
+    const plus = incBpsMatch[2] ? '+' : '';
+    return { label: `+${val}${plus} bps`, type: 'threshold-above', sortKey: val };
+  }
+  if (/no\s+change/i.test(q)) {
+    return { label: 'no change', type: 'range', sortKey: 0 };
+  }
+  // Range: "between X and Y"
+  const rangeMatch = q.match(/between\s+\$?([\d,.]+)\s+and\s+\$?([\d,.]+)/i);
+  if (rangeMatch) {
+    const low = parseFloat(rangeMatch[1].replace(/,/g, ''));
+    const high = parseFloat(rangeMatch[2].replace(/,/g, ''));
+    if (!isNaN(low) && !isNaN(high)) {
+      return { label: `${fmtNum(low)} – ${fmtNum(high)}`, type: 'range', sortKey: low };
     }
   }
-  return Array.from(map.values()).sort((a, b) => b.market_count - a.market_count);
+  // Below: "below X" / "less than X" / "under X"
+  const belowMatch = q.match(/(?:below|less than|under)\s+\$?([\d,.]+)(\s*%)?/i);
+  if (belowMatch) {
+    const val = parseFloat(belowMatch[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      const unit = (belowMatch[2] || '').trim();
+      return { label: `< ${fmtNum(val)}${unit}`, type: 'threshold-below', sortKey: val };
+    }
+  }
+  // Above: "above X" / "more than X" / "greater than X" / "over X"
+  const aboveMatch = q.match(/(?:above|more than|greater than|over)\s+\$?([\d,.]+)(\s*%)?/i);
+  if (aboveMatch) {
+    const val = parseFloat(aboveMatch[1].replace(/,/g, ''));
+    if (!isNaN(val)) {
+      const unit = (aboveMatch[2] || '').trim();
+      return { label: `> ${fmtNum(val)}${unit}`, type: 'threshold-above', sortKey: val };
+    }
+  }
+  // Fallback: full question text
+  return { label: q, type: 'fulltext', sortKey: null };
 }
-const groupedSources = groupResolutionSources();
 
-// Discovery loop — find CM Signal wire items linked to this event
-const allSignals = await getCollection('signals');
-const linkedSignals = allSignals
-  .filter((s) => s.data.event_id === event.event_id)
-  .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime())
-  .slice(0, 10);
+// RCG (Resolution Clarity Grade) — per-contract tooltip text shown on hover
+const RCG_TOOLTIPS = {
+  A: 'Resolution Clarity Grade A — institutional-grade resolution. Named source, mechanical settlement, no judgment.',
+  B: 'Resolution Clarity Grade B — named source URL exists, but resolution involves oracle or staff judgment.',
+  C: 'Resolution Clarity Grade C — no named source URL. Resolution relies on oracle or staff judgment without public reference.',
+} as const;
 
-const resolutionMechanisms = Array.from(
-  new Set(markets.map((m) => m.arbitration_model).filter(Boolean) as string[]),
-);
-const proposerModels = Array.from(
-  new Set(markets.map((m) => m.resolution_proposer).filter(Boolean) as string[]),
-);
+// RCG (resolution_clarity) — A = data feed + URL, B = oracle/staff w/ URL, C = oracle/staff no URL
+function resolutionClarity(m: Market): 'A' | 'B' | 'C' {
+  const hasUrl = !!m.source_citation;
+  const mech = m.arbitration_model ?? '';
+  const objectiveSource = ['gov_stat_agency', 'central_bank', 'regulated_data_vendor', 'scheduled_event'].includes(m.source_type ?? '');
+  const deterministic = ['platform_auto', 'kalshi_staff'].includes(mech) && objectiveSource;
+  if (deterministic && hasUrl) return 'A';
+  if (hasUrl) return 'B';
+  return 'C';
+}
 
-const SITE = 'https://clearmarket.fyi';
-const API_BASE = 'https://api.clearmarket.fyi';
-const canonicalURL = `${SITE}/events/${event.slug}/`;
-const jsonURL = `${API_BASE}/v1/events/${event.slug}`;
+// Venue clarity distribution (e.g., "11A" or "4C")
+function venueClarityDistribution(platform: 'kalshi' | 'polymarket'): string {
+  const counts: Record<string, number> = { A: 0, B: 0, C: 0 };
+  for (const m of marketsByPlatform[platform]) counts[resolutionClarity(m)]++;
+  const parts: string[] = [];
+  if (counts.A) parts.push(`${counts.A}A`);
+  if (counts.B) parts.push(`${counts.B}B`);
+  if (counts.C) parts.push(`${counts.C}C`);
+  return parts.join(' ');
+}
 
-// Temporal coverage
-const seenDates = markets.map((m) => m.first_seen_at).filter(Boolean) as string[];
-const endDates = markets
+// Strike-ladder detection
+function isLadderShape(platform: 'kalshi' | 'polymarket'): boolean {
+  const ms = marketsByPlatform[platform];
+  if (ms.length < 4) return false;
+  const strikes = ms.map(extractStrike).filter((s) => s !== null) as number[];
+  return strikes.length >= ms.length * 0.7;
+}
+const kalshiIsLadder = isLadderShape('kalshi');
+const polyIsLadder = isLadderShape('polymarket');
+
+// Detect if a venue table is option-chain shape (all rows have numeric range/threshold labels)
+function isOptionChainShape(ms: Market[]): boolean {
+  if (ms.length < 3) return false;
+  const numericCount = ms.filter((m) => extractMarketLabel(m.question_raw).sortKey !== null).length;
+  return numericCount >= ms.length * 0.8;
+}
+
+// Sort markets
+function sortMarkets(ms: Market[], ladder: boolean): Market[] {
+  if (ladder) {
+    return [...ms].sort((a, b) => (extractStrike(a) ?? 0) - (extractStrike(b) ?? 0));
+  }
+  // Option-chain sort: ascending by extracted numeric value when 80%+ of rows have ranges/thresholds
+  if (isOptionChainShape(ms)) {
+    return [...ms].sort((a, b) => {
+      const ka = extractMarketLabel(a.question_raw).sortKey ?? Number.POSITIVE_INFINITY;
+      const kb = extractMarketLabel(b.question_raw).sortKey ?? Number.POSITIVE_INFINITY;
+      return ka - kb;
+    });
+  }
+  return [...ms].sort((a, b) => {
+    const va = latestMarkByMarketId.get(a.market_id)?.volume_total_usd ?? 0;
+    const vb = latestMarkByMarketId.get(b.market_id)?.volume_total_usd ?? 0;
+    return vb - va;
+  });
+}
+
+// Top market per venue (for Primary Markets summary table).
+// Per schema-working-spec.md "primary_market_id methodology": 24h volume wins,
+// cumulative breaks ties when 24h is identical/zero. This reflects current
+// positioning activity rather than historical open interest accumulation.
+//
+// Eligibility filter: only ACTIVE (open) markets with NON-ZERO trading volume
+// qualify. Resolved/amended markets and zero-volume markets are excluded —
+// "most traded" is a nonsense concept for a contract that isn't being traded.
+// If no markets qualify, the Primary Markets section won't render (returns null).
+function topMarket(platform: 'kalshi' | 'polymarket') {
+  const ms = marketsByPlatform[platform].filter((m) => {
+    if (m.status === 'resolved' || m.status === 'amended' || m.status === 'closed') return false;
+    const mark = latestMarkByMarketId.get(m.market_id);
+    const cum = mark?.volume_total_usd ?? 0;
+    const day = mark?.volume_24h_usd ?? 0;
+    return cum > 0 || day > 0;
+  });
+  if (ms.length === 0) return null;
+  const sorted = [...ms].sort((a, b) => {
+    const va24 = latestMarkByMarketId.get(a.market_id)?.volume_24h_usd ?? 0;
+    const vb24 = latestMarkByMarketId.get(b.market_id)?.volume_24h_usd ?? 0;
+    if (va24 !== vb24) return vb24 - va24;
+    const vaCum = latestMarkByMarketId.get(a.market_id)?.volume_total_usd ?? 0;
+    const vbCum = latestMarkByMarketId.get(b.market_id)?.volume_total_usd ?? 0;
+    return vbCum - vaCum;
+  });
+  const m = sorted[0];
+  const mark = latestMarkByMarketId.get(m.market_id);
+  const price = mark?.implied_probability ?? mark?.yes_last_price ?? mark?.mid;
+  let semanticLabel = '';
+  if (kalshiIsLadder && m.platform === 'kalshi') {
+    const strike = extractStrike(m);
+    if (strike !== null) semanticLabel = `${strike.toFixed(2)}% STRIKE`;
+  } else {
+    semanticLabel = 'TOP OUTCOME';
+  }
+  return { market: m, mark, price, semanticLabel };
+}
+const topKalshi = topMarket('kalshi');
+const topPoly = topMarket('polymarket');
+
+// Max volume per venue (for magnitude bar normalization)
+function maxVolume(platform: 'kalshi' | 'polymarket'): number {
+  let max = 0;
+  for (const m of marketsByPlatform[platform]) {
+    const v = latestMarkByMarketId.get(m.market_id)?.volume_total_usd ?? 0;
+    if (v > max) max = v;
+  }
+  return max;
+}
+// Max probability per venue (for P(YES) bar normalization — bounded 0-1)
+function maxProbability(platform: 'kalshi' | 'polymarket'): number {
+  let max = 0;
+  for (const m of marketsByPlatform[platform]) {
+    const mk = latestMarkByMarketId.get(m.market_id);
+    const p = mk?.implied_probability ?? mk?.yes_last_price ?? mk?.mid ?? 0;
+    if (p > max) max = p;
+  }
+  return max;
+}
+const maxVolKalshi = maxVolume('kalshi');
+const maxVolPoly = maxVolume('polymarket');
+const maxProbKalshi = maxProbability('kalshi');
+const maxProbPoly = maxProbability('polymarket');
+
+// Volume summary
+let cumulativeVol = 0;
+let dayVol = 0;
+for (const m of markets) {
+  const mark = latestMarkByMarketId.get(m.market_id);
+  cumulativeVol += mark?.volume_total_usd ?? 0;
+  dayVol += mark?.volume_24h_usd ?? 0;
+}
+const earliestResolve = markets
   .map((m) => m.resolve_at ?? m.close_at)
-  .filter((d): d is string => !!d);
-const temporalStart = seenDates.length ? seenDates.sort()[0] : event.created_at;
-const temporalEnd = endDates.length ? endDates.sort().slice(-1)[0] : null;
-const temporalCoverage = temporalEnd
-  ? `${temporalStart.slice(0, 10)}/${temporalEnd.slice(0, 10)}`
-  : temporalStart.slice(0, 10);
+  .filter((d): d is string => !!d)
+  .sort()[0] ?? null;
+const daysToResolve = earliestResolve
+  ? Math.ceil((new Date(earliestResolve).getTime() - new Date(SPECIMEN_GENERATED_AT).getTime()) / (1000 * 60 * 60 * 24))
+  : null;
 
-// JSON-LD Dataset per CM PRD §3.5.1
-const datasetJsonLd: Record<string, unknown> = {
+// Resolved-state detection — true only when EVERY market for the event has settled.
+// Mixed-state events (some open, some resolved) treated as "still active".
+const allMarketsResolved = markets.length > 0 && markets.every(
+  (m) => m.status === 'resolved' || m.status === 'amended'
+);
+let eventResolvedAt: string | null = null;
+let eventResolutionOutcome: string | null = null;
+if (allMarketsResolved) {
+  const dates = markets
+    .map((m) => m.resolved_at)
+    .filter((d): d is string => !!d)
+    .sort();
+  eventResolvedAt = dates[dates.length - 1] ?? null;
+  // Pick the YES-winning market(s) to derive the event-level outcome label.
+  // Multi-outcome events (e.g. Fed rate ladder): the winning contract's question text IS the outcome.
+  // Binary events (e.g. Netanyahu out by X): outcome is YES or NO of the single market.
+  const winners = markets.filter((m) => m.resolution_value === 1.0 || m.resolution_outcome === 'YES');
+  if (winners.length >= 1 && markets.length > 1) {
+    // Scan ALL winner questions (multi-venue same-outcome typically has 1 per venue)
+    const allWinQ = winners.map((m) => (m.question_raw ?? '').toLowerCase()).join(' || ');
+    if (allWinQ.includes('no change') || allWinQ.includes('hold') || allWinQ.includes('unchanged')) eventResolutionOutcome = 'NO CHANGE';
+    else if (allWinQ.includes('cut 25') || allWinQ.includes('25 bp cut') || allWinQ.includes('cut by 25')) eventResolutionOutcome = 'CUT 25bp';
+    else if (allWinQ.includes('cut 50') || allWinQ.includes('50 bp cut') || allWinQ.includes('cut by 50')) eventResolutionOutcome = 'CUT 50bp';
+    else if (allWinQ.includes('hike')) eventResolutionOutcome = 'HIKE';
+    else eventResolutionOutcome = 'YES';
+  } else if (winners.length >= 1) {
+    eventResolutionOutcome = 'YES';
+  } else if (markets.some((m) => m.resolution_outcome)) {
+    eventResolutionOutcome = 'NO';
+  }
+}
+
+// Divergence detection — different mechanisms or different sources across venues
+const kalshiMechs = new Set(marketsByPlatform.kalshi.map((m) => m.arbitration_model));
+const polyMechs = new Set(marketsByPlatform.polymarket.map((m) => m.arbitration_model));
+const hasDivergence =
+  marketsByPlatform.kalshi.length > 0 &&
+  marketsByPlatform.polymarket.length > 0 &&
+  ([...kalshiMechs].some((m) => !polyMechs.has(m)) || [...polyMechs].some((m) => !kalshiMechs.has(m)));
+
+// Market structure note — tense flips past when the event has settled
+const resolveVerb = allMarketsResolved ? 'Resolved' : 'Resolves';
+const resolveDate = allMarketsResolved
+  ? (eventResolvedAt ? formatDate(eventResolvedAt) : formatDate(earliestResolve))
+  : formatDate(earliestResolve);
+let structureNote = '';
+if (marketsByPlatform.kalshi.length > 0 && marketsByPlatform.polymarket.length > 0) {
+  const kShape = kalshiIsLadder ? `${marketsByPlatform.kalshi.length}-strike ladder` : `${marketsByPlatform.kalshi.length} discrete outcomes`;
+  const pShape = polyIsLadder ? `${marketsByPlatform.polymarket.length}-strike ladder` : `${marketsByPlatform.polymarket.length} discrete outcomes`;
+  const bothVerb = allMarketsResolved ? 'Both resolved' : 'Both resolve';
+  structureNote = `Kalshi structures this event as a ${kShape}. Polymarket structures this event as ${pShape}. ${bothVerb} ${resolveDate}.`;
+} else if (marketsByPlatform.kalshi.length > 0) {
+  structureNote = `Kalshi-only event. ${marketsByPlatform.kalshi.length} ${kalshiIsLadder ? 'strike contracts' : 'discrete outcomes'}. ${resolveVerb} ${resolveDate}.`;
+} else if (marketsByPlatform.polymarket.length > 0) {
+  structureNote = `Polymarket-only event. ${marketsByPlatform.polymarket.length} ${polyIsLadder ? 'strike contracts' : 'discrete outcomes'}. ${resolveVerb} ${resolveDate}.`;
+}
+
+// Grouped resolution sources for the Resolution Architecture table
+type GroupedSource = {
+  platform: 'kalshi' | 'polymarket';
+  source_name: string | null;
+  source_url: string | null;
+  source_type: string | null;
+  regulatory_class: string | null;
+  analyst_notes: string | null;
+  market_count: number;
+};
+const groupedSources: GroupedSource[] = [];
+for (const platform of ['kalshi', 'polymarket'] as const) {
+  const map = new Map<string, GroupedSource>();
+  for (const m of marketsByPlatform[platform]) {
+    const key = `${m.resolution_source ?? ''}|${m.source_citation ?? ''}|${m.source_type ?? ''}`;
+    const existing = map.get(key);
+    if (existing) existing.market_count += 1;
+    else map.set(key, {
+      platform,
+      source_name: m.resolution_source,
+      source_url: m.source_citation,
+      source_type: m.source_type,
+      regulatory_class: m.regulatory_class ?? null,
+      analyst_notes: m.analyst_notes ?? null,
+      market_count: 1,
+    });
+  }
+  groupedSources.push(...map.values());
+}
+
+// Signals for this event
+const allSignals = await getCollection('signals');
+const linkedSignals = allSignals.filter((s) => (s.data.linked_event_ids ?? []).includes(event.event_id)).slice(0, 5);
+
+// Site URLs
+const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
+const jsonURL = `https://api.clearmarket.fyi/v1/events/${event.slug}`;
+
+// JSON-LD Dataset
+const datasetJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'Dataset',
   '@id': canonicalURL,
   name: event.question,
-  description: `Cross-venue reference data for "${event.question}". ClearMarket canonical record covering ${event.venues_covered.join(' + ')}.`,
+  description: event.editorial_notes ?? `Cross-venue reference data for "${event.question}".`,
   identifier: event.event_id,
   url: canonicalURL,
-  keywords: event.tags.join(', '),
-  dateCreated: event.created_at,
-  dateModified: event.updated_at,
-  temporalCoverage,
-  creator: {
-    '@type': 'Organization',
-    name: 'ClearMarket',
-    url: SITE,
-    sameAs: [
-      'https://github.com/JDSource/clearmarket',
-      'https://comments.cftc.gov/PublicComments/ViewComment.aspx?id=115614',
-    ],
-  },
-  license: 'https://github.com/JDSource/clearmarket/blob/main/LICENSE',
-  measurementTechnique: [
-    'Direct ingestion of Kalshi public events API (with_nested_markets=true) and Polymarket Gamma API',
-    'ClearMarket cross-venue entity linking via event-level normalization',
-    'Resolution-source classification per ClearMarket methodology (/methodology)',
-    'Field-level provenance tagging — platform_api / clearmarket_editorial / derived',
-  ],
+  keywords: event.tags,
+  temporalCoverage: earliestResolve ? `${SPECIMEN_GENERATED_AT}/${earliestResolve}` : SPECIMEN_GENERATED_AT,
   variableMeasured: [
-    { '@type': 'PropertyValue', name: 'current_price', description: 'Latest mid/last-trade price per market as implied probability 0-1' },
-    { '@type': 'PropertyValue', name: 'arbitration_model', description: 'Named arbiter (UMA Optimistic Oracle, Kalshi staff, etc.)' },
-    { '@type': 'PropertyValue', name: 'resolution_source', description: 'Specific authoritative source named in resolution rules' },
-    { '@type': 'PropertyValue', name: 'source_type', description: 'Classification of resolution source' },
-    { '@type': 'PropertyValue', name: 'resolution_proposer', description: 'permissionless / managed_whitelist / platform_staff' },
-    { '@type': 'PropertyValue', name: 'venues_covered', description: 'Trading venues that list this event' },
-    { '@type': 'PropertyValue', name: 'catalyst_dates', description: 'Structured calendar events that drive resolution' },
+    { '@type': 'PropertyValue', name: 'P(YES)', description: 'Implied probability of YES outcome per market' },
+    { '@type': 'PropertyValue', name: 'cumulative_volume_usd', description: 'Lifetime traded volume' },
+    { '@type': 'PropertyValue', name: 'resolution_clarity_grade', description: 'A/B/C grade of resolution-source clarity' },
+    { '@type': 'PropertyValue', name: 'arbitration_model', description: 'Who arbitrates resolution disputes' },
   ],
+  measurementTechnique: 'Cross-venue ingestion of Kalshi + Polymarket public APIs, normalized to canonical 4-table schema with editorial enrichment for resolution-source naming where platforms ship empty fields',
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
   distribution: [
-    { '@type': 'DataDownload', name: 'ClearMarket Event JSON (REST)', encodingFormat: 'application/json', contentUrl: `${jsonURL}.json` },
-    { '@type': 'DataDownload', name: 'ClearMarket Event JSON (collection)', encodingFormat: 'application/json', contentUrl: `${API_BASE}/v1/events.json` },
-    { '@type': 'DataDownload', name: 'ClearMarket MCP server', encodingFormat: 'application/x-mcp', contentUrl: 'https://mcp.clearmarket.fyi' },
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
-  isPartOf: {
-    '@type': 'DataCatalog',
-    name: 'ClearMarket — Prediction Markets Reference Data',
-    url: `${SITE}/events/`,
-  },
-  spatialCoverage: 'Global',
+  isPartOf: { '@type': 'DataCatalog', name: 'ClearMarket Events Catalog', url: 'https://clearmarket.fyi/events/' },
 };
 
-if (event.catalyst_dates && event.catalyst_dates.length > 0) {
-  (datasetJsonLd as any).about = event.catalyst_dates.map((c) => ({
-    '@type': 'Event',
-    name: c.event,
-    startDate: c.date,
-  }));
-}
-
-// Inject the analytical synthesis fields into JSON-LD so they ship at every surface.
-// Per redesign brief — these are canonical-record fields, not just HTML decoration.
-const structureNote = marketStructureNote();
-const resolutionNote = resolutionAnalyticalSummary();
-(datasetJsonLd as any).variableMeasured = [
-  ...(datasetJsonLd as any).variableMeasured,
-  { '@type': 'PropertyValue', name: 'market_structure_note', value: structureNote },
-  { '@type': 'PropertyValue', name: 'resolution_summary', value: resolutionNote },
-  { '@type': 'PropertyValue', name: 'resolution_clarity', description: 'A/B/C Resolution Clarity Grade per market. A: named source + verifiable URL + direct lookup; B: intermediary resolver; C: vague or unbound source. Brand-carrier: CM-RC-A/B/C. See /methodology#resolution-clarity' },
-  { '@type': 'PropertyValue', name: 'yes_spread', description: 'Bid-ask spread on YES side per market (yes_ask − yes_bid). Cents notation in HTML, decimal in JSON.' },
-  { '@type': 'PropertyValue', name: 'no_spread', description: 'Bid-ask spread on NO side per market (no_ask − no_bid). May be null when venue API does not populate NO side (sparse on Polymarket).' },
-  { '@type': 'PropertyValue', name: 'daily_turnover', description: '24h volume / cumulative volume as decimal. Derived. Not surfaced in HTML.' },
-];
-
-// Machine record exposed at the .json endpoint. Includes the analytical synthesis fields
-// + per-market resolution_clarity + daily_turnover so the REST API + MCP responses carry
-// the same content as the HTML page (four-format rule).
+// Visible JSON record (subset of the canonical record)
 const machineRecord = {
-  schema_version: SCHEMA_VERSION,
-  snapshot_at: SPECIMEN_GENERATED_AT,
-  event: {
-    ...event,
-    market_structure_note: structureNote,
-    resolution_summary: resolutionNote,
-  },
-  markets: markets.map((m) => {
-    const mark = latestMarkByMarketId.get(m.market_id);
-    const yesSpread = mark && mark.yes_bid != null && mark.yes_ask != null
-      ? mark.yes_ask - mark.yes_bid : null;
-    const noSpread = mark && mark.no_bid != null && mark.no_ask != null
-      ? mark.no_ask - mark.no_bid : null;
-    return {
-      ...m,
-      resolution_clarity: resolutionClarity(m),
-      yes_spread: yesSpread,
-      no_spread: noSpread,
-      daily_turnover: mark && mark.volume_total_usd && mark.volume_24h_usd != null
-        ? mark.volume_24h_usd / mark.volume_total_usd
-        : null,
-    };
-  }),
-  marks,
-  resolution_log,
-  _links: {
-    self: jsonURL + '.json',
-    markets: `${jsonURL}/markets.json`,
-    collection: `${API_BASE}/v1/events.json`,
-    html: canonicalURL,
-    mcp: 'mcp.clearmarket.fyi#clearmarket.get_event',
-  },
-};
-
-// Syntax-color a JSON record for the hero panel
-function colorizeJson(obj: unknown): string {
-  const json = JSON.stringify(obj, null, 2);
-  return json
-    .replace(/("(?:[^"\\]|\\.)*")(\s*:)/g, '<span class="t-key">$1</span>$2')
-    .replace(/:\s*("(?:[^"\\]|\\.)*")/g, (m, val) => `: <span class="t-str">${val}</span>`)
-    .replace(/:\s*(-?\d+\.?\d*)/g, (m, num) => `: <span class="t-num">${num}</span>`)
-    .replace(/:\s*(true|false|null)/g, (m, lit) => `: <span class="t-str">${lit}</span>`);
-}
-
-// Slim event preview for the hero JSON panel (not the full machineRecord — that's at the bottom)
-const heroPreview = {
   event_id: event.event_id,
   slug: event.slug,
+  question: event.question,
   category: event.category,
   tags: event.tags,
-  primary_market_id: event.primary_market_id,
-  catalyst_dates: event.catalyst_dates,
   venues_covered: event.venues_covered,
-  cross_platform_link: {
-    kalshi: { market_count: marketsByPlatform.kalshi.length },
-    polymarket: { market_count: marketsByPlatform.polymarket.length },
-  },
-  resolution: {
-    mechanism: resolutionMechanisms.length === 1 ? resolutionMechanisms[0] : resolutionMechanisms,
-    resolution_proposer: proposerModels.length === 1 ? proposerModels[0] : proposerModels,
+  catalyst_dates: event.catalyst_dates,
+  editorial_notes: event.editorial_notes,
+  market_count: markets.length,
+  cumulative_volume_usd: cumulativeVol,
+  resolution_architecture: groupedSources.map((g) => ({
+    venue: g.platform,
+    source_name: g.source_name,
+    source_url: g.source_url,
+    market_count: g.market_count,
+    rcg_distribution: venueClarityDistribution(g.platform),
+  })),
+  field_provenance: {
+    question: { source: 'clearmarket_editorial' },
+    tags: { source: 'clearmarket_editorial', ai_drafted: true },
+    catalyst_dates: { source: 'clearmarket_editorial' },
+    editorial_notes: { source: 'clearmarket_editorial', ai_drafted: true },
+    venues_covered: { source: 'derived' },
   },
 };
-
-function formatPrice(p: number | null | undefined): string {
-  if (p == null) return '—';
-  return `${(p * 100).toFixed(1)}%`;
-}
-function formatVol(v: number | null | undefined): string {
-  if (v == null) return '—';
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
-  return `$${v.toFixed(0)}`;
-}
-function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
-  return new Date(d).toISOString().slice(0, 10);
-}
-function formatWireDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString('en-US', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/New_York' }) + ' ET';
-}
-function formatSnapshot(iso: string | null): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toISOString().slice(0, 10);
-}
-
-// Resolution Clarity grade (A/B/C) — derived per-market from structured fields.
-// Grades the CLARITY of the resolution specification — not the market's quality or the venue's
-// trustworthiness. Like a bond rating: each contract has its own grade, even within the same
-// venue (per CFTC ANPRM data showing intra-venue variance in placeholder language).
-// A: named source + verifiable URL + resolver IS the source or deterministic lookup
-// B: named source + verifiable URL + resolver is intermediary (oracle/staff judgment/consensus)
-// C: named source but no URL, OR oracle/consensus with no clearly bound authority
-// (D reserved — do not emit at v0.2.)
-// Taxonomy lives at /methodology#resolution-clarity (page pending — v0.2.x).
-// Brand-carrier identifier per PRD §3.5.1: `CM-RC-A`, `CM-RC-B`, `CM-RC-C`.
-function resolutionClarity(market: Market): 'A' | 'B' | 'C' {
-  const hasName = !!market.resolution_source;
-  const hasUrl = !!market.source_citation;
-  if (!hasName) return 'C';
-  const mech = market.arbitration_model;
-  const prop = market.resolution_proposer;
-  const isDirectLookup = mech === 'kalshi_staff' || prop === 'platform_staff';
-  if (isDirectLookup && hasName && hasUrl) return 'A';
-  if (hasName && hasUrl) return 'B';
-  return 'C';
-}
-
-// Venue-level clarity distribution — NOT a single modal grade. Per Jeremy's bond-analogy
-// critique: a single venue grade obscures intra-venue variance. Show counts per grade instead.
-function venueClarityDistribution(platform: 'kalshi' | 'polymarket'): { A: number; B: number; C: number; total: number } {
-  const plat = marketsByPlatform[platform];
-  const counts = { A: 0, B: 0, C: 0, total: 0 };
-  for (const m of plat) {
-    counts[resolutionClarity(m)]++;
-    counts.total++;
-  }
-  return counts;
-}
-function formatClarityDistribution(d: { A: number; B: number; C: number; total: number }): string {
-  if (d.total === 0) return '—';
-  const parts: string[] = [];
-  if (d.A > 0) parts.push(`${d.A}A`);
-  if (d.B > 0) parts.push(`${d.B}B`);
-  if (d.C > 0) parts.push(`${d.C}C`);
-  return parts.join(' / ');
-}
-
-// Daily turnover: kept in data layer (JSON-LD + REST) as derived metric, no longer
-// surfaced as a visible column per Jeremy's call (replaced with bid-ask spread).
-function turnoverPct(mark: Mark | undefined): string {
-  if (!mark) return '—';
-  const cum = mark.volume_total_usd;
-  const day = mark.volume_24h_usd;
-  if (!cum || cum === 0 || day == null) return '—';
-  return `${((day / cum) * 100).toFixed(1)}%`;
-}
-
-// Bid-ask spread per side. In clean arbitrage equilibrium YES spread = NO spread,
-// but the orderbooks are SEPARATE — Polymarket YES/NO are distinct ERC-20 tokens
-// with their own AMM pools, and Kalshi quotes them as mirror prices on one matching
-// engine. Surfacing both sides faithfully per Terminalist (preserve fragmentation)
-// rather than averaging them. Divergence between sides = arb friction = real signal.
-function spreadCents(bid: number | null | undefined, ask: number | null | undefined): string {
-  if (bid == null || ask == null) return '—';
-  const spread = ask - bid;
-  if (spread < 0) return '—';
-  return `${(spread * 100).toFixed(1)}¢`;
-}
-
-// Truncate long venue IDs (e.g., Polymarket 0x hashes). Full string in JSON-LD; HTML truncates
-// for display. Native browser `title` attribute exposes full string on hover — no JS needed.
-function truncateVenueId(id: string): { display: string; full: string; truncated: boolean } {
-  if (id.length <= 24) return { display: id, full: id, truncated: false };
-  const display = `${id.slice(0, 8)}…${id.slice(-4)}`;
-  return { display, full: id, truncated: true };
-}
-
-// Summary metrics for the strip above the sub-nav. All derived from existing data.
-const summaryMetrics = (() => {
-  const totalMarkets = markets.length;
-  const venueCount = event.venues_covered.length;
-  let cumulative = 0;
-  let day = 0;
-  for (const m of markets) {
-    const mark = latestMarkByMarketId.get(m.market_id);
-    cumulative += mark?.volume_total_usd ?? 0;
-    day += mark?.volume_24h_usd ?? 0;
-  }
-  const resolveDates = Array.from(new Set(markets.map((m) => m.resolve_at ?? m.close_at).filter(Boolean).map((d) => (d as string).slice(0, 10))));
-  const earliestResolve = resolveDates.length ? resolveDates.sort()[0] : null;
-  let daysToResolve: number | null = null;
-  if (earliestResolve && SPECIMEN_GENERATED_AT) {
-    const ms = new Date(earliestResolve).getTime() - new Date(SPECIMEN_GENERATED_AT).getTime();
-    daysToResolve = Math.round(ms / (24 * 60 * 60 * 1000));
-  }
-  return { totalMarkets, venueCount, cumulative, day, earliestResolve, daysToResolve };
-})();
-
-// Event-specific provenance summary (replaces the generic paragraph).
-// Computes actual counts from this event's field_provenance data, so the paragraph
-// is a citable fact about THIS event rather than generic copy that repeats per page.
-function provenanceFactual(): string {
-  const fp = event.field_provenance ?? {};
-  const aiDrafted: string[] = [];
-  const editorial: string[] = [];
-  const derived: string[] = [];
-  const platformApi: string[] = [];
-  for (const [field, meta] of Object.entries(fp)) {
-    const m = meta as { source?: string; ai_drafted?: boolean };
-    if (m.ai_drafted) aiDrafted.push(field);
-    else if (m.source === 'clearmarket_editorial') editorial.push(field);
-    else if (m.source === 'derived') derived.push(field);
-    else if (m.source === 'platform_api') platformApi.push(field);
-  }
-  const parts: string[] = [];
-  parts.push(`Snapshot ${formatSnapshot(SPECIMEN_GENERATED_AT)}. Venue data via Kalshi and Polymarket platform APIs.`);
-  if (aiDrafted.length) parts.push(`${aiDrafted.length} editorial ${aiDrafted.length === 1 ? 'field is' : 'fields are'} ClearMarket-drafted with AI assistance for this event: ${aiDrafted.map((f) => `\`${f}\``).join(', ')}.`);
-  if (derived.length) parts.push(`${derived.length} ${derived.length === 1 ? 'field is' : 'fields are'} ClearMarket-derived: ${derived.map((f) => `\`${f}\``).join(', ')}.`);
-  parts.push(`Full per-field map in the JSON record under \`field_provenance\`.`);
-  return parts.join(' ');
-}
-
-// Detect if a venue's markets form a "strike ladder" pattern — many markets sharing a
-// question stem with only a numeric strike varying. Common on Kalshi for rate / level events.
-// Returns the strike if detected, otherwise null.
-function extractStrike(market: Market): number | null {
-  // Kalshi venue IDs encode the strike: KXFED-26APR-T3.00 → 3.00
-  const m = market.platform_market_id.match(/T(\d+(?:\.\d+)?)/);
-  if (m) return parseFloat(m[1]);
-  return null;
-}
-function isStrikeLadder(platform: 'kalshi' | 'polymarket'): boolean {
-  const plat = marketsByPlatform[platform];
-  if (plat.length < 3) return false;
-  const strikes = plat.map(extractStrike).filter((s): s is number => s !== null);
-  if (strikes.length < plat.length * 0.7) return false; // most markets must yield a strike
-  // Shared question prefix check — at least 70% of the question is shared across markets
-  const questions = plat.map((m) => m.question_raw ?? '').filter(Boolean);
-  if (questions.length < 2) return false;
-  const firstQ = questions[0];
-  let sharedPrefixLen = firstQ.length;
-  for (const q of questions.slice(1)) {
-    let i = 0;
-    while (i < sharedPrefixLen && i < q.length && q[i] === firstQ[i]) i++;
-    sharedPrefixLen = i;
-  }
-  return sharedPrefixLen / firstQ.length > 0.5;
-}
-function sharedQuestionStem(platform: 'kalshi' | 'polymarket'): string {
-  const plat = marketsByPlatform[platform];
-  if (plat.length < 2) return '';
-  const questions = plat.map((m) => m.question_raw ?? '').filter(Boolean);
-  if (questions.length < 2) return '';
-  const firstQ = questions[0];
-  let sharedPrefixLen = firstQ.length;
-  for (const q of questions.slice(1)) {
-    let i = 0;
-    while (i < sharedPrefixLen && i < q.length && q[i] === firstQ[i]) i++;
-    sharedPrefixLen = i;
-  }
-  return firstQ.slice(0, sharedPrefixLen).trim();
-}
-
-const kalshiIsLadder = isStrikeLadder('kalshi');
-const polyIsLadder = isStrikeLadder('polymarket');
-
-// Find top-volume market per platform (the most-traded contract on each venue).
-function topMarketByPlatform(platform: 'kalshi' | 'polymarket'): { market: Market; mark: Mark | undefined; price: number | null | undefined } | null {
-  const plat = marketsByPlatform[platform];
-  if (plat.length === 0) return null;
-  const sorted = [...plat].sort((a, b) => {
-    const ma = latestMarkByMarketId.get(a.market_id);
-    const mb = latestMarkByMarketId.get(b.market_id);
-    return (mb?.volume_total_usd ?? 0) - (ma?.volume_total_usd ?? 0);
-  });
-  const market = sorted[0];
-  const mark = latestMarkByMarketId.get(market.market_id);
-  const price = mark?.implied_probability ?? mark?.yes_last_price ?? mark?.mid;
-  return { market, mark, price };
-}
-
-const topKalshi = topMarketByPlatform('kalshi');
-const topPoly = topMarketByPlatform('polymarket');
-
-// Sort each venue's markets by volume (most-traded first) for the venue grid display.
-const sortedMarketsByPlatform: Record<'kalshi' | 'polymarket', Market[]> = {
-  kalshi: [...marketsByPlatform.kalshi].sort((a, b) => {
-    const va = latestMarkByMarketId.get(a.market_id)?.volume_total_usd ?? 0;
-    const vb = latestMarkByMarketId.get(b.market_id)?.volume_total_usd ?? 0;
-    return vb - va;
-  }),
-  polymarket: [...marketsByPlatform.polymarket].sort((a, b) => {
-    const va = latestMarkByMarketId.get(a.market_id)?.volume_total_usd ?? 0;
-    const vb = latestMarkByMarketId.get(b.market_id)?.volume_total_usd ?? 0;
-    return vb - va;
-  }),
-};
-
-// (groupedSources block moved up to before datasetJsonLd declaration to fix TDZ)
-
-// Direct-answer paragraphs — FACTUAL synthesis of THIS event's data (per GEO empirical research,
-// AI engines preferentially cite 40-60 word direct-answer paragraphs under H2 headers).
-// NOT meta-explanation of the product. Source: wiki/concepts/geo-aeo-empirical-findings.md
-function venueMarksSummary(): string {
-  const kCount = marketsByPlatform.kalshi.length;
-  const pCount = marketsByPlatform.polymarket.length;
-  const kVol = marketsByPlatform.kalshi.reduce((a, m) => a + (latestMarkByMarketId.get(m.market_id)?.volume_total_usd ?? 0), 0);
-  const pVol = marketsByPlatform.polymarket.reduce((a, m) => a + (latestMarkByMarketId.get(m.market_id)?.volume_total_usd ?? 0), 0);
-  const resolveDates = Array.from(new Set(markets.map((m) => m.resolve_at ?? m.close_at).filter(Boolean).map((d) => (d as string).slice(0, 10))));
-  const resolveText = resolveDates.length === 1 ? `Resolves ${resolveDates[0]}.` : resolveDates.length > 1 ? `Resolves between ${resolveDates.sort()[0]} and ${resolveDates.sort().slice(-1)[0]}.` : '';
-  if (event.venues_covered.length === 2) {
-    return `Kalshi lists ${kCount} ${kCount === 1 ? 'market' : 'markets'} (cumulative ${formatVol(kVol)}); Polymarket lists ${pCount} ${pCount === 1 ? 'market' : 'markets'} (cumulative ${formatVol(pVol)}). ${resolveText}`;
-  }
-  const v = event.venues_covered[0];
-  const count = v === 'kalshi' ? kCount : pCount;
-  const vol = v === 'kalshi' ? kVol : pVol;
-  return `Listed on ${v} only — ${count} ${count === 1 ? 'market' : 'markets'}, cumulative ${formatVol(vol)}. ${resolveText}`;
-}
-
-function resolutionSummary(): string {
-  if (groupedSources.length === 0) return 'Resolution sources not yet classified.';
-  const mechs = resolutionMechanisms;
-  const namedSources = Array.from(new Set(groupedSources.map((g) => g.source_name).filter(Boolean) as string[]));
-  if (namedSources.length === 0) {
-    return `Mechanism: ${mechs.join(' / ') || '—'}. No specific source named in rules text — markets resolve via discretionary determination.`;
-  }
-  return `Mechanism: ${mechs.join(' / ')}. Named source${namedSources.length > 1 ? 's' : ''}: ${namedSources.slice(0, 3).join('; ')}.`;
-}
-
-// market_structure_note — proposed schema field per redesign brief.
-// Factual synthesis of how each venue STRUCTURES the contract (strike ladder vs discrete outcomes).
-// Generated from data; will become a stored field in v0.2.x.
-function marketStructureNote(): string {
-  const parts: string[] = [];
-  for (const platform of ['kalshi', 'polymarket'] as const) {
-    const plat = marketsByPlatform[platform];
-    if (plat.length === 0) continue;
-    const ladder = isStrikeLadder(platform);
-    if (ladder) {
-      const strikes = plat.map(extractStrike).filter((s): s is number => s !== null).sort((a, b) => a - b);
-      parts.push(`${platform === 'kalshi' ? 'Kalshi' : 'Polymarket'} structures this event as a ${plat.length}-strike ladder` + (strikes.length ? ` (${strikes[0]}% to ${strikes[strikes.length - 1]}%)` : ''));
-    } else {
-      parts.push(`${platform === 'kalshi' ? 'Kalshi' : 'Polymarket'} structures this event as ${plat.length} discrete outcome ${plat.length === 1 ? 'bucket' : 'buckets'}`);
-    }
-  }
-  const resolveDates = Array.from(new Set(markets.map((m) => m.resolve_at ?? m.close_at).filter(Boolean).map((d) => (d as string).slice(0, 10))));
-  const resolveText = resolveDates.length === 1 ? ` Both resolve ${resolveDates[0]}.` : '';
-  return parts.join('. ') + '.' + resolveText;
-}
-
-// resolution_summary — only emit the analytical divergence claim when applicable.
-// The descriptive lead-in (mechanism + source per venue) is dropped — the resolution
-// table directly below already says that. The divergence observation is what the table
-// doesn't say, so it's the only prose that earns its place on the page.
-function resolutionAnalyticalSummary(): string {
-  if (groupedSources.length < 2) return '';
-  const venueSources = new Map<string, string[]>();
-  for (const g of groupedSources) {
-    if (!venueSources.has(g.platform)) venueSources.set(g.platform, []);
-    if (g.source_name) venueSources.get(g.platform)!.push(g.source_name);
-  }
-  const kSources = venueSources.get('kalshi') ?? [];
-  const pSources = venueSources.get('polymarket') ?? [];
-  const kMech = markets.find((m) => m.platform === 'kalshi')?.arbitration_model;
-  const pMech = markets.find((m) => m.platform === 'polymarket')?.arbitration_model;
-  const sourcesDiffer = kSources.length && pSources.length && kSources[0] !== pSources[0];
-  const mechanismsDiffer = kMech && pMech && kMech !== pMech;
-  if (sourcesDiffer || mechanismsDiffer) {
-    return 'Resolution-source divergence across venues is the primary cross-venue resolution risk on this event.';
-  }
-  return '';
+function colorizeJson(obj: unknown): string {
+  return JSON.stringify(obj, null, 2)
+    .replace(/("[^"]+")\s*:/g, '<span class="t-key">$1</span>:')
+    .replace(/: (".*?")/g, ': <span class="t-str">$1</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="t-num">$1</span>');
 }
 ---
-<Site title={`${event.question} · ClearMarket`} description={`Cross-venue reference data for "${event.question}". ${event.venues_covered.join(' + ')}.`} canonical={canonicalURL}>
+<Site title={`${event.question} · ClearMarket (v2)`} description={`Cross-venue reference data for "${event.question}". ${event.venues_covered.join(' + ')}.`} canonical={canonicalURL}>
   <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
 
-  {/* Sub-nav rendered inside Site's sticky chrome, directly under the main header.
-     Order: Markets → Resolution → Catalysts → API. Catalysts now sits below the
-     data it contextualizes; Markets leads because that's the citable claim. */}
-  <nav class="va-subnav" aria-label="Event sections" slot="subnav">
-    <a href="#markets">Markets</a>
-    <a href="#resolution">Resolution</a>
-    {event.catalyst_dates && event.catalyst_dates.length > 0 && <a href="#catalysts">Catalysts</a>}
-    <a href="#api">API</a>
+  <nav class="cm-subnav" aria-label="Event sections" slot="subnav">
+    <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
+    <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>
+    {event.catalyst_dates && event.catalyst_dates.length > 0 && <a href="#catalysts" data-section="catalysts" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Catalysts</a>}
+    <a href="#signal" data-section="signal" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Signal</a>
+    <a href="#api" data-section="api" class="cm-subnav-link"><span class="cm-active-mark">▎</span>API</a>
+    <span class="cm-subnav-snapshot">snapshot <span class={allMarketsResolved ? 'cm-dot-settled' : 'cm-dot-positive'}>●</span> {formatSnapshot(allMarketsResolved && eventResolvedAt ? eventResolvedAt : SPECIMEN_GENERATED_AT)}{allMarketsResolved ? ' (final)' : ''}</span>
   </nav>
 
-  <article class="va-event">
+  <article class="cm-v2" data-cm-event-id={event.event_id} data-cm-slug={event.slug}>
 
-    {/* ===== H1: canonical question (now leads the page) ===== */}
-    <h1 class="va-event-h1">{event.question}</h1>
+    {/* ===== HEADER: divergence chip above H1 (flush via negative margin),
+         resolves inline at end of H1 in same font + size ===== */}
+    {/* Above-H1 badge is reserved for warnings (divergence). State indicators
+        like "resolved" are temporal qualifiers and live inline with the H1 only —
+        cuts duplication without losing the resolved-state signal. */}
+    {hasDivergence && (
+      <div class="cm-headline-meta">
+        <span class="cm-divergence-flag" data-cm-field="resolution_divergence">△ resolution-source divergence</span>
+      </div>
+    )}
+    <h1 class="cm-h1" data-cm-field="question">{event.question}{allMarketsResolved ? (
+      <span class="cm-h1-resolved" data-cm-field="resolved_at">  [ resolved {eventResolvedAt ? formatDate(eventResolvedAt) : '—'} ]</span>
+    ) : (
+      <span class="cm-h1-resolves" data-cm-field="resolve_at">  [ resolves: {formatDate(earliestResolve)}{daysToResolve !== null && daysToResolve >= 0 && ` (${daysToResolve}D)`} ]</span>
+    )}</h1>
 
-    {/* Tags band removed from visible HTML. Tags remain in JSON-LD `keywords` for
-       structured-data consumers. The H1 + category in the meta grid carry the topic
-       context humans need. */}
-
-    {/* ===== META GRID: stacked label-value pairs.
-         4 rows × 2 column-pairs. Reads as a Bloomberg-shape stat block, not a wrapping
-         run-on sentence. Replaces the prior inline summary strip. ===== */}
-    <div class="va-meta-grid">
-      <span class="va-meta-label">event</span>
-      <code class="va-meta-val va-meta-eventid">{event.event_id}</code>
-      <span class="va-meta-label">vol (cumulative)</span>
-      <span class="va-meta-val"><span class="num">{formatVol(summaryMetrics.cumulative)}</span></span>
-
-      <span class="va-meta-label">venues</span>
-      <span class="va-meta-val">{event.venues_covered.join(', ')}</span>
-      <span class="va-meta-label">vol (24h)</span>
-      <span class="va-meta-val"><span class="num">{formatVol(summaryMetrics.day)}</span></span>
-
-      <span class="va-meta-label">markets</span>
-      <span class="va-meta-val"><span class="num">{summaryMetrics.totalMarkets}</span></span>
-      <span class="va-meta-label">resolves</span>
-      <span class="va-meta-val">
-        <span class="num">{summaryMetrics.earliestResolve ?? '—'}</span>
-        {summaryMetrics.daysToResolve !== null && summaryMetrics.daysToResolve >= 0 && (
-          <span class="va-meta-tail"> ({summaryMetrics.daysToResolve} {summaryMetrics.daysToResolve === 1 ? 'day' : 'days'})</span>
-        )}
+    {/* ===== META HORIZON STRIP — 28px low-contrast tracking layer, no card frame =====
+         Bloomberg/Eikon pattern: labels lowercase + muted, values uppercase + mono.
+         Middle-dot separators inside clusters; clusters separated by vertical hairlines.
+         No card boundary — ambient context, not a competing surface. ===== */}
+    <div class="cm-horizon">
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">event:</span>
+        <span class="cm-horizon-value" data-cm-field="event_id">{event.event_id}</span>
       </span>
-
-      <span class="va-meta-label">category</span>
-      <span class="va-meta-val">{event.category}</span>
-      <span class="va-meta-label">snapshot</span>
-      <span class="va-meta-val va-meta-snapshot">
-        <span class="va-schema-dot" aria-hidden="true"></span>
-        {formatSnapshot(SPECIMEN_GENERATED_AT)}
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">type:</span>
+        <span class="cm-horizon-value" data-cm-field="category">{event.category}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">venues:</span>
+        <span class="cm-horizon-value" data-cm-field="venues_covered">{event.venues_covered.join(', ')}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">markets:</span>
+        <span class="cm-horizon-value" data-cm-field="market_count">{markets.length}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">cum vol:</span>
+        <span class="cm-horizon-value" data-cm-field="volume_total_usd">{formatVol(cumulativeVol)}</span>
+      </span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token">
+        <span class="cm-horizon-label">{allMarketsResolved ? 'final:' : '24h vol:'}</span>
+        <span class="cm-horizon-value" data-cm-field="volume_24h_usd">{allMarketsResolved ? 'settled' : formatVol(dayVol)}</span>
       </span>
     </div>
 
-    {/* Sub-nav moved to Site.astro slot — see below in the Site wrapper. */}
+    {/* ===== OUTCOME STRIP — resolved-state only. Plain-language answer to the
+         event question, sits between meta strip and Editorial Brief. Carries
+         the "what happened" load that the H1 chip can't communicate in 1-2
+         tokens for multi-outcome events. ===== */}
+    {allMarketsResolved && event.resolution_headline && (
+      <div class="cm-outcome-strip" data-cm-field="resolution_headline">
+        <span class="cm-outcome-label">outcome</span>
+        <span class="cm-outcome-arrow">▸</span>
+        <span class="cm-outcome-text">{event.resolution_headline}</span>
+      </div>
+    )}
 
-    {/* Catalyst Calendar moved BELOW Resolution Architecture (see further down).
-       Per GEO research: front-load citable claims (cross-venue prices + RCG asymmetry).
-       Catalysts are temporal context — they support the data, they don't precede it.
-       The summary strip above already shows "resolves Apr 29 (4 days)" as the temporal anchor. */}
+    {/* ===== EDITORIAL CALLOUT — full-width Marconi-shape bullets ===== */}
+    {event.editorial_notes && (
+      <section class="cm-editorial-callout" data-cm-field="editorial_notes" data-cm-provenance="clearmarket_editorial">
+        <div class="cm-callout-label">editorial brief <span class="cm-callout-tag">| intel</span></div>
+        <ul class="cm-editorial-bullets">
+          {event.editorial_notes
+            .split(/(?<=\.)\s+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+            .map((sentence) => <li>{sentence}</li>)}
+        </ul>
+      </section>
+    )}
 
-    {/* ===== PRIMARY MARKETS: one atomic claim per venue, leading the data section ===== */}
+    {/* ===== PRIMARY MARKETS: compact 2-row summary table (replaces card hero) ===== */}
     {(topKalshi || topPoly) && (
-      <section id="markets" class="va-section">
-        <div class="va-section-h">primary market{(topKalshi && topPoly) ? 's' : ''} · most-traded contract per venue</div>
-        <div class={`va-primary-grid ${(topKalshi && topPoly) ? 'va-primary-2col' : 'va-primary-1col'}`}>
-          {topKalshi && (() => {
-            const ktid = truncateVenueId(topKalshi.market.platform_market_id);
-            const kclarity = resolutionClarity(topKalshi.market);
-            return (
-              <div class="va-primary-card">
-                <div class="va-primary-head">
-                  <span class="va-primary-venue">kalshi</span>
-                  <span class="va-primary-vol"><span class="va-meta-l">cumulative</span> <span class="num">{formatVol(topKalshi.mark?.volume_total_usd)}</span></span>
-                </div>
-                <div class="va-primary-hero">
-                  <span class="va-primary-price-label">P(YES)</span>
-                  <span class="va-primary-price">{formatPrice(topKalshi.price)}</span>
-                </div>
-                <div class="va-primary-q">{topKalshi.market.question_raw ?? '—'}</div>
-                <div class="va-primary-meta">
-                  <span><span class="va-meta-l">24h</span> <span class="num">{formatVol(topKalshi.mark?.volume_24h_usd)}</span></span>
-                  <span><span class="va-meta-l">resolves</span> {formatDate(topKalshi.market.resolve_at ?? topKalshi.market.close_at)}</span>
-                  <span><span class="va-meta-l">RCG</span> <a class="va-clarity-chip" href="/methodology#resolution-clarity" title="Resolution Clarity Grade (A–C). See methodology.">{kclarity}</a></span>
-                  <span><span class="va-meta-l">venue id</span> <code class="va-meta-code" title={ktid.full}>{ktid.display}</code></span>
-                </div>
-              </div>
-            );
-          })()}
-          {topPoly && (() => {
-            const ptid = truncateVenueId(topPoly.market.platform_market_id);
-            const pclarity = resolutionClarity(topPoly.market);
-            return (
-              <div class="va-primary-card">
-                <div class="va-primary-head">
-                  <span class="va-primary-venue">polymarket</span>
-                  <span class="va-primary-vol"><span class="va-meta-l">cumulative</span> <span class="num">{formatVol(topPoly.mark?.volume_total_usd)}</span></span>
-                </div>
-                <div class="va-primary-hero">
-                  <span class="va-primary-price-label">P(YES)</span>
-                  <span class="va-primary-price">{formatPrice(topPoly.price)}</span>
-                </div>
-                <div class="va-primary-q">{topPoly.market.question_raw ?? '—'}</div>
-                <div class="va-primary-meta">
-                  <span><span class="va-meta-l">24h</span> <span class="num">{formatVol(topPoly.mark?.volume_24h_usd)}</span></span>
-                  <span><span class="va-meta-l">resolves</span> {formatDate(topPoly.market.resolve_at ?? topPoly.market.close_at)}</span>
-                  <span><span class="va-meta-l">RCG</span> <a class="va-clarity-chip" href="/methodology#resolution-clarity" title="Resolution Clarity Grade (A–C). See methodology.">{pclarity}</a></span>
-                  <span><span class="va-meta-l">venue id</span> <code class="va-meta-code" title={ptid.full}>{ptid.display}</code></span>
-                </div>
-              </div>
-            );
-          })()}
+      <section id="markets" class="cm-section">
+        <div class="cm-section-h">most traded · 24h</div>
+        <div class="cm-table-wrap">
+          <table class="cm-primary-table">
+            <colgroup>
+              <col style="width: 12%" />
+              <col style="width: 8%" />
+              <col style="width: 40%" />
+              <col style="width: 11%" />
+              <col style="width: 13%" />
+              <col style="width: 16%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">venue</th>
+                <th scope="col" class="cm-th-num">P(YES)</th>
+                <th scope="col">top contract</th>
+                <th scope="col" class="cm-th-num">vol (24h)</th>
+                <th scope="col" class="cm-th-num">vol (cum)</th>
+                <th scope="col">venue id</th>
+              </tr>
+            </thead>
+            <tbody>
+              {topKalshi && (
+                <tr data-cm-venue="kalshi">
+                  <td class="cm-td-venue">kalshi</td>
+                  <td class="cm-td-num cm-td-p-emphasis" data-cm-field="implied_probability">{formatPrice(topKalshi.price)}</td>
+                  <td class="cm-td-top-contract">
+                    <span class="cm-q-text" data-cm-field="question_raw">{topKalshi.market.question_raw ?? '—'}</span>
+                  </td>
+                  <td class="cm-td-num" data-cm-field="volume_24h_usd">{formatVol(topKalshi.mark?.volume_24h_usd)}</td>
+                  <td class="cm-td-num" data-cm-field="volume_total_usd">{formatVol(topKalshi.mark?.volume_total_usd)}</td>
+                  <td class="cm-td-id" data-cm-field="platform_market_id">
+                    <code class="cm-mono-id cm-copy" data-copy={topKalshi.market.platform_market_id} data-venue-url={venueMarketUrl(topKalshi.market) ?? ''} aria-label={`${topKalshi.market.platform_market_id} — click to copy, shift-click to open on venue`}>{truncateVenueId(topKalshi.market.platform_market_id).display}</code>
+                  </td>
+                </tr>
+              )}
+              {topPoly && (
+                <tr data-cm-venue="polymarket">
+                  <td class="cm-td-venue">polymarket</td>
+                  <td class="cm-td-num cm-td-p-emphasis" data-cm-field="implied_probability">{formatPrice(topPoly.price)}</td>
+                  <td class="cm-td-top-contract">
+                    <span class="cm-q-text" data-cm-field="question_raw">{topPoly.market.question_raw ?? '—'}</span>
+                  </td>
+                  <td class="cm-td-num" data-cm-field="volume_24h_usd">{formatVol(topPoly.mark?.volume_24h_usd)}</td>
+                  <td class="cm-td-num" data-cm-field="volume_total_usd">{formatVol(topPoly.mark?.volume_total_usd)}</td>
+                  <td class="cm-td-id" data-cm-field="platform_market_id">
+                    <code class="cm-mono-id cm-copy" data-copy={topPoly.market.platform_market_id} data-venue-url={venueMarketUrl(topPoly.market) ?? ''} aria-label={`${topPoly.market.platform_market_id} — click to copy, shift-click to open on venue`}>{truncateVenueId(topPoly.market.platform_market_id).display}</code>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
     )}
 
-    {/* ===== ALL MARKETS: two tables sharing the same primitive. Resolution column dropped
-         (constant per venue, dead weight — full resolution data lives in the Resolution
-         section directly below). Kalshi-as-ladder shows strikes; Polymarket shows question. ===== */}
-    <section class="va-section">
-      <div class="va-section-h">all markets · venue-grouped</div>
-      <p class="va-section-summary">{structureNote}</p>
-      {(['kalshi', 'polymarket'] as const).filter((p) => event.venues_covered.includes(p) || marketsByPlatform[p].length > 0).map((platform) => {
+    {/* ===== ALL MARKETS: venue-grouped, with magnitude bars ===== */}
+    <section class="cm-section">
+      <div class="cm-section-h">all markets · venue-grouped</div>
+      {structureNote && <p class="cm-section-summary">{structureNote}</p>}
+
+      {(['kalshi', 'polymarket'] as const).filter((p) => marketsByPlatform[p].length > 0).map((platform) => {
         const isLadder = platform === 'kalshi' ? kalshiIsLadder : polyIsLadder;
-        const platformMarkets = isLadder
-          ? [...marketsByPlatform[platform]].sort((a, b) => (extractStrike(a) ?? 0) - (extractStrike(b) ?? 0))
-          : sortedMarketsByPlatform[platform];
-        const sortLabel = isLadder ? 'sorted by strike ascending' : 'sorted by cumulative volume';
-        const captionText = `${platform} · ${platformMarkets.length} ${isLadder ? 'strike contracts' : 'discrete outcomes'} · ${sortLabel}`;
+        const isOptionChain = !isLadder && isOptionChainShape(marketsByPlatform[platform]);
+        const platformMarkets = sortMarkets(marketsByPlatform[platform], isLadder);
+        const sortLabel = isLadder
+          ? 'sorted by strike ascending'
+          : (isOptionChain ? 'sorted by strike ascending' : 'sorted by cumulative volume');
+        const maxVol = platform === 'kalshi' ? maxVolKalshi : maxVolPoly;
+        const maxProb = platform === 'kalshi' ? maxProbKalshi : maxProbPoly;
+        const showBars = platformMarkets.length >= 3 && maxVol > 0;
         return (
-          <div class="va-venue-block">
-            <div class="va-venue-block-head">
-              <span class="va-venue-block-name">{platform}</span>
-              <span class="va-venue-block-count">{platformMarkets.length} {isLadder ? 'strike contracts' : (platformMarkets.length === 1 ? 'outcome' : 'discrete outcomes')} · {sortLabel}</span>
+          <div class="cm-venue-block" data-cm-venue={platform}>
+            <div class="cm-venue-block-head">
+              <span class="cm-venue-block-name">{platform}</span>
+              <span class="cm-venue-block-count">{platformMarkets.length} {isLadder ? 'strike contracts' : (platformMarkets.length === 1 ? 'outcome' : 'discrete outcomes')} · {sortLabel}</span>
             </div>
-            <div class="va-table-wrap">
-              <table class={`va-mkt-table ${isLadder ? 'va-mkt-table-ladder' : 'va-mkt-table-discrete'}`}>
-                <caption class="va-sr-only">{captionText}</caption>
-                {/* Define column widths ONCE via colgroup. Browser inherits to both thead
-                   and tbody — guarantees alignment, fixes the prior drift issue. */}
+            <div class="cm-venue-block-axis" data-cm-field="event_axis">
+              <span class="cm-venue-block-axis-q">{event.question}</span>
+            </div>
+            <div class="cm-table-wrap">
+              <table class={`cm-mkt-table ${isLadder ? 'cm-mkt-table-ladder' : 'cm-mkt-table-discrete'}`}>
                 <colgroup>
-                  {isLadder ? <col class="va-col-strike" /> : <col class="va-col-q" />}
-                  <col class="va-col-p" />
-                  <col class="va-col-vol" />
-                  <col class="va-col-vol" />
-                  <col class="va-col-spread" />
-                  <col class="va-col-spread" />
-                  <col class="va-col-clarity" />
-                  <col class="va-col-id" />
+                  {/* Unified column widths across ladder + discrete tables for cross-venue alignment.
+                      Strike values (Kalshi) get whitespace; Polymarket question text uses line-clamp. */}
+                  {[22, 7, 7, 9, 10, 7, 8, 8, 7, 15].map((w) => <col style={`width: ${w}%`} />)}
                 </colgroup>
                 <thead>
                   <tr>
-                    {isLadder ? (
-                      <th scope="col" class="va-mkt-th-strike">strike</th>
-                    ) : (
-                      <th scope="col" class="va-mkt-th-q">question</th>
-                    )}
-                    <th scope="col" class="va-mkt-th-p">P(YES)</th>
-                    <th scope="col" class="va-mkt-th-vol">cumulative</th>
-                    <th scope="col" class="va-mkt-th-vol">24h</th>
-                    <th scope="col" class="va-mkt-th-spread" title="Bid-ask spread on YES (yes_ask − yes_bid)">yes spread</th>
-                    <th scope="col" class="va-mkt-th-spread" title="Bid-ask spread on NO (no_ask − no_bid). Sparse on Polymarket — API doesn't always populate NO sides.">no spread</th>
-                    <th scope="col" class="va-mkt-th-clarity" title="Resolution Clarity Grade (A–C). See methodology.">RCG</th>
-                    <th scope="col" class="va-mkt-th-id">venue id</th>
+                    <th scope="col" class={`${isLadder ? 'cm-th-strike' : 'cm-th-q'} cm-th-reset`} data-sort-reset title="Click to reset to default sort">market</th>
+                    <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="implied_probability">P(YES)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-bar" aria-label="P(YES) distribution"></th>
+                    <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="volume_24h_usd">vol (24h)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="volume_total_usd">vol (cum)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-bar" aria-label="cumulative volume distribution"></th>
+                    <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="yes_spread">yes spread<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="no_spread">no spread<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-rcg cm-th-sortable" data-sort-key="resolution_clarity">RCG<span class="cm-sort-icon" aria-hidden="true"></span></th>
+                    <th scope="col" class="cm-th-id">venue id</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {platformMarkets.map((m) => {
+                  {platformMarkets.map((m, rowIdx) => {
                     const mark = latestMarkByMarketId.get(m.market_id);
                     const price = mark?.implied_probability ?? mark?.yes_last_price ?? mark?.mid;
+                    const volRaw = mark?.volume_total_usd;
+                    const vol24h = mark?.volume_24h_usd;
+                    const volForBar = volRaw ?? 0;
+                    const volBarPct = showBars && maxVol > 0 ? Math.min(100, Math.sqrt(volForBar / maxVol) * 100) : 0;
+                    const probForBar = price ?? 0;
+                    const probBarPct = showBars && maxProb > 0 ? Math.min(100, (probForBar / maxProb) * 100) : 0;
+                    const rowResolved = m.status === 'resolved' || m.status === 'amended';
                     const strike = extractStrike(m);
+                    const labelInfo = extractMarketLabel(m.question_raw);
                     const tid = truncateVenueId(m.platform_market_id);
                     const clarity = resolutionClarity(m);
+                    const yesSpread = (mark?.yes_bid != null && mark?.yes_ask != null) ? (mark.yes_ask - mark.yes_bid) * 100 : null;
+                    const noSpread = (mark?.no_bid != null && mark?.no_ask != null) ? (mark.no_ask - mark.no_bid) * 100 : null;
+                    const rcgRank = clarity === 'A' ? 1 : clarity === 'B' ? 2 : 3;
                     return (
-                      <tr>
-                        {isLadder ? (
-                          <td class="va-mkt-td-strike">{strike !== null ? `${strike.toFixed(2)}%` : '—'}</td>
-                        ) : (
-                          <td class="va-mkt-td-q">{m.question_raw ?? '—'}</td>
-                        )}
-                        <td class="va-mkt-td-p"><span class="num">{formatPrice(price)}</span></td>
-                        <td class="va-mkt-td-vol"><span class="num">{formatVol(mark?.volume_total_usd)}</span></td>
-                        <td class="va-mkt-td-vol"><span class="num">{formatVol(mark?.volume_24h_usd)}</span></td>
-                        <td class="va-mkt-td-spread"><span class="num">{spreadCents(mark?.yes_bid, mark?.yes_ask)}</span></td>
-                        <td class="va-mkt-td-spread"><span class="num">{spreadCents(mark?.no_bid, mark?.no_ask)}</span></td>
-                        <td class="va-mkt-td-clarity"><a class="va-clarity-chip" href="/methodology#resolution-clarity" title="Resolution Clarity Grade (A–C). See methodology.">{clarity}</a></td>
-                        <td class="va-mkt-td-id"><code class="va-meta-code" title={tid.full}>{tid.display}</code></td>
+                      <tr data-original-index={rowIdx}>
+                        {isLadder
+                          ? <td class="cm-td-strike" data-cm-field="strike"><span class="cm-td-label-text">{strike !== null ? `${strike.toFixed(2)}%` : '—'}</span>{rowResolved && <span class="cm-row-resolved" data-cm-field="status">resolved</span>}</td>
+                          : <td class={labelInfo.type === 'fulltext' ? 'cm-td-q' : 'cm-td-q cm-td-q-range'} data-cm-field="question_raw" data-cm-label-type={labelInfo.type} title={m.question_raw ?? undefined}><span class="cm-td-label-text">{labelInfo.label}</span>{rowResolved && <span class="cm-row-resolved" data-cm-field="status">resolved</span>}</td>}
+                        <td class="cm-td-num cm-td-p" data-cm-field="implied_probability" data-sort-value={price ?? ''}><span class="cm-num">{formatPrice(price)}</span></td>
+                        <td class="cm-td-bar" data-cm-field="implied_probability_bar">
+                          {showBars && price !== null && price !== undefined && (
+                            <div class="cm-bar-track">
+                              <div class="cm-bar-fill cm-bar-prob" style={`width:${probBarPct}%`}></div>
+                            </div>
+                          )}
+                        </td>
+                        <td class="cm-td-num" data-cm-field="volume_24h_usd" data-sort-value={vol24h ?? ''}><span class="cm-num">{formatVol(vol24h)}</span></td>
+                        <td class="cm-td-num" data-cm-field="volume_total_usd" data-sort-value={volRaw ?? ''}><span class="cm-num">{formatVol(volRaw)}</span></td>
+                        <td class="cm-td-bar" data-cm-field="volume_total_usd_bar">
+                          {showBars && volRaw !== null && volRaw !== undefined && (
+                            <div class="cm-bar-track">
+                              <div class="cm-bar-fill cm-bar-vol" style={`width:${volBarPct}%`}></div>
+                            </div>
+                          )}
+                        </td>
+                        <td class="cm-td-num" data-cm-field="yes_spread" data-sort-value={yesSpread ?? ''}><span class="cm-num">{rowResolved ? '—' : spreadCents(mark?.yes_bid, mark?.yes_ask)}</span></td>
+                        <td class="cm-td-num" data-cm-field="no_spread" data-sort-value={noSpread ?? ''}><span class="cm-num">{rowResolved ? '—' : spreadCents(mark?.no_bid, mark?.no_ask)}</span></td>
+                        <td class="cm-td-rcg" data-cm-field="resolution_clarity" data-sort-value={rcgRank}><a href="#resolution" class={`cm-rcg-chip cm-rcg-${clarity.toLowerCase()} cm-tt`} data-tt={`${RCG_TOOLTIPS[clarity]} Click to see source.`} aria-label={`${RCG_TOOLTIPS[clarity]} Click to see source.`}>{clarity}</a></td>
+                        <td class="cm-td-id" data-cm-field="platform_market_id"><code class="cm-mono-id cm-copy" data-copy={tid.full} data-venue-url={venueMarketUrl(m) ?? ''} aria-label={`${tid.full} — click to copy, shift-click to open on venue`}>{tid.display}</code></td>
                       </tr>
                     );
                   })}
@@ -731,23 +739,20 @@ function resolutionAnalyticalSummary(): string {
       })}
     </section>
 
-    {/* ===== RESOLUTION: unified table per redesign brief.
-         One row per venue tying mechanism + proposer + named source + URL + markets governed.
-         Section sits immediately after All Markets per amendment brief — governance belongs
-         adjacent to the markets it governs. ===== */}
-    <section id="resolution" class="va-section">
-      <div class="va-section-h">resolution architecture</div>
-      {resolutionNote && <p class="va-section-summary">{resolutionNote}</p>}
-      <table class="va-resolution-table">
+    {/* ===== RESOLUTION ARCHITECTURE: full-width ===== */}
+    <section id="resolution" class="cm-section">
+      <div class="cm-section-h">resolution architecture</div>
+      <table class="cm-res-table">
         <thead>
           <tr>
             <th scope="col">venue</th>
-            <th scope="col">mechanism</th>
-            <th scope="col">proposer model</th>
-            <th scope="col">named source</th>
-            <th scope="col">url</th>
-            <th scope="col" class="va-res-th-clarity" title="Resolution Clarity Grade distribution across this venue's markets on this event (per-market grades aggregated). See methodology.">RCG dist.</th>
-            <th scope="col" class="va-res-th-count">markets</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="Who proposes the resolution answer. platform_staff: exchange employees. managed_whitelist: approved oracle proposers.">resolution proposer</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="The platform's verbatim resolution source string (in quotes).">resolution source</th>
+            <th scope="col">citation</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="Objectivity classification of the source. gov_stat_agency / central_bank / regulated_data_vendor: hard reference. media_consensus / subjective: judgment required.">source type</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="Dispute-resolution path. kalshi_staff: internal review with CFTC backstop. uma_oracle: on-chain token-holder vote. platform_auto: no dispute mechanism.">arbitration</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="Regulatory class. DCM: CFTC-regulated Designated Contract Market. DeFi: token-vote-arbitrated decentralized protocol.">class</th>
+            <th scope="col" class="cm-tt cm-th-help" data-tt="Operational notes — edge cases, dispute risks, time cutoffs. Auto-populated from resolution_triggers when available; otherwise a per-venue fallback.">analyst notes</th>
           </tr>
         </thead>
         <tbody>
@@ -755,1344 +760,2097 @@ function resolutionAnalyticalSummary(): string {
             const venueMarkets = marketsByPlatform[platform];
             const mech = venueMarkets[0]?.arbitration_model;
             const prop = venueMarkets[0]?.resolution_proposer;
-            const vdist = venueClarityDistribution(platform);
+            const venueClassRaw = venueMarkets[0]?.regulatory_class ?? 'Other';
             const venueGroupedSources = groupedSources.filter((g) => g.platform === platform);
             return venueGroupedSources.length > 0
               ? venueGroupedSources.map((g, idx) => (
-                  <tr>
-                    <td class="va-res-td-venue">{idx === 0 ? platform : ''}</td>
-                    <td class="va-res-td-mech">{idx === 0 && mech ? <code class="va-code-pill-sm">{mech}</code> : '—'}</td>
-                    <td class="va-res-td-prop">{idx === 0 && prop ? <code class="va-code-pill-sm">{prop}</code> : '—'}</td>
-                    <td class="va-res-td-src">{g.source_name ?? <span class="va-dd-empty">no specific source</span>}</td>
-                    <td class="va-res-td-url">
-                      {g.source_url
-                        ? <a href={g.source_url} rel="noopener nofollow">link</a>
-                        : <span class="va-dd-empty">—</span>}
-                    </td>
-                    <td class="va-res-td-clarity">{idx === 0 ? <code class="va-clarity-dist">{formatClarityDistribution(vdist)}</code> : ''}</td>
-                    <td class="va-res-td-count"><span class="num">{g.market_count}</span></td>
+                  <tr data-cm-venue={platform}>
+                    <td class="cm-res-td-venue" data-cm-field="platform">{idx === 0 ? platform : ''}</td>
+                    <td data-cm-field="resolution_proposer">{idx === 0 && prop ? <code class="cm-code-pill">{prop}</code> : '—'}</td>
+                    <td class="cm-res-td-src" data-cm-field="resolution_source">{g.source_name ? <span class="cm-verbatim">“{g.source_name}”</span> : <span class="cm-dd-empty">no specific source</span>}</td>
+                    <td data-cm-field="source_citation">{g.source_url ? <a href={g.source_url} rel="noopener nofollow">link</a> : <span class="cm-dd-empty">—</span>}</td>
+                    <td data-cm-field="source_type">{g.source_type ? <code class="cm-code-pill">{g.source_type}</code> : <span class="cm-dd-empty">—</span>}</td>
+                    <td data-cm-field="arbitration_model">{idx === 0 && mech ? <code class="cm-code-pill">{mech}</code> : '—'}</td>
+                    <td data-cm-field="regulatory_class">{idx === 0 ? <code class={`cm-class-chip cm-class-${venueClassRaw.toLowerCase()}`}>{venueClassRaw}</code> : ''}</td>
+                    <td class="cm-res-td-notes" data-cm-field="analyst_notes">{g.analyst_notes ?? <span class="cm-dd-empty">—</span>}</td>
                   </tr>
                 ))
               : (
                 <tr>
-                  <td class="va-res-td-venue">{platform}</td>
-                  <td class="va-res-td-mech">{mech ? <code class="va-code-pill-sm">{mech}</code> : '—'}</td>
-                  <td class="va-res-td-prop">{prop ? <code class="va-code-pill-sm">{prop}</code> : '—'}</td>
-                  <td class="va-res-td-src"><span class="va-dd-empty">no specific source</span></td>
-                  <td class="va-res-td-url"><span class="va-dd-empty">—</span></td>
-                  <td class="va-res-td-clarity"><code class="va-clarity-dist">{formatClarityDistribution(vdist)}</code></td>
-                  <td class="va-res-td-count"><span class="num">{venueMarkets.length}</span></td>
+                  <td class="cm-res-td-venue">{platform}</td>
+                  <td>{prop ? <code class="cm-code-pill">{prop}</code> : '—'}</td>
+                  <td><span class="cm-dd-empty">no specific source</span></td>
+                  <td><span class="cm-dd-empty">—</span></td>
+                  <td><span class="cm-dd-empty">—</span></td>
+                  <td>{mech ? <code class="cm-code-pill">{mech}</code> : '—'}</td>
+                  <td><code class={`cm-class-chip cm-class-${venueClassRaw.toLowerCase()}`}>{venueClassRaw}</code></td>
+                  <td class="cm-res-td-notes">{venueMarkets[0]?.analyst_notes ?? <span class="cm-dd-empty">—</span>}</td>
                 </tr>
               );
           })}
         </tbody>
       </table>
+
+      {/* Resolution rules verbatim — ONE block per venue. Most events use a templated rules
+          string with per-market variables (price ranges, dates) — showing 27 near-identical
+          blocks would be unreadable. Reader gets the canonical language; per-market specifics
+          are in the JSON record. */}
+      <div class="cm-res-rules">
+        <div class="cm-res-rules-h">resolution rules · verbatim</div>
+        {(['kalshi', 'polymarket'] as const).filter((p) => marketsByPlatform[p].length > 0).map((platform) => {
+          const venueMarkets = marketsByPlatform[platform];
+          const firstMarket = venueMarkets[0];
+          const rulesText = firstMarket?.resolution_rules_raw ?? null;
+          const allShareSame = venueMarkets.every((m) => m.resolution_rules_raw === rulesText);
+          const countLabel = venueMarkets.length === 1
+            ? '1 market'
+            : allShareSame
+              ? `all ${venueMarkets.length} markets share this text`
+              : `representative — ${venueMarkets.length} markets, language varies per market (see API record for full per-market text)`;
+          // Right-pane real metadata (no invented values)
+          const settleCurrency = firstMarket?.settlement_currency ?? null;
+          const tickSize = firstMarket?.tick_size ?? null;
+          const underlyingRef = firstMarket?.underlying_reference ?? null;
+          const termsUrl = firstMarket?.contract_terms_url ?? null;
+          return (
+            <div class="cm-res-rules-block" data-cm-venue={platform}>
+              <div class="cm-res-rules-venue">
+                <span class="cm-res-rules-venue-name">{platform}</span>
+                <span class="cm-res-rules-venue-count">{countLabel}</span>
+              </div>
+              <div class="cm-res-rules-ribbon">
+                <div class="cm-res-rules-ribbon-cell"><span class="cm-res-rules-ribbon-k">markets</span><span class="cm-res-rules-ribbon-v">{venueMarkets.length}</span></div>
+                {settleCurrency && (
+                  <div class="cm-res-rules-ribbon-cell"><span class="cm-res-rules-ribbon-k">currency</span><span class="cm-res-rules-ribbon-v">{settleCurrency}</span></div>
+                )}
+                {tickSize !== null && tickSize !== undefined && (
+                  <div class="cm-res-rules-ribbon-cell"><span class="cm-res-rules-ribbon-k">tick size</span><span class="cm-res-rules-ribbon-v">${tickSize}</span></div>
+                )}
+                {termsUrl && (
+                  <div class="cm-res-rules-ribbon-cell"><span class="cm-res-rules-ribbon-k">rulebook</span><a href={termsUrl} rel="noopener nofollow" class="cm-res-rules-ribbon-link">link</a></div>
+                )}
+              </div>
+              {underlyingRef && (
+                <div class="cm-res-rules-underlying" data-cm-field="underlying_reference">
+                  <span class="cm-res-rules-underlying-k">underlying ref</span>
+                  <span class="cm-res-rules-underlying-v">{underlyingRef}</span>
+                </div>
+              )}
+              {!rulesText
+                ? <div class="cm-res-rules-text cm-res-rules-empty">No resolution rules captured for this venue's markets.</div>
+                : (
+                    <details class="cm-res-rules-details" open>
+                      <summary class="cm-res-rules-summary">
+                        <span class="cm-res-rules-arrow" aria-hidden="true">▶</span>
+                        <span>full verbatim contract language</span>
+                      </summary>
+                      <div class="cm-res-rules-text" data-cm-field="resolution_rules_raw">{rulesText}</div>
+                    </details>
+                  )
+              }
+            </div>
+          );
+        })}
+      </div>
     </section>
 
-    {/* Catalyst Calendar moved above Primary Markets per amendment 2.
-       Standalone Provenance section removed per first amendment. */}
-
-    {/* ===== CATALYST CALENDAR — sits after Resolution Architecture.
-         Temporal context that supports the data above, doesn't precede it.
-         Summary strip already carries "resolves Apr 29 (4 days)" as the headline anchor. ===== */}
+    {/* ===== CATALYST CALENDAR: full-width ===== */}
     {event.catalyst_dates && event.catalyst_dates.length > 0 && (
-      <section id="catalysts" class="va-section">
-        <div class="va-section-h">catalyst calendar</div>
-        <ul class="va-catalyst-list">
-          {event.catalyst_dates.map((c) => (
-            <li>
-              <span class="va-catalyst-date">{c.date}</span>
-              <span class="va-catalyst-event">{c.event}</span>
-            </li>
-          ))}
-        </ul>
+      <section id="catalysts" class="cm-section">
+        <div class="cm-section-h">catalyst calendar</div>
+        <div class="cm-catalyst-grid" data-cm-field="catalyst_dates">
+          <div class="cm-catalyst-head">
+            <div>DTE</div>
+            <div>DATE</div>
+            <div>EVENT TRACKER</div>
+            <div>SOURCE / VERIFIED</div>
+            <div>TYPE</div>
+          </div>
+          {event.catalyst_dates.map((c) => {
+            const dt = new Date(c.date);
+            const refIso = allMarketsResolved && eventResolvedAt ? eventResolvedAt : SPECIMEN_GENERATED_AT;
+            const ref = new Date(refIso);
+            const dDays = Math.ceil((dt.getTime() - ref.getTime()) / (1000 * 60 * 60 * 24));
+            const delta = catalystDelta(dDays);
+            const csource = c.source_url ?? null;
+            const cverified = c.verified_at ?? null;
+            const ctype = c.type ?? null;
+            const sourceHost = csource ? csource.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] : null;
+            // Display-friendly type label — canonical uppercase, drop underscores. No TS generic syntax.
+            // Canonical 11-type enum per CM PRD §5.5
+            const typeLabelMap = {
+              fomc: 'FOMC',
+              cpi: 'CPI',
+              jobs: 'JOBS',
+              gdp: 'GDP',
+              treasury_auction: 'TREASURY',
+              scotus: 'SCOTUS',
+              us_election: 'US ELECTION',
+              corporate_earnings: 'EARNINGS',
+              fda_action: 'FDA',
+              one_off: 'ONE OFF',
+              evolving: 'EVOLVING',
+              none: 'NONE',
+            } as const;
+            const ctypeLabel = ctype ? ((typeLabelMap as any)[ctype] ?? ctype.replace(/_/g, ' ').toUpperCase()) : null;
+            const isPast = dDays < 0;
+            return (
+              <div class={`cm-catalyst-grid-row${isPast ? ' cm-catalyst-past' : ''}`}>
+                <div class="cm-catalyst-dte">[{delta.replace('in ', '+').replace(' ago', '').replace(/(\d+)d\b/g, '$1D').toUpperCase()}]</div>
+                <div class="cm-catalyst-date">{c.date}</div>
+                <div class="cm-catalyst-event-col">
+                  <div class="cm-catalyst-event-title">{c.event}</div>
+                </div>
+                <div class="cm-catalyst-meta-col">
+                  {csource && (
+                    <a class="cm-catalyst-source" href={csource} rel="noopener nofollow" data-cm-field="source_url">{sourceHost}</a>
+                  )}
+                  {cverified && (
+                    <div class="cm-catalyst-verified" data-cm-field="verified_at">verified {cverified.slice(0, 10)}</div>
+                  )}
+                </div>
+                <div class="cm-catalyst-type-col">
+                  {ctypeLabel ? <span class="cm-catalyst-type-chip" data-cm-field="type" title={ctype ?? ''}>{ctypeLabel}</span> : <span class="cm-dd-empty">—</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
     )}
 
-    {/* ===== DISCOVERY LOOP: recent CM Signal wire items ===== */}
-    <section id="signal" class="va-section">
-      <div class="va-section-h">recent <span class="va-mark-inline">SIGNAL</span> wire items</div>
+    {/* ===== RECENT CM SIGNAL — three-state render: primary / adjacent / threshold-explainer ===== */}
+    <section id="signal" class="cm-section">
+      <div class="cm-section-h">recent wire items</div>
       {linkedSignals.length === 0 ? (
-        <p class="va-empty-note">no CM Signal coverage of this event yet.</p>
+        <>
+          {/* STATE 3 — threshold explainer. Active for events that don't cross detection thresholds.
+              Two-tier presentation: status header → three bracketed bucket metrics → footer cycle reference. */}
+          <div class="cm-signal-state3">
+            <div class="cm-signal-state3-head">
+              <span class="cm-signal-state3-status">monitoring status: active</span>
+              <span class="cm-signal-state3-tag">no active wire</span>
+            </div>
+            <div class="cm-signal-state3-body">
+              <div class="cm-signal-state3-lede">Coverage is triggered by:</div>
+              <dl class="cm-signal-state3-rules">
+                <div class="cm-signal-state3-rule">
+                  <dt><span class="cm-signal-state3-bucket">Bucket A</span><span class="cm-signal-state3-token">[ CROSS-VENUE SPREAD ]</span></dt>
+                  <dd>Same event priced differently on Kalshi vs Polymarket &gt; 5.0pp</dd>
+                </div>
+                <div class="cm-signal-state3-rule">
+                  <dt><span class="cm-signal-state3-bucket">Bucket B</span><span class="cm-signal-state3-token">[ BENCHMARK DRIFT ]</span></dt>
+                  <dd>PM consensus drifts from external benchmark (FedWatch, polling avg, futures) &gt; 25bp</dd>
+                </div>
+                <div class="cm-signal-state3-rule">
+                  <dt><span class="cm-signal-state3-bucket">Bucket C</span><span class="cm-signal-state3-token">[ NEWS CYCLE ]</span></dt>
+                  <dd>Top-5 daily news story references this market (Perplexity scan, 04:00 ET)</dd>
+                </div>
+              </dl>
+              <div class="cm-signal-state3-foot">This market currently resides below detection thresholds. Detection cycle runs daily at 04:00 ET.</div>
+            </div>
+          </div>
+        </>
       ) : (
-        <ul class="va-wire-list">
+        <ul class="cm-wire-list">
           {linkedSignals.map((s) => (
-            <li class="va-wire">
-              <div class="va-wire-meta">
-                <span class="va-wire-time">{formatWireDate(s.data.published_at)}</span>
-                <span class="va-wire-tag">{s.data.category_tag.toLowerCase().replace(/_/g, '-')}</span>
-                {(s.data.secondary_tags ?? []).slice(0, 2).map((t) => <span class="va-wire-tag">{t}</span>)}
+            <li class="cm-wire">
+              <div class="cm-wire-meta">
+                <span class="cm-wire-time">{s.data.published_at}</span>
+                <span class="cm-wire-tag">{s.data.category_tag.toLowerCase().replace(/_/g, '-')}</span>
               </div>
-              <a class="va-wire-head" href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
-              <p class="va-wire-bullet-0">{s.data.bullets[0]}</p>
+              <a class="cm-wire-head" href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
+              <ul class="cm-wire-bullets">
+                {s.data.bullets.map((b: string) => <li>{b}</li>)}
+              </ul>
             </li>
           ))}
         </ul>
       )}
     </section>
 
-    {/* ===== PROGRAMMATIC ACCESS: endpoints + JSON-LD note + visible JSON ===== */}
-    <section id="api" class="va-section va-section-machine">
-      <div class="va-section-h">programmatic access</div>
-      <p class="va-section-summary">
-        Same payload at four surfaces. AI crawlers consume the embedded JSON-LD <code class="va-inline-code">@type: Dataset</code> in the page head (per ClearMarket schema methodology). Developers query the REST endpoint or MCP server. The visible JSON below is a human-readable preview of the canonical record.
-      </p>
-      <table class="va-endpoints-table">
+    {/* ===== PROGRAMMATIC ACCESS (elevated to peer-level, not buried at bottom) ===== */}
+    <section id="api" class="cm-section cm-section-machine">
+      <div class="cm-section-h">programmatic access · four surfaces, same payload</div>
+      <p class="cm-section-summary">AI grounded search reads embedded JSON-LD in HTML. Developers query REST. Agentic AI clients (Claude Desktop, Cursor) call MCP tools. AI crawlers index via <code class="cm-inline-code">/llms.txt</code>. Same canonical record at every surface.</p>
+      <table class="cm-endpoints-table">
         <tbody>
-          <tr>
-            <td><span class="va-format-label">HTML</span></td>
-            <td>this page</td>
-            <td><code class="va-endpoint-url">{canonicalURL}</code></td>
-          </tr>
-          <tr>
-            <td><span class="va-format-label">JSON</span></td>
-            <td>REST API response</td>
-            <td><a href={`${jsonURL}.json`}><code class="va-endpoint-url">{jsonURL}.json</code></a></td>
-          </tr>
-          <tr>
-            <td><span class="va-format-label">MCP</span></td>
-            <td>Agent tool call</td>
-            <td><code class="va-endpoint-url">clearmarket.get_event("{event.slug}")</code></td>
-          </tr>
-          <tr>
-            <td><span class="va-format-label">JSON-LD</span></td>
-            <td>Embedded structured data</td>
-            <td><code class="va-endpoint-url">&lt;script type="application/ld+json"&gt;Dataset&lt;/script&gt;</code></td>
-          </tr>
-          <tr>
-            <td><span class="va-format-label">AGENT</span></td>
-            <td>Index for AI agents</td>
-            <td><a href="/llms.txt"><code class="va-endpoint-url">/llms.txt</code></a></td>
-          </tr>
+          <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (contains embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}.json`}><code class="cm-endpoint-url">{jsonURL}.json</code></a></td></tr>
+          <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.get_event("{event.slug}")</code></td></tr>
+          <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
         </tbody>
       </table>
-      <p class="va-provenance-note" set:html={provenanceFactual()}></p>
-
-      <div class="va-json-block">
-        <div class="va-json-block-head">
-          <span class="va-json-block-label">raw JSON record · same payload returned by REST endpoint</span>
-        </div>
-        <pre class="va-machine-json"><code set:html={colorizeJson(machineRecord)}></code></pre>
+      <p class="cm-provenance-note">Snapshot {formatSnapshot(SPECIMEN_GENERATED_AT)}. Venue data via Kalshi + Polymarket APIs. Editorial fields (<code>tags</code>, <code>editorial_notes</code>) are ClearMarket-drafted with AI assistance under editorial review. Derived fields (<code>venues_covered</code>, <code>cross_platform_link</code>, <code>RCG</code>) computed at serve time. Full per-field map in JSON record under <code>field_provenance</code>.</p>
+      <div class="cm-json-block">
+        <div class="cm-json-block-head"><span class="cm-json-block-label">raw JSON record · same payload returned by REST endpoint</span></div>
+        <pre class="cm-machine-json"><code set:html={colorizeJson(machineRecord)}></code></pre>
       </div>
     </section>
 
+    {/* Client-side: venue ID copy-on-click + shift-click to open venue */}
+    <script is:inline>
+      document.querySelectorAll('.cm-copy').forEach((el) => {
+        el.addEventListener('click', async (ev) => {
+          const target = ev.currentTarget;
+          const text = target.dataset.copy || target.textContent || '';
+          const venueUrl = target.dataset.venueUrl || '';
+          if (ev.shiftKey && venueUrl) {
+            window.open(venueUrl, '_blank', 'noopener,noreferrer');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(text);
+            target.classList.add('cm-copied');
+            setTimeout(() => target.classList.remove('cm-copied'), 1200);
+          } catch (_) { /* clipboard API blocked — silently noop */ }
+        });
+      });
+    </script>
+
+    {/* Client-side: column sort. Click a sortable header to sort ascending; click again for descending.
+        Click the MARKET column header to reset to editorial default sort. */}
+    <script is:inline>
+      document.querySelectorAll('.cm-mkt-table').forEach((table) => {
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+        const sortableThs = table.querySelectorAll('th.cm-th-sortable');
+        const resetTh = table.querySelector('th.cm-th-reset');
+
+        const sortBy = (key, dir) => {
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort((a, b) => {
+            const aCell = a.querySelector('td[data-cm-field="' + key + '"]');
+            const bCell = b.querySelector('td[data-cm-field="' + key + '"]');
+            const aRaw = aCell ? aCell.getAttribute('data-sort-value') : '';
+            const bRaw = bCell ? bCell.getAttribute('data-sort-value') : '';
+            const aNum = aRaw === '' || aRaw === null ? NaN : parseFloat(aRaw);
+            const bNum = bRaw === '' || bRaw === null ? NaN : parseFloat(bRaw);
+            // Nulls always sort to the bottom regardless of direction
+            if (isNaN(aNum) && isNaN(bNum)) return 0;
+            if (isNaN(aNum)) return 1;
+            if (isNaN(bNum)) return -1;
+            return dir === 'asc' ? aNum - bNum : bNum - aNum;
+          });
+          rows.forEach((r) => tbody.appendChild(r));
+        };
+
+        sortableThs.forEach((th) => {
+          th.addEventListener('click', () => {
+            const key = th.getAttribute('data-sort-key');
+            const current = th.getAttribute('data-sort-active');
+            const nextDir = current === 'asc' ? 'desc' : 'asc';
+            sortableThs.forEach((t) => t.removeAttribute('data-sort-active'));
+            th.setAttribute('data-sort-active', nextDir);
+            sortBy(key, nextDir);
+          });
+        });
+
+        if (resetTh) {
+          resetTh.addEventListener('click', () => {
+            sortableThs.forEach((t) => t.removeAttribute('data-sort-active'));
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            rows.sort((a, b) => {
+              const aIdx = parseInt(a.getAttribute('data-original-index') || '0', 10);
+              const bIdx = parseInt(b.getAttribute('data-original-index') || '0', 10);
+              return aIdx - bIdx;
+            });
+            rows.forEach((r) => tbody.appendChild(r));
+          });
+        }
+      });
+    </script>
+
+    {/* Client-side: scroll-driven active section in sub-nav.
+        IntersectionObserver tracks which section is in view; toggles .cm-subnav-active accordingly.
+        The accent mark ▎ animates in/out via CSS opacity transition. */}
+    <script is:inline>
+      (function() {
+        var subnavLinks = document.querySelectorAll('.cm-subnav-link');
+        if (subnavLinks.length === 0) return;
+        var sectionMap = {};
+        subnavLinks.forEach(function(link) {
+          var sectionId = link.getAttribute('data-section');
+          var section = document.getElementById(sectionId);
+          if (section) sectionMap[sectionId] = link;
+        });
+        var activate = function(sectionId) {
+          subnavLinks.forEach(function(l) { l.classList.remove('cm-subnav-active'); });
+          if (sectionMap[sectionId]) sectionMap[sectionId].classList.add('cm-subnav-active');
+        };
+        var observer = new IntersectionObserver(function(entries) {
+          // Pick the section whose top is closest to (just below) the sticky chrome line
+          var visible = entries.filter(function(e) { return e.isIntersecting; });
+          if (visible.length === 0) return;
+          // Use the topmost intersecting entry as the active section
+          visible.sort(function(a, b) { return a.boundingClientRect.top - b.boundingClientRect.top; });
+          var topEntry = visible[0];
+          activate(topEntry.target.id);
+        }, {
+          // Trigger when section enters the area below the sticky chrome (~120px)
+          rootMargin: '-120px 0px -60% 0px',
+          threshold: 0,
+        });
+        Object.keys(sectionMap).forEach(function(id) {
+          var section = document.getElementById(id);
+          if (section) observer.observe(section);
+        });
+      })();
+    </script>
+
     {/* ===== FOOTER META ===== */}
-    <div class="va-event-foot">
-      <span><span class="va-meta-l">snapshot</span> <code>{SPECIMEN_GENERATED_AT}</code></span>
-      <span><span class="va-meta-l">schema</span> <code>{SCHEMA_VERSION}</code></span>
-      <a href="/events/">all events →</a>
+    <div class="cm-event-foot">
+      <span><span class="cm-meta-l">snapshot</span> <code>{SPECIMEN_GENERATED_AT}</code></span>
+      <span><span class="cm-meta-l">schema</span> <code>{SCHEMA_VERSION}</code></span>
+      <span><a href={`/events/${event.slug}/`}>← v1 page</a></span>
+      <a href="/events-v2/">all events (v2) →</a>
     </div>
 
   </article>
 
   <style>
-    .va-event {
-      max-width: 880px;
-      margin: 0 auto;
+    /* ========================================
+       CONTAINER OVERRIDE — widen to 1280
+       Site.astro's .va-main caps at 1080 — break out cleanly.
+       ======================================== */
+    .cm-v2 {
+      max-width: 1280px;
+      width: calc(100vw - 80px);
+      margin-left: calc((1080px - 1280px) / 2);
+      margin-right: calc((1080px - 1280px) / 2);
+    }
+    @media (max-width: 1280px) {
+      .cm-v2 { margin: 0; width: 100%; }
     }
 
-    /* ===== TOP STRIP: unified label + value treatment per field ===== */
-    .va-eyebrow {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 14px 28px;
-      font-family: var(--va-mono);
-      margin: 8px 0 18px;
-    }
-    .va-eyebrow-field {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 8px;
-    }
-    .va-eyebrow-label {
-      font-size: 9.5px;
-      color: var(--va-fg-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      font-weight: 600;
-    }
-    .va-eyebrow-value {
-      font-size: 12px;
-      color: var(--va-fg);
-      letter-spacing: 0.02em;
-      font-weight: 500;
-    }
-    /* Event ID renders as plain monospace per patch brief — NOT a pill.
-       Subtle background tint only, to signal "literal string for citation". */
-    code.va-eyebrow-value {
-      background: rgba(255,255,255,0.04);
-      padding: 2px 6px;
-      border-radius: 2px;
-      color: var(--va-fg);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-    }
-
-    /* ===== H1 ===== */
-    .va-event-h1 {
-      font-family: var(--va-mono);
-      font-size: clamp(22px, 2.6vw, 32px);
-      font-weight: 700;
-      line-height: 1.2;
-      letter-spacing: -0.015em;
-      margin: 0 0 16px;
-      color: var(--va-fg);
-    }
-
-    /* ===== TAGS — inline metadata text, middle-dot separators (no chip treatment) ===== */
-    .va-tags-inline {
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      color: var(--va-fg-muted);
-      letter-spacing: 0.02em;
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
-    .va-tag-item {
-      color: var(--va-fg-muted);
-    }
-    .va-tag-sep {
-      color: var(--va-fg-faint);
-    }
-
-    /* ===== META GRID: stacked label-value pairs.
-       4 rows × 2 column-pairs. Reads like a Bloomberg stat block,
-       not a wrapping run-on sentence. ===== */
-    .va-meta-grid {
-      display: grid;
-      grid-template-columns: max-content auto max-content auto;
-      column-gap: 18px;
-      row-gap: 8px;
-      align-items: baseline;
-      padding: 16px 20px;
-      margin: 0 0 32px;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      font-family: var(--va-mono);
-      font-size: 12px;
-    }
-    .va-meta-label {
-      color: var(--va-fg-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.10em;
-      font-size: 10px;
-      font-weight: 600;
-    }
-    .va-meta-val {
-      color: var(--va-fg);
-      letter-spacing: 0.02em;
-    }
-    .va-meta-val .num {
-      color: var(--va-fg);
-      font-weight: 600;
-    }
-    .va-meta-eventid {
-      color: var(--va-fg);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      background: rgba(255,255,255,0.04);
-      padding: 1px 6px;
-      border-radius: 2px;
-      font-size: 11px;
-    }
-    .va-meta-tail {
-      color: var(--va-fg-faint);
-    }
-    .va-meta-snapshot {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .va-meta-snapshot .va-schema-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--va-up);
-      box-shadow: 0 0 8px rgba(111,221,157,0.6);
-    }
-    @media (max-width: 720px) {
-      .va-meta-grid {
-        grid-template-columns: max-content auto;
-      }
-    }
-
-    /* ===== RESOLUTION RATING CHIP (value-neutral, no traffic-light colors).
-       Same blue identifier styling as other field chips on the page. ===== */
-    .va a.va-clarity-chip,
-    .va-clarity-chip {
-      display: inline-block;
-      padding: 1px 8px;
-      background: rgba(118,184,255,0.10);
-      border: 1px solid rgba(118,184,255,0.35);
-      border-radius: 2px;
-      color: var(--va-accent);
-      font-family: var(--va-mono);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.10em;
-      text-decoration: none;
-    }
-    .va a.va-clarity-chip:hover {
-      background: rgba(118,184,255,0.18);
-      border-color: rgba(118,184,255,0.6);
-      color: var(--va-fg);
-    }
-    .va-res-th-clarity, .va-res-td-clarity {
-      width: 90px;
-      text-align: left;
-    }
-
-    /* Per-market Clarity column in All Markets tables (per-market, not per-venue,
-       because intra-venue variance is the load-bearing signal). Width set via .va-col-clarity. */
-    .va-mkt-th-clarity, .va-mkt-td-clarity {
-      text-align: center;
-    }
-
-    /* Clarity distribution badge in Resolution table (e.g. "11A" or "9A / 2C") */
-    .va-clarity-dist {
-      display: inline-block;
-      padding: 2px 8px;
-      background: rgba(118,184,255,0.08);
-      border: 1px solid rgba(118,184,255,0.30);
-      border-radius: 2px;
-      color: var(--va-fg);
-      font-family: var(--va-mono);
-      font-size: 11px;
-      letter-spacing: 0.04em;
-      font-weight: 600;
-    }
-
-    /* ===== ACCESS STRIP: each endpoint a pill; clearly clickable, high contrast
-       (kept for the Programmatic Access section at the bottom of the page) ===== */
-    .va-access-strip {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      margin: 0 0 36px;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-    }
-    .va-access-label {
-      font-family: var(--va-mono);
-      color: var(--va-fg-faint);
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      font-size: 9.5px;
-      font-weight: 600;
-      margin-right: 4px;
-    }
-    .va a.va-access-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 5px 12px;
-      background: rgba(118,184,255,0.08);
-      border: 1px solid rgba(118,184,255,0.30);
-      border-radius: 2px;
-      font-family: var(--va-mono);
-      font-size: 11px;
-      text-decoration: none;
-      letter-spacing: 0.04em;
-      color: var(--va-accent);
-      font-weight: 600;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-    .va a.va-access-pill:hover {
-      background: rgba(118,184,255,0.18);
-      border-color: rgba(118,184,255,0.6);
-      color: var(--va-fg);
-    }
-    .va-access-fresh {
-      margin-left: auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--va-mono);
-      color: var(--va-fg-muted);
-      font-size: 10.5px;
-      letter-spacing: 0.04em;
-    }
-    .va-access-fresh .va-schema-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--va-up);
-      box-shadow: 0 0 8px rgba(111,221,157,0.6);
-    }
-
-    /* ===== PRIMARY MARKET CARDS: one atomic claim per venue, lead the data view ===== */
-    .va-primary-grid {
-      display: grid;
-      gap: 14px;
+    /* ========================================
+       BASE.ASTRO OVERRIDES — kill light-theme pre/code styles globally inside .cm-v2
+       ======================================== */
+    .cm-v2 pre {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
       margin: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
     }
-    .va-primary-2col { grid-template-columns: 1fr 1fr; }
-    .va-primary-1col { grid-template-columns: minmax(0, 600px); }
-    @media (max-width: 720px) {
-      .va-primary-2col { grid-template-columns: 1fr; }
+    .cm-v2 code {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
+      font-size: inherit;
     }
-    .va-primary-card {
-      background: var(--va-bg-2);
-      border: 1px solid rgba(118,184,255,0.18);
-      border-radius: 3px;
-      padding: 18px 20px;
-    }
-    .va-primary-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding-bottom: 10px;
-      margin-bottom: 12px;
-      border-bottom: 1px solid var(--va-border);
-    }
-    .va-primary-venue {
-      font-family: var(--va-mono);
-      font-size: 12px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--va-accent);
-      font-weight: 700;
-    }
-    .va-primary-vol {
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-fg-muted);
-    }
-    /* TIER 1: hero — P(YES) is the dominant element on the card */
-    .va-primary-hero {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .va-primary-price-label {
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-fg-faint);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-    .va-primary-price {
-      font-family: var(--va-mono);
-      font-size: 44px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--va-fg);
-      letter-spacing: -0.02em;
-      line-height: 1;
-    }
-    /* TIER 2: question, medium weight */
-    .va-primary-q {
-      font-family: var(--va-mono);
-      font-size: 13px;
-      line-height: 1.5;
-      color: var(--va-fg-muted);
-      margin-bottom: 14px;
-      min-height: 2em;
-    }
-    /* TIER 3: compact metadata strip — single row, small mono */
-    .va-primary-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 16px;
-      padding-top: 10px;
-      border-top: 1px solid var(--va-border);
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-fg-muted);
+    .cm-v2 a {
+      text-decoration: none;
     }
 
-    /* Override: per-market row also gets P(YES) label treatment */
-    .va-market-price-block {
+    /* ========================================
+       SUB-NAV — Nansen sticky filter strip
+       ======================================== */
+    .cm-subnav {
       display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 2px;
-    }
-    .va-market-price-label {
-      font-family: var(--va-mono);
-      font-size: 9px;
-      color: var(--va-fg-faint);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      font-weight: 600;
-    }
-
-    /* Single-venue grid: don't render an empty column on the other side */
-    .va-venue-grid-single {
-      grid-template-columns: minmax(0, 600px) !important;
-      justify-content: center;
-    }
-
-    /* ===== SUB-NAV (lives inside Site.astro's sticky chrome via slot — no own sticky behavior).
-       Thinner secondary band under the main header. Anchor links work without JS. ===== */
-    :global(.va-subnav) {
+      align-items: center;
+      gap: 28px;
       max-width: 1280px;
       margin: 0 auto;
-      padding: 10px 40px 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      border-top: 1px solid var(--va-border);
-      font-family: var(--va-mono);
+      padding: 10px 40px;
+      font-family: var(--cm-font-mono);
       font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      background: var(--cm-bg-surface);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-subnav a {
+      color: var(--cm-fg-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cm-subnav a:hover { color: var(--cm-fg-primary); }
+    /* Active section gets primary color; accent mark only renders for active link */
+    .cm-subnav-link.cm-subnav-active { color: var(--cm-fg-primary); }
+    .cm-active-mark {
+      color: var(--cm-positive);
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.12s ease, width 0.12s ease;
+    }
+    .cm-subnav-active .cm-active-mark {
+      opacity: 1;
+      width: auto;
+    }
+    .cm-subnav-snapshot {
+      margin-left: auto;
+      color: var(--cm-fg-faint);
       letter-spacing: 0.08em;
     }
-    :global(.va-subnav > a) {
-      color: var(--va-fg-muted);
-      text-decoration: none;
-      padding: 4px 10px;
-      border-radius: 2px;
-      transition: color 0.15s, background 0.15s;
+    .cm-dot-positive { color: var(--cm-positive); }
+    .cm-dot-settled { color: var(--cm-fg-muted); }
+    /* Catalyst rows for past events — checkmark prefix + low-contrast text */
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-date::before {
+      content: "✓ ";
+      color: var(--cm-positive);
+      font-weight: 700;
+      margin-right: 4px;
     }
-    :global(.va-subnav > a:hover) {
-      color: var(--va-fg);
-      background: rgba(118,184,255,0.08);
-    }
-    @media (max-width: 720px) {
-      :global(.va-subnav) { padding: 8px 20px 10px; }
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-event-title,
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-date {
+      color: var(--cm-fg-muted);
     }
 
-    /* ===== UNIFIED MARKET TABLE: same primitive for Kalshi strikes + Polymarket outcomes.
-         Tighter row padding than the prior ladder treatment (info-density discipline). ===== */
-    .va-table-wrap {
-      padding: 0 18px 14px;
+    /* ========================================
+       HEADER — divergence flag + resolves line ABOVE H1, flush-left,
+       both aligned with H1's first character. Resolves is plain green
+       bracketed text (not a chip — no background/border).
+       ======================================== */
+    .cm-headline-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      /* Negative margin offsets the chip's padding+border so the visible text
+         aligns precisely with the H1's first character (true flush-left). */
+      margin-left: -7px;
     }
-    .va-mkt-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      table-layout: fixed;  /* column widths defined by colgroup; fixed layout guarantees inheritance */
-    }
-    .va-mkt-table th {
-      padding: 8px 12px 8px 0;
-      border-bottom: 1px solid var(--va-border);
-      font-size: 9.5px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
+    /* Resolves rendered inline at end of H1 — terminal-shape, positive-green,
+       sized for legibility but still clearly subordinate to the H1 weight. */
+    .cm-h1-resolves {
+      color: var(--cm-positive);
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
       font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      margin-left: 14px;
+      vertical-align: baseline;
     }
-    .va-mkt-table td {
-      padding: 6px 12px 6px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
+    /* Resolved-state inline annotation — muted red (Bloomberg HALT/EXPIRED tone).
+       Distinguishable from active green (RESOLVES) without screaming alarm.
+       Same size + weight as cm-h1-resolves so inline-tag rhythm stays consistent. */
+    .cm-h1-resolved {
+      color: var(--cm-negative);
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      margin-left: 14px;
+      vertical-align: baseline;
+      opacity: 0.85;
+    }
+    /* Resolved-state badge above H1 — muted red, same shape as divergence flag
+       but distinct color. Reads as "this contract is off-screen" — institutional
+       convention for expired/halted indicators. */
+    .cm-resolved-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-negative);
+      background: rgba(239, 93, 106, 0.10);
+      border: 1px solid var(--cm-negative);
+      line-height: 1;
+    }
+    /* Per-row resolved chip for the All Markets table — same red treatment but
+       smaller so it sits inline alongside data without dominating the row. */
+    .cm-row-resolved {
+      display: inline-block;
+      padding: 1px 5px;
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cm-negative);
+      background: rgba(239, 93, 106, 0.10);
+      border: 1px solid var(--cm-negative);
+      opacity: 0.85;
+      line-height: 1;
       vertical-align: middle;
     }
-    .va-mkt-table tr:last-child td { border-bottom: none; }
-    .va-mkt-table tr:hover td { background: rgba(118,184,255,0.04); }
+    /* Anchor the resolved badge at a consistent column position regardless of
+       label length: give the label span a fixed inline-block width, then the
+       badge sits at the same x-offset across all rows. Keep the cell as a
+       normal table cell — applying display:flex to <td> breaks column widths. */
+    .cm-td-strike .cm-td-label-text {
+      display: inline-block;
+      width: 60px;
+    }
+    .cm-td-q .cm-td-label-text,
+    .cm-td-q-range .cm-td-label-text {
+      display: inline-block;
+      width: 96px;
+    }
+    .cm-td-strike .cm-row-resolved,
+    .cm-td-q .cm-row-resolved,
+    .cm-td-q-range .cm-row-resolved {
+      margin-left: 0;
+    }
+    /* Legacy class — preserved for safety */
+    .cm-resolves-line { display: none; }
 
-    /* COLGROUP-driven column widths — defined once, inherited by thead + tbody.
-       This is the fix for the header/body drift bug. */
-    .va-col-strike   { width: 80px; }
-    .va-col-q        { width: auto; }
-    .va-col-p        { width: 90px; }
-    .va-col-vol      { width: 100px; }
-    .va-col-spread   { width: 80px; }
-    .va-col-clarity  { width: 70px; }
-    .va-col-id       { width: 200px; }
-    /* Discrete table has no strike col — give question col remaining width. */
-    .va-mkt-table-discrete .va-col-q { width: auto; }
-
-    /* Alignment per column — STRIKE + all numerics right-aligned, identifier left-aligned */
-    .va-mkt-th-strike, .va-mkt-td-strike {
-      text-align: right;
+    /* Legacy classes — preserved for safety, no longer rendered */
+    .cm-flag-row { display: none; }
+    .cm-id-row { display: none; }
+    .cm-atomic-id { display: none; }
+    .cm-headline-row { display: block; }
+    .cm-headline-chips { display: none; }
+    .cm-resolves-chip { display: none; }
+    .cm-divergence-flag {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 12px;
+      padding: 2px 6px;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      border: 1px solid var(--cm-divergence);
+      line-height: 1;
+    }
+    .cm-h1 {
+      font-family: var(--cm-font-mono);
+      font-size: clamp(17px, 1.7vw, 22px);
+      line-height: 1.25;
       font-weight: 600;
-      color: var(--va-fg);
-      font-variant-numeric: tabular-nums;
-    }
-    .va-mkt-th-p, .va-mkt-td-p {
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-    .va-mkt-th-vol, .va-mkt-td-vol {
-      text-align: right;
-      color: var(--va-fg-muted);
-      font-variant-numeric: tabular-nums;
-    }
-    .va-mkt-th-spread, .va-mkt-td-spread {
-      text-align: right;
-      color: var(--va-fg-muted);
-      font-variant-numeric: tabular-nums;
-    }
-    .va-mkt-th-id, .va-mkt-td-id {
-      text-align: left;
-      color: var(--va-fg-muted);
-    }
-    .va-mkt-th-q, .va-mkt-td-q {
-      text-align: left;
-      color: var(--va-fg);
-      line-height: 1.45;
+      letter-spacing: -0.01em;
+      color: var(--cm-fg-primary);
+      margin: 0 0 4px;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    /* Screen-reader-only caption (table caption styled invisibly while remaining semantic) */
-    .va-sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
+    /* Legacy banner classes — preserved for safety, no longer rendered */
+    .cm-banner, .cm-banner-meta, .cm-banner-snapshot, .cm-divergence-chip { display: none; }
 
-    /* Event-specific provenance note inside the API section */
-    .va-provenance-note {
-      font-family: var(--va-mono);
-      font-size: 11px;
-      line-height: 1.6;
-      color: var(--va-fg-muted);
-      padding: 12px 14px;
-      margin: 12px 0 16px;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-left: 2px solid var(--va-accent);
-      border-radius: 2px;
-    }
-    .va-provenance-note code {
-      color: var(--va-accent);
-      background: rgba(118,184,255,0.08);
-      padding: 1px 4px;
-      border-radius: 2px;
-      font-size: 10.5px;
-    }
+    /* Editorial callout legacy class — preserved for safety, no longer rendered */
+    .cm-editorial-callout { display: none; }
 
-    /* ===== UNIFIED RESOLUTION TABLE ===== */
-    .va-resolution-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-    }
-    .va-resolution-table th {
-      text-align: left;
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--va-border);
-      font-size: 9.5px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-      font-weight: 600;
-    }
-    .va-resolution-table td {
-      padding: 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-      vertical-align: top;
-    }
-    .va-resolution-table tr:last-child td { border-bottom: none; }
-    .va-res-td-venue {
-      color: var(--va-accent);
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      width: 95px;
-    }
-    .va-res-td-mech,
-    .va-res-td-prop { width: 140px; }
-    .va-res-td-src { color: var(--va-fg); }
-    .va-res-td-url {
-      width: 60px;
-      text-align: right;
-    }
-    .va-res-td-url a {
-      color: var(--va-accent);
-      text-decoration: none;
-    }
-    .va-res-td-url a:hover { text-decoration: underline; }
-    .va-res-th-count,
-    .va-res-td-count {
-      text-align: right;
-      width: 80px;
-      color: var(--va-fg-muted);
-    }
-
-    /* Resolution line on primary cards (mechanism + source inline) */
-    .va-primary-resolution {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 8px;
-      padding: 10px 0;
-      margin-bottom: 8px;
-      border-top: 1px solid var(--va-border);
-      border-bottom: 1px solid var(--va-border);
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      color: var(--va-fg-muted);
-    }
-    .va-primary-resolution-src {
-      color: var(--va-fg);
-    }
-
-    /* Small code pill used for arbitration_model badges on rows + cards */
-    .va-code-pill-sm {
-      display: inline-block;
-      padding: 1px 6px;
-      background: rgba(118,184,255,0.10);
-      border: 1px solid rgba(118,184,255,0.32);
-      border-radius: 2px;
-      color: var(--va-accent);
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      letter-spacing: 0.03em;
-    }
-
-    /* ===== VENUE BLOCK: vertical-stacked full-width per venue (replaces side-by-side grid)
-       Solves the lopsided-columns problem when one venue has many more markets than the other. ===== */
-    .va-venue-block {
-      margin-bottom: 24px;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .va-venue-block:last-child { margin-bottom: 0; }
-    .va-venue-block-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding: 10px 18px;
-      background: rgba(118,184,255,0.05);
-      border-bottom: 1px solid var(--va-border);
-    }
-    .va-venue-block-name {
-      font-family: var(--va-mono);
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--va-accent);
-      font-weight: 700;
-    }
-    .va-venue-block-count {
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-fg-muted);
-      letter-spacing: 0.04em;
-    }
-    .va-venue-block .va-market-list {
-      padding: 4px 18px 14px;
-    }
-    .va-venue-block .va-market-row {
-      padding: 12px 0;
-    }
-
-    /* ===== FIX venue-meta-code: subtle border, no white background on dark theme ===== */
-    .va-meta-code {
-      color: var(--va-fg-muted);
-      font-size: 10px;
-      padding: 1px 5px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--va-border);
-      border-radius: 2px;
-    }
-
-    /* ===== SECTION SUMMARY: 40-60 word direct-answer paragraph under each H2,
-       per GEO empirical research (wiki/concepts/geo-aeo-empirical-findings.md).
-       Factual synthesis of the structured data below — NOT editorial verdict. ===== */
-    .va-section-summary {
-      font-family: var(--va-sans);
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--va-fg-muted);
-      margin: 0 0 18px;
-      max-width: 720px;
-    }
-
-    /* ===== HERO JSON PANEL (legacy — markup removed but kept for now in case re-added) ===== */
-    .va-hero-schema {
-      position: relative;
-      padding: 18px 22px 20px;
-      background: linear-gradient(180deg, rgba(20,24,29,0.78), rgba(14,16,20,0.55));
-      border: 1px solid var(--va-border);
-      border-radius: 4px;
-      margin: 0 0 40px;
-      box-shadow:
-        0 0 0 1px rgba(118,184,255,0.04) inset,
-        0 30px 80px -40px rgba(118,184,255,0.18),
-        0 12px 40px -20px rgba(0,0,0,0.6);
-    }
-    .va-schema-tab {
+    /* ========================================
+       META HORIZON STRIP — 28px low-contrast ambient layer
+       Bloomberg/Eikon pattern: zero card framing, label-to-value horizontal keyway,
+       middle-dot separators inside clusters, hairline pipe between clusters.
+       ======================================== */
+    /* Flat ticker — every token + pipe is a flat child. justify-content:
+       space-between distributes tokens evenly across the full strip width;
+       no ml-auto exceptions. Each field gets the same visual weight. */
+    .cm-horizon {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.02em;
-      margin: -4px -6px 16px;
-      padding: 8px 10px;
-      background: rgba(118,184,255,0.06);
-      border: 1px solid rgba(118,184,255,0.18);
-      border-radius: 3px;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      min-height: 28px;
+      margin-top: 14px;
+      margin-bottom: 22px;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      padding: 4px 2px;
+      overflow-x: auto;
+      white-space: nowrap;
     }
-    .va-schema-method {
-      background: var(--va-accent);
-      color: var(--va-bg);
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      padding: 3px 8px;
-      border-radius: 2px;
-    }
-    .va-schema-endpoint {
-      color: var(--va-fg);
-      flex: 1;
-      font-weight: 500;
-    }
-    .va-schema-status {
+    .cm-horizon-token {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-family: var(--va-mono);
-      font-size: 10px;
-      color: var(--va-up);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
     }
-    .va-schema-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--va-up);
-      box-shadow: 0 0 10px rgba(111,221,157,0.6);
-    }
-    .va-schema-code {
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      line-height: 1.7;
-      color: #5a6068;
-      margin: 0 0 0;
-      overflow-x: auto;
-      background: transparent;
-      white-space: pre;
-      tab-size: 2;
-      max-height: 360px;
-    }
-    .va-schema-access {
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid var(--va-border);
-    }
-    .va a.va-schema-access-row {
-      display: grid;
-      grid-template-columns: 68px 1fr auto;
-      gap: 14px;
-      font-family: var(--va-mono);
-      font-size: 12.5px;
-      line-height: 1.8;
-      align-items: baseline;
-      color: inherit;
-      text-decoration: none;
-      padding: 3px 6px;
-      margin: 0 -6px;
-      border-radius: 3px;
-    }
-    .va a.va-schema-access-row:hover { background: rgba(118,184,255,0.08); }
-    .va a.va-schema-access-row:hover .va-schema-access-val,
-    .va a.va-schema-access-row:hover .va-schema-access-arrow { color: var(--va-fg); }
-    .va-schema-access-key {
-      color: var(--va-accent);
-      font-size: 10.5px;
-      letter-spacing: 0.10em;
-      font-weight: 700;
-    }
-    .va-schema-access-val {
-      color: var(--va-fg-muted);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .va-schema-access-arrow { color: var(--va-fg-faint); }
-
-    /* ===== SECTION ===== */
-    .va-section {
-      margin: 0 0 40px;
-    }
-    .va-section-h {
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      letter-spacing: 0.18em;
-      color: var(--va-accent);
-      font-weight: 700;
-      text-transform: uppercase;
-      margin: 0 0 14px;
-    }
-    .va-section-h-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 12px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-    .va-section-h-endpoints {
-      font-family: var(--va-mono);
+    .cm-horizon-pipe {
+      color: var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
       font-size: 11px;
-      color: var(--va-fg-muted);
+      font-weight: 400;
+      user-select: none;
     }
-    .va-section-h-row .va-section-h { margin: 0; }
-    .va-mark-inline {
-      color: var(--va-fg);
-      background: rgba(118,184,255,0.10);
-      padding: 1px 7px;
-      border-radius: 2px;
-      letter-spacing: 0.10em;
+    .cm-horizon-trailing { /* legacy — no longer applied */ margin-left: 0; }
+    .cm-horizon-warn {
+      gap: 6px;
+    }
+    .cm-horizon-warn-value {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      border: 1px solid var(--cm-divergence);
+      padding: 1px 5px;
+      line-height: 1;
     }
 
-    /* ===== CROSS-VENUE GRID ===== */
-    .va-venue-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
+    /* Legacy cluster classes — preserved for safety */
+    .cm-horizon-cluster, .cm-horizon-left, .cm-horizon-right, .cm-horizon-center, .cm-horizon-dot { display: inline-flex; }
+    .cm-horizon-label {
+      font-family: var(--cm-font-sans);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--cm-fg-muted);
+      text-transform: lowercase;
+      letter-spacing: 0;
     }
-    @media (max-width: 720px) {
-      .va-venue-grid { grid-template-columns: 1fr; }
-    }
-    .va-venue-col {
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      padding: 16px 18px;
-    }
-    .va-venue-col-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      padding-bottom: 10px;
-      margin-bottom: 10px;
-      border-bottom: 1px solid var(--va-border);
-    }
-    .va-venue-name {
-      font-family: var(--va-mono);
-      font-size: 12px;
-      letter-spacing: 0.06em;
+    .cm-horizon-value {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-link);
       text-transform: uppercase;
-      color: var(--va-accent);
-      font-weight: 600;
-    }
-    .va-venue-count {
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-fg-faint);
       letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
     }
-    .va-venue-empty {
-      font-family: var(--va-mono);
-      font-size: 12px;
-      color: var(--va-fg-faint);
-      font-style: italic;
-      padding: 12px 0;
+    .cm-horizon-tail {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0;
+      text-transform: none;
+      margin-left: 2px;
     }
-    .va-market-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+    .cm-horizon-dot {
+      color: var(--cm-border-rule);
+      font-size: 9px;
+      margin: 0 4px;
     }
-    .va-market-row {
-      padding: 10px 0;
-      border-bottom: 1px solid var(--va-border);
+    @media (max-width: 900px) {
+      .cm-horizon { height: auto; padding: 6px 0; gap: 4px; }
+      .cm-horizon-cluster { padding: 4px 10px; border-right: 0; border-bottom: 1px solid var(--cm-border-hairline); width: 100%; }
+      .cm-horizon-cluster:last-child { border-bottom: 0; }
     }
-    .va-market-row:last-child { border-bottom: none; }
-    .va-market-top {
+
+    /* Number tabular-nums helper retained for value spans on the strip and elsewhere */
+    .cm-num { font-variant-numeric: tabular-nums; }
+    .cm-meta-l {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-meta-tail { color: var(--cm-fg-faint); margin-left: 2px; font-size: 10.5px; }
+
+    /* ========================================
+       EDITORIAL CALLOUT — full-width Marconi-shape bullets
+       Restored as a standalone callout (was nested inside cm-hero-pair previously).
+       ======================================== */
+    .cm-editorial-callout {
+      display: block;
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-fg-link);
+      padding: 12px 16px 14px;
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    /* Outcome strip — green-border emphasis, sits between meta and Editorial Brief
+       on resolved events. Plain-language answer to the event question. */
+    .cm-outcome-strip {
       display: flex;
-      justify-content: space-between;
       align-items: baseline;
       gap: 10px;
-      margin-bottom: 5px;
+      padding: 10px 14px;
+      margin: 14px 0 18px;
+      background: rgba(57, 195, 121, 0.06);
+      border-left: 2px solid var(--cm-positive);
     }
-    .va-market-q {
-      font-family: var(--va-mono);
-      font-size: 12.5px;
-      line-height: 1.45;
-      color: var(--va-fg);
-      flex: 1;
+    .cm-outcome-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-positive);
+      flex-shrink: 0;
     }
-    .va-market-price {
-      font-family: var(--va-mono);
-      font-size: 14px;
+    .cm-outcome-arrow {
+      font-family: var(--cm-font-mono);
+      color: var(--cm-fg-muted);
+      flex-shrink: 0;
+    }
+    .cm-outcome-text {
+      font-family: var(--cm-font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--cm-fg-primary);
+    }
+    .cm-callout-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--cm-fg-muted);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cm-callout-tag {
+      font-weight: 400;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.1em;
+    }
+    .cm-editorial-bullets {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .cm-editorial-bullets li {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--cm-fg-primary);
+      padding-left: 14px;
+      position: relative;
+    }
+    .cm-editorial-bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 6px;
+      height: 1px;
+      background: var(--cm-fg-link);
+    }
+
+    /* ========================================
+       SECTIONS — general
+       ======================================== */
+    .cm-section {
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    /* Scroll-anchor offset so #resolution anchor links account for sticky chrome height
+       (~80px main header + ~36px sub-nav ≈ 116px). 120px gives a small buffer. */
+    #resolution { scroll-margin-top: 120px; }
+    #catalysts { scroll-margin-top: 120px; }
+    #signal { scroll-margin-top: 120px; }
+    #api { scroll-margin-top: 120px; }
+    #markets { scroll-margin-top: 120px; }
+    .cm-section-h {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
       font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      color: var(--va-fg);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-fg-primary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+    }
+    .cm-section-h::before {
+      content: "";
+      display: inline-block;
+      width: 2px;
+      height: 12px;
+      background: var(--cm-positive);
+      margin-right: 10px;
+    }
+    .cm-section-summary {
+      font-family: var(--cm-font-sans);
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      margin: 0 0 16px;
+    }
+    .cm-empty-note {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-muted);
+      font-style: italic;
+      margin: 0;
+    }
+
+    /* ========================================
+       CM SIGNAL STATE 3 — threshold explainer
+       Terminal-monitor aesthetic: hairline tracks, bracketed bucket tokens, factual cycle footer
+       ======================================== */
+    .cm-signal-state3 {
+      margin: 0 0 16px 0;
+    }
+    .cm-signal-state3-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .cm-signal-state3-status {
+      color: var(--cm-fg-secondary);
+    }
+    .cm-signal-state3-status::before {
+      content: '● ';
+      color: var(--cm-fg-faint);
+    }
+    .cm-signal-state3-tag {
+      color: var(--cm-fg-faint);
+      font-size: 9.5px;
+      letter-spacing: 0.10em;
+      padding: 2px 7px;
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-signal-state3-body {
+      padding: 16px 0 12px 0;
+      max-width: 820px;
+    }
+    .cm-signal-state3-lede {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+    .cm-signal-state3-rules {
+      margin: 0 0 16px 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cm-signal-state3-rule {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--cm-border-hairline);
+    }
+    .cm-signal-state3-rule:last-child {
+      border-bottom: 0;
+    }
+    .cm-signal-state3-rule dt {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0;
+    }
+    .cm-signal-state3-bucket {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--cm-fg-link);
+    }
+    .cm-signal-state3-token {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-signal-state3-rule dd {
+      margin: 0;
+      font-family: var(--cm-font-sans);
+      font-size: 12px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.45;
+    }
+    .cm-signal-state3-foot {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.02em;
+      padding-top: 12px;
+      border-top: 1px solid var(--cm-border-hairline);
+    }
+
+    /* ========================================
+       PRIMARY MARKETS — compact 2-row summary table
+       Shares typography with .cm-mkt-table; differs in P(YES) emphasis
+       and the top-contract column carrying a semantic-tag chip + prose.
+       ======================================== */
+    .cm-primary-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 13px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-primary-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    /* Numeric column headers right-aligned to match their values below */
+    .cm-primary-table th.cm-th-num { text-align: right; }
+    .cm-primary-table th.cm-th-rcg { text-align: center; }
+    .cm-primary-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-primary);
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Venue ID cell: don't truncate — the inner truncateVenueId() already
+       handles the display length, and we need room for the copy glyph. */
+    .cm-primary-table td.cm-td-id {
+      overflow: visible;
+    }
+    .cm-primary-table th:not(:last-child),
+    .cm-primary-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-primary-table tr:last-child td { border-bottom: 0; }
+    .cm-primary-table tr:hover { background: var(--cm-bg-callout); }
+    .cm-td-venue {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cm-td-p-emphasis {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--cm-fg-primary);
+    }
+    .cm-td-top-contract {
+      white-space: normal !important;
+      overflow: visible !important;
+      line-height: 1.4;
+    }
+    .cm-semantic-tag {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 6px;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+    .cm-q-text {
+      font-family: var(--cm-font-sans);
+      font-size: 12.5px;
+      color: var(--cm-fg-secondary);
+    }
+
+    /* ========================================
+       MARKET TABLES — Bloomberg-grade
+       ======================================== */
+    .cm-venue-block {
+      margin-bottom: 20px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-venue-block-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-venue-block-name {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-primary);
+    }
+    .cm-venue-block-count {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    /* Event-axis context line — sits between venue-block-head and the table.
+       Echoes the event question so the reader keeps context when scrolling down a long ladder. */
+    .cm-venue-block-axis {
+      padding: 6px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+    }
+    .cm-venue-block-axis-q {
+      color: var(--cm-fg-primary);
+    }
+    .cm-venue-block-axis-sep {
+      color: var(--cm-fg-faint);
+      margin: 0 6px;
+    }
+    .cm-venue-block-axis-date {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    .cm-table-wrap {
+      /* overflow: visible so tooltip pseudo-elements inside table cells can escape.
+         Trade-off: very narrow viewports may cause horizontal page scroll. Acceptable
+         at v0.2 (desktop-first); revisit when mobile is prioritized. */
+      overflow: visible;
+    }
+    .cm-mkt-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+    }
+    .cm-mkt-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
       white-space: nowrap;
     }
-    .va-market-meta {
+    /* Numeric column headers right-aligned to match their values below */
+    .cm-mkt-table th.cm-th-num { text-align: right; }
+    .cm-mkt-table th.cm-th-rcg { text-align: center; }
+    .cm-mkt-table td {
+      padding: 0 12px;
+      height: var(--cm-space-row-tight);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cm-mkt-table th:not(:last-child),
+    .cm-mkt-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-mkt-table tbody tr:nth-child(2n) { background: var(--cm-bg-surface-alt); }
+    .cm-mkt-table tbody tr:hover { background: var(--cm-bg-callout); }
+    .cm-mkt-table tbody tr:last-child td { border-bottom: 0; }
+    .cm-th-num, .cm-td-num { text-align: right; }
+    .cm-th-rcg, .cm-td-rcg { text-align: center; width: 56px; }
+    /* RCG cell must allow overflow so the tooltip pseudo-element can escape the td bounds */
+    .cm-mkt-table td.cm-td-rcg { overflow: visible; }
+
+    /* Sortable column headers — click to sort, click again to reverse.
+       Nansen-shape stacked-arrow icon: ▲ above ▼, both faint when idle.
+       When asc-active, top arrow brightens blue. When desc-active, bottom arrow brightens blue. */
+    .cm-mkt-table th.cm-th-sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.12s ease;
+    }
+    .cm-mkt-table th.cm-th-sortable:hover {
+      color: var(--cm-fg-primary);
+    }
+    .cm-sort-icon {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      margin-left: 5px;
+      line-height: 0.55;
+      font-size: 11px;
+      font-family: var(--cm-font-mono);
+      letter-spacing: 0;
+      position: relative;
+      top: -1px;
+    }
+    .cm-sort-icon::before {
+      content: '▲';
+      color: var(--cm-fg-faint);
+      opacity: 0.45;
+      transition: color 0.12s ease, opacity 0.12s ease;
+    }
+    .cm-sort-icon::after {
+      content: '▼';
+      color: var(--cm-fg-faint);
+      opacity: 0.45;
+      transition: color 0.12s ease, opacity 0.12s ease;
+    }
+    .cm-mkt-table th.cm-th-sortable:hover .cm-sort-icon::before,
+    .cm-mkt-table th.cm-th-sortable:hover .cm-sort-icon::after {
+      color: var(--cm-fg-secondary);
+      opacity: 0.85;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active="asc"] .cm-sort-icon::before {
+      color: var(--cm-fg-link);
+      opacity: 1;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active="desc"] .cm-sort-icon::after {
+      color: var(--cm-fg-link);
+      opacity: 1;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active] {
+      color: var(--cm-fg-primary);
+    }
+    /* MARKET column reset affordance — subtle, only on hover */
+    .cm-mkt-table th.cm-th-reset {
+      cursor: pointer;
+      user-select: none;
+    }
+    .cm-mkt-table th.cm-th-reset:hover {
+      color: var(--cm-fg-primary);
+    }
+    .cm-th-id, .cm-td-id { text-align: left; }
+    .cm-td-strike { color: var(--cm-fg-primary); font-weight: 500; }
+    .cm-td-q {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-primary);
+      white-space: normal;
+      line-height: 1.4;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      text-overflow: ellipsis;
+    }
+    .cm-td-p { color: var(--cm-fg-primary); font-weight: 500; }
+
+    /* Range/threshold label styling — Bloomberg-shape mono tabular for mathematical scan alignment */
+    .cm-td-q-range {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      line-height: 1.4;
+      -webkit-line-clamp: unset;
+      display: table-cell;
+    }
+
+    /* Sparkbar columns — dedicated narrow columns for distribution visualization.
+       P(YES) bar = blue (probability mass). VOL CUM bar = green (liquidity/conviction).
+       Tightly paired with their preceding numeric cell (reduced inter-cell padding)
+       so the number + bar read as a single visual unit. */
+    .cm-th-bar, .cm-td-bar {
+      padding: 0 2px;
+      vertical-align: middle;
+    }
+    /* Tighten padding on the numeric cell immediately preceding a bar cell */
+    .cm-mkt-table .cm-td-num:has(+ .cm-td-bar) { padding-right: 4px; }
+    .cm-mkt-table .cm-th-num:has(+ .cm-th-bar) { padding-right: 4px; }
+    .cm-bar-track {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .cm-bar-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      min-width: 1px;
+      max-width: 100%;
+      border-radius: 1px;
+    }
+    .cm-bar-prob { background: var(--cm-fg-link); }   /* #5c9dff — blue, P(YES) */
+    .cm-bar-vol  { background: var(--cm-positive); }   /* #10d894 — green, volume */
+
+    .cm-mono-id {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-faint);
+      background: rgba(255, 255, 255, 0.02);
+      padding: 1px 5px;
+    }
+    .cm-copy {
+      cursor: pointer;
+      user-select: all;
+      transition: background 0.15s, color 0.15s;
+    }
+    .cm-copy::after {
+      content: " ⧉";
+      color: var(--cm-fg-muted);
+      font-weight: 400;
+      margin-left: 2px;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    .cm-copy:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--cm-fg-secondary);
+    }
+    .cm-copy:hover::after {
+      opacity: 1;
+      color: var(--cm-fg-primary);
+    }
+    .cm-copy.cm-copied {
+      background: rgba(16, 216, 148, 0.18);
+      color: var(--cm-positive);
+    }
+    .cm-copy.cm-copied::after {
+      content: " ✓";
+      color: var(--cm-positive);
+      opacity: 1;
+      font-weight: 600;
+    }
+
+    /* RCG chips — A vs C visual asymmetry */
+    /* Resolution Clarity Grade chips — per-contract grade with outline weight per grade
+       so column variance is scannable even when colors are similar (bond-rating analogy).
+       Hover triggers custom CSS tooltip (.cm-tt). Click anchors to #resolution. A=solid, B=dashed, C=dotted. */
+    .cm-rcg-chip {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 6px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.1s ease;
+    }
+    .cm-rcg-chip:hover { transform: scale(1.06); }
+
+    /* ========================================
+       TOOLTIP — CSS-only, terminal-styled
+       ========================================
+       Reusable. Apply class="cm-tt" + data-tt="..." to any element.
+       Tooltip renders above the trigger, centered. Fast trigger (no 700ms native delay).
+       Accessible via paired aria-label. Works on hover + keyboard focus. */
+    .cm-tt {
+      position: relative;
+    }
+    .cm-tt::after {
+      content: attr(data-tt);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 280px;
+      padding: 8px 10px;
+      background: var(--cm-bg-callout);
+      border: 1px solid var(--cm-border-emphasis);
+      color: var(--cm-fg-primary);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      font-weight: 400;
+      line-height: 1.45;
+      letter-spacing: 0;
+      text-align: left;
+      text-transform: none;
+      white-space: normal;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 200;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    .cm-tt::before {
+      content: '';
+      position: absolute;
+      bottom: calc(100% + 2px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--cm-border-emphasis);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 201;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+    }
+    .cm-tt:hover::after,
+    .cm-tt:hover::before,
+    .cm-tt:focus-visible::after,
+    .cm-tt:focus-visible::before {
+      opacity: 1;
+      visibility: visible;
+    }
+    /* Right-edge variant: tooltip anchored to right of trigger (use for rightmost columns to avoid viewport clip) */
+    .cm-tt[data-tt-pos="left"]::after {
+      left: auto;
+      right: 50%;
+      transform: translateX(50%);
+    }
+    .cm-rcg-a {
+      border: 1.5px solid var(--cm-positive);
+      color: var(--cm-positive);
+      background: transparent;
+    }
+    .cm-rcg-b {
+      border: 1.5px dashed var(--cm-border-emphasis);
+      color: var(--cm-fg-secondary);
+      background: transparent;
+    }
+    .cm-rcg-c {
+      border: 1.5px dotted var(--cm-divergence);
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      font-weight: 700;
+    }
+
+    /* ========================================
+       SPLIT LAYOUT — Resolution + Catalyst
+       ======================================== */
+    .cm-split {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    .cm-split-left, .cm-split-right {
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .cm-split-left .cm-res-table,
+    .cm-split-right .cm-catalyst-timeline { flex: 1 0 auto; }
+    @media (max-width: 900px) {
+      .cm-split { grid-template-columns: 1fr; }
+    }
+
+    .cm-res-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-res-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-primary);
+      vertical-align: top;
+    }
+    .cm-res-table th:not(:last-child),
+    .cm-res-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-table tbody tr:last-child td { border-bottom: 0; }
+    .cm-res-td-venue { font-weight: 600; }
+    .cm-res-td-src {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+      white-space: normal;
+    }
+    .cm-th-rcg-dist, .cm-td-rcg-dist { text-align: center; }
+    .cm-code-pill {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--cm-fg-primary);
+      background: var(--cm-bg-deep);
+      border: 1px solid var(--cm-border-hairline);
+      padding: 2px 6px;
+    }
+    .cm-clarity-dist {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.06em;
+    }
+    .cm-dd-empty { color: var(--cm-fg-faint); font-style: italic; font-size: 11.5px; }
+    /* Header cells with help tooltips — cursor + faint underline-on-hover signals interactivity */
+    .cm-res-table th.cm-th-help {
+      cursor: help;
+      border-bottom: 1px dotted var(--cm-border-emphasis);
+    }
+    /* Verbatim platform source string — quoted to signal "this is exactly what the venue published" */
+    .cm-verbatim {
+      font-family: var(--cm-font-sans);
+      color: var(--cm-fg-primary);
+    }
+    /* Class chip — DCM (regulated) green, DeFi (unregulated) amber, Other (unknown) muted gray.
+       text-transform NOT set — chip preserves the source casing (DCM all-caps as acronym; DeFi mixed-case as conventional). */
+    .cm-class-chip {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border: 1.5px solid;
+      background: transparent;
+    }
+    .cm-class-dcm { color: var(--cm-positive); border-color: var(--cm-positive); }
+    .cm-class-defi { color: var(--cm-divergence); border-color: var(--cm-divergence); }
+    .cm-class-other { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+    /* Analyst notes cell — sans, slightly muted, wraps to fit operational sentence */
+    .cm-res-td-notes {
+      font-family: var(--cm-font-sans);
+      font-size: 12px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+      white-space: normal;
+      max-width: 240px;
+    }
+
+    /* Resolution rules verbatim block — two-column layout per venue.
+       LEFT: verbatim prose (constrained reading measure).
+       RIGHT: real settlement-reference metadata (no invented values). */
+    .cm-res-rules {
+      margin-top: 20px;
+      padding: 20px 24px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-h {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      margin-bottom: 14px;
+    }
+    .cm-res-rules-block {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-block:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .cm-res-rules-venue {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .cm-res-rules-venue-name {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: var(--cm-fg-primary);
+    }
+    .cm-res-rules-venue-count {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    /* Verbatim rules text — collapsed by default behind <details>. When expanded,
+       Bloomberg/Refinitiv-shape fine-print treatment: small font, left block-quote border, tighter line-height. */
+    .cm-res-rules-text {
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      white-space: pre-wrap;
+      padding-left: 12px;
+      border-left: 2px solid var(--cm-border-rule);
+      max-width: 820px;
+      margin-top: 12px;
+    }
+    /* Details/summary disclosure for verbatim rules — high-density, low-contrast action bar */
+    .cm-res-rules-details {
+      margin-top: 4px;
+    }
+    .cm-res-rules-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      transition: color 0.15s ease;
+    }
+    .cm-res-rules-summary::-webkit-details-marker { display: none; }
+    .cm-res-rules-summary::marker { content: ''; }
+    .cm-res-rules-summary:hover { color: var(--cm-fg-secondary); }
+    .cm-res-rules-arrow {
+      display: inline-block;
+      font-size: 9px;
+      color: var(--cm-fg-faint);
+      transition: transform 0.2s ease;
+    }
+    .cm-res-rules-details[open] .cm-res-rules-arrow { transform: rotate(90deg); }
+    .cm-res-rules-details[open] .cm-res-rules-summary { color: var(--cm-fg-secondary); }
+    /* Metadata ribbon — flat full-width track. Hairline top/bottom borders, no fill.
+       Matches the flat terminal grid architecture of the tables above. */
+    .cm-res-rules-ribbon {
       display: flex;
       flex-wrap: wrap;
-      gap: 3px 16px;
-      font-family: var(--va-mono);
+      align-items: center;
+      gap: 0;
+      padding: 8px 0;
+      margin: 8px 0 0 0;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
       font-size: 10.5px;
-      color: var(--va-fg-muted);
     }
-    .va-meta-l {
-      color: var(--va-fg-faint);
+    .cm-res-rules-ribbon-cell {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 0 16px;
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-ribbon-cell:first-child { padding-left: 0; }
+    .cm-res-rules-ribbon-cell:last-child { border-right: 0; }
+    .cm-res-rules-ribbon-k {
+      color: var(--cm-fg-muted);
       letter-spacing: 0.06em;
       text-transform: uppercase;
       font-size: 9.5px;
-      margin-right: 2px;
     }
-    .va-meta-code {
-      color: var(--va-fg-muted);
-      font-size: 10px;
+    .cm-res-rules-ribbon-v {
+      color: var(--cm-fg-primary);
+      font-weight: 500;
+      letter-spacing: 0.02em;
     }
-
-    /* ===== RESOLUTION ARCHITECTURE ===== */
-    .va-resolution-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin: 0;
-    }
-    .va-resolution-cell {
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      padding: 14px 16px;
-    }
-    .va-resolution-wide { grid-column: 1 / -1; }
-    @media (max-width: 720px) {
-      .va-resolution-grid { grid-template-columns: 1fr; }
-    }
-    .va-resolution-cell dt {
-      font-family: var(--va-mono);
-      font-size: 10px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-      margin: 0 0 8px;
-      font-weight: 600;
-    }
-    .va-resolution-cell dd {
-      margin: 0;
-      font-family: var(--va-mono);
-      font-size: 12.5px;
-      color: var(--va-fg);
-    }
-    .va-dd-empty {
-      color: var(--va-fg-faint);
-      font-style: italic;
-    }
-    .va-code-pill {
-      display: inline-block;
-      padding: 3px 8px;
-      margin: 2px 4px 2px 0;
-      background: rgba(118,184,255,0.06);
-      border: 1px solid rgba(118,184,255,0.22);
-      border-radius: 2px;
-      color: var(--va-accent);
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-    }
-    .va-source-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-    }
-    .va-source-table td {
-      padding: 6px 0;
-      border-bottom: 1px solid var(--va-border);
-      vertical-align: top;
-    }
-    .va-source-table tr:last-child td { border-bottom: none; }
-    .va-source-venue {
-      color: var(--va-accent);
-      letter-spacing: 0.04em;
-      width: 90px;
-    }
-    .va-source-name {
-      color: var(--va-fg);
-      padding-right: 12px !important;
-    }
-    .va-source-url {
-      text-align: right;
-      width: 60px;
-    }
-    .va-source-url a {
-      color: var(--va-accent);
-      text-decoration: none;
-    }
-    .va-source-url a:hover { text-decoration: underline; }
-
-    /* ===== CATALYST CALENDAR ===== */
-    .va-catalyst-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-    }
-    .va-catalyst-list li {
-      display: flex;
-      align-items: baseline;
-      gap: 18px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--va-border);
-      font-family: var(--va-mono);
-      font-size: 12.5px;
-    }
-    .va-catalyst-list li:last-child { border-bottom: none; }
-    .va-catalyst-date {
-      color: var(--va-accent);
-      font-weight: 600;
-      min-width: 100px;
-    }
-    .va-catalyst-event { color: var(--va-fg); }
-
-    /* ===== PROVENANCE ===== */
-    .va-prov-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-    }
-    .va-prov-table th,
-    .va-prov-table td {
-      text-align: left;
-      padding: 7px 12px;
-      border-bottom: 1px solid var(--va-border);
-    }
-    .va-prov-table th {
-      font-size: 10px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-      font-weight: 600;
-    }
-    .va-prov-table td code { color: var(--va-fg); }
-    .va-prov-pill {
-      display: inline-block;
-      padding: 2px 7px;
-      background: rgba(118,184,255,0.12);
-      border: 1px solid rgba(118,184,255,0.40);
-      border-radius: 2px;
-      color: var(--va-fg);
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      letter-spacing: 0.04em;
+    .cm-res-rules-ribbon-link {
+      color: var(--cm-fg-link);
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
       font-weight: 500;
     }
-    /* Field column should use code chip not a pill — clearer hierarchy */
-    .va-prov-table td code {
-      color: var(--va-fg);
-      background: rgba(255,255,255,0.04);
-      padding: 1px 6px;
-      border: 1px solid var(--va-border);
-      border-radius: 2px;
-      font-size: 11px;
-    }
-
-    /* Resolution sources table — add header row + count column */
-    .va-source-count-h,
-    .va-source-url-h {
-      font-family: var(--va-mono);
-      font-size: 10px !important;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-      font-weight: 600 !important;
-    }
-    .va-source-table th {
-      font-family: var(--va-mono);
-      font-size: 10px;
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-      font-weight: 600;
-      text-align: left;
-      padding: 4px 8px 8px 0;
-      border-bottom: 1px solid var(--va-border);
-    }
-    .va-source-count {
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      color: var(--va-fg);
-      text-align: center;
-      width: 80px;
-    }
-
-    /* ===== PROGRAMMATIC ACCESS table ===== */
-    .va-endpoints-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--va-mono);
-      font-size: 11.5px;
-      margin-bottom: 20px;
-    }
-    .va-endpoints-table td {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--va-border);
-      vertical-align: middle;
-    }
-    .va-endpoints-table tr:last-child td { border-bottom: none; }
-    .va-endpoints-table td:first-child { width: 90px; }
-    /* Format labels in Programmatic Access — plain uppercase mono, NOT pills */
-    .va-format-label {
-      font-family: var(--va-mono);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--va-accent);
-      letter-spacing: 0.10em;
-      text-transform: uppercase;
-    }
-    .va-endpoints-table td:nth-child(2) {
-      color: var(--va-fg-muted);
-      width: 200px;
-    }
-    .va-endpoints-table a {
-      color: var(--va-accent);
-      text-decoration: none;
-    }
-    .va-endpoints-table a:hover { text-decoration: underline; }
-    .va-endpoint-url {
-      color: var(--va-fg);
-      font-size: 11px;
-      background: rgba(255,255,255,0.03);
-      padding: 2px 6px;
-      border: 1px solid var(--va-border);
-      border-radius: 2px;
-      word-break: break-all;
-    }
-    .va-inline-code {
-      color: var(--va-accent);
-      background: rgba(118,184,255,0.08);
-      padding: 1px 5px;
-      border-radius: 2px;
-      font-size: 0.9em;
-    }
-
-    /* ===== JSON BLOCK: visible (not collapsed) — crawlers see it in plain HTML.
-       Constrained height with internal scroll keeps the page navigable. ===== */
-    .va-json-block {
-      margin-top: 16px;
-    }
-    .va-json-block-head {
-      padding: 8px 0;
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--va-fg-faint);
-    }
-    .va-json-block-label {
-      color: var(--va-fg-faint);
-    }
-
-    /* ===== WIRE LIST ===== */
-    .va-wire-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .va-wire {
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      padding: 16px 18px;
-      margin-bottom: 12px;
-    }
-    .va-wire-meta {
+    .cm-res-rules-ribbon-link:hover { text-decoration-color: var(--cm-fg-link); }
+    /* Underlying reference — sits directly under the ribbon, secondary inline block */
+    .cm-res-rules-underlying {
       display: flex;
+      align-items: baseline;
       gap: 10px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .va-wire-time {
-      font-family: var(--va-mono);
+      padding: 6px 0;
+      margin: 0 0 12px 0;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
       font-size: 10.5px;
-      color: var(--va-fg-faint);
-      letter-spacing: 0.04em;
+      color: var(--cm-fg-secondary);
     }
-    .va-wire-tag {
-      font-family: var(--va-mono);
-      font-size: 10.5px;
-      color: var(--va-accent);
-      padding: 2px 8px;
-      border: 1px solid rgba(118,184,255,0.28);
-      background: rgba(118,184,255,0.06);
-      border-radius: 2px;
-      letter-spacing: 0.04em;
-      text-transform: lowercase;
+    .cm-res-rules-underlying-k {
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 9.5px;
+      flex-shrink: 0;
     }
-    .va-wire-head {
-      display: block;
-      font-family: var(--va-mono);
-      font-size: 14px;
+    .cm-res-rules-underlying-v {
+      color: var(--cm-fg-primary);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+    }
+    .cm-res-rules-empty {
+      color: var(--cm-fg-faint);
+      font-style: italic;
+    }
+
+    /* Catalyst timeline — vertical line + dots + days-from-now indicator
+       Visually differentiates from the grid-shape Resolution Architecture beside it. */
+    .cm-catalyst-timeline {
+      list-style: none;
+      margin: 0;
+      padding: 16px 18px 16px 12px;
+      background: linear-gradient(180deg, rgba(16, 216, 148, 0.025) 0%, transparent 100%), var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      border-left: 2px solid var(--cm-positive);
+      position: relative;
+    }
+    /* Gemini-spec rigid grid layout — 5 fixed columns */
+    .cm-catalyst-grid {
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-catalyst-head {
+      display: grid;
+      grid-template-columns: 70px 110px 1fr 220px 110px;
+      gap: 16px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
       font-weight: 600;
-      color: var(--va-fg);
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+      text-transform: uppercase;
+    }
+    .cm-catalyst-grid-row {
+      display: grid;
+      grid-template-columns: 70px 110px 1fr 220px 110px;
+      gap: 16px;
+      padding: 12px 16px;
+      align-items: center;
+      border-bottom: 1px solid var(--cm-border-hairline);
+    }
+    .cm-catalyst-grid-row:last-child { border-bottom: 0; }
+    .cm-catalyst-dte {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cm-positive);
+      letter-spacing: 0.04em;
+    }
+    .cm-catalyst-grid-row .cm-catalyst-date {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.02em;
+    }
+    .cm-catalyst-event-col {
+      min-width: 0;
+    }
+    .cm-catalyst-event-title {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--cm-fg-primary);
+      line-height: 1.35;
+    }
+    .cm-catalyst-meta-col {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      color: var(--cm-fg-muted);
+      line-height: 1.5;
+    }
+    .cm-catalyst-meta-col .cm-catalyst-source {
+      display: block;
+      color: var(--cm-fg-link);
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
+      text-underline-offset: 2px;
+    }
+    .cm-catalyst-meta-col .cm-catalyst-source:hover {
+      text-decoration-color: var(--cm-fg-link);
+    }
+    .cm-catalyst-meta-col .cm-catalyst-verified {
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-type-col {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    /* Plain text — no box, no background. Mono uppercase, muted color. */
+    .cm-catalyst-grid .cm-catalyst-type-chip {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+      white-space: nowrap;
+    }
+    /* Tightened timeline aesthetic — small dots, hairline connector, dense rows.
+       Metadata sits BENEATH the event description, not in a far-right column (no center void). */
+    .cm-catalyst-row {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 12px;
+      padding: 6px 0;
+      position: relative;
+      align-items: start;
+    }
+    .cm-catalyst-row:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 18px;
+      bottom: -6px;
+      width: 1px;
+      background: var(--cm-border-hairline);
+    }
+    .cm-catalyst-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--cm-bg-deep);
+      border: 1.5px solid var(--cm-positive);
+      margin-top: 6px;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .cm-catalyst-near .cm-catalyst-dot {
+      background: var(--cm-positive);
+    }
+    .cm-catalyst-past .cm-catalyst-dot {
+      border-color: var(--cm-fg-faint);
+    }
+    /* Catalyst type chip — uppercased + canonical display label */
+    .cm-catalyst-type {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-deep);
+      border: 1px solid var(--cm-border-hairline);
+      padding: 1px 5px;
+    }
+    /* Inline metadata row — sits BENEATH the event description.
+       Source URL + verified timestamp, separated by · dot. No far-right canyon. */
+    .cm-catalyst-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: 4px;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-source {
       text-decoration: none;
-      margin: 4px 0 8px;
+      color: var(--cm-fg-link);
+    }
+    .cm-catalyst-source-host {
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
+      text-underline-offset: 3px;
+    }
+    .cm-catalyst-source:hover .cm-catalyst-source-host {
+      text-decoration-color: var(--cm-fg-link);
+    }
+    .cm-catalyst-meta-sep {
+      color: var(--cm-fg-faint);
+    }
+    .cm-catalyst-verified {
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-date-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+    .cm-catalyst-date {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cm-positive);
+      letter-spacing: 0.04em;
+    }
+    .cm-catalyst-past .cm-catalyst-date {
+      color: var(--cm-fg-faint);
+    }
+    .cm-catalyst-delta {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+      padding: 1px 5px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .cm-catalyst-near .cm-catalyst-delta {
+      color: var(--cm-positive);
+      background: rgba(16, 216, 148, 0.10);
+    }
+    .cm-catalyst-event {
+      font-family: var(--cm-font-sans);
+      font-size: 13.5px;
+      color: var(--cm-fg-primary);
       line-height: 1.4;
     }
-    .va-wire-head:hover { color: var(--va-accent); }
-    .va-wire-bullet-0 {
-      font-family: var(--va-mono);
-      font-size: 12px;
-      color: var(--va-fg-muted);
-      line-height: 1.6;
-      margin: 0;
-    }
-    .va-empty-note {
-      font-family: var(--va-mono);
-      font-size: 12px;
-      color: var(--va-fg-faint);
-      font-style: italic;
-      padding: 12px 0;
-      margin: 0;
+    .cm-catalyst-past .cm-catalyst-event {
+      color: var(--cm-fg-muted);
     }
 
-    /* ===== MACHINE JSON ===== */
-    .va-section-machine {
-      padding-top: 24px;
-      border-top: 1px dashed var(--va-border);
-    }
-    .va-machine-json {
-      max-height: 480px;
-      overflow: auto;
-      font-family: var(--va-mono);
-      font-size: 11px;
-      line-height: 1.6;
-      padding: 16px;
-      background: var(--va-bg-2);
-      border: 1px solid var(--va-border);
-      border-radius: 3px;
-      margin: 0;
-      color: #5a6068;
-    }
-    .va-machine-json code .t-key { color: #7faedb; }
-    .va-machine-json code .t-str { color: #d4d7dc; }
-    .va-machine-json code .t-num { color: #d4b850; }
+    /* Legacy catalyst list class — preserved for safety */
+    .cm-catalyst-list { display: none; }
 
-    /* ===== FOOTER META ===== */
-    .va-event-foot {
+    /* ========================================
+       WIRE ITEMS
+       ======================================== */
+    .cm-mark-inline {
+      font-family: var(--cm-font-mono);
+      background: var(--cm-fg-primary);
+      color: var(--cm-bg-deep);
+      padding: 0 4px;
+      letter-spacing: 0.06em;
+    }
+    .cm-wire-list { list-style: none; margin: 0; padding: 0; }
+    .cm-wire {
+      padding: 14px 16px 14px 18px;
+      border: 1px solid var(--cm-border-hairline);
+      border-left: 3px solid var(--cm-border-rule);
+      background: var(--cm-bg-surface);
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    /* Bucket accents — A: cross-venue (link blue), B: benchmark (divergence amber),
+       C: news-cycle (muted, coverage not editorial) */
+    .cm-wire[data-cm-bucket="A"] {
+      border-left-color: var(--cm-fg-link);
+      background: linear-gradient(90deg, rgba(92, 157, 255, 0.04) 0%, var(--cm-bg-surface) 60%);
+    }
+    .cm-wire[data-cm-bucket="B"] {
+      border-left-color: var(--cm-divergence);
+      background: linear-gradient(90deg, rgba(240, 168, 48, 0.04) 0%, var(--cm-bg-surface) 60%);
+    }
+    .cm-wire[data-cm-bucket="C"] {
+      border-left-color: var(--cm-fg-muted);
+    }
+    .cm-wire:hover {
+      border-color: var(--cm-border-emphasis);
+    }
+    /* Legacy bucket-mark class — preserved for safety, no longer rendered */
+    .cm-wire-bucket-mark { display: none; }
+    .cm-wire-meta {
       display: flex;
-      flex-wrap: wrap;
-      gap: 22px;
-      align-items: baseline;
-      padding-top: 20px;
-      margin-top: 32px;
-      border-top: 1px solid var(--va-border);
-      font-family: var(--va-mono);
-      font-size: 11px;
-      color: var(--va-fg-muted);
+      gap: 12px;
+      align-items: center;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      margin-bottom: 8px;
     }
-    .va-event-foot a {
-      color: var(--va-accent);
+    .cm-wire-tag { color: var(--cm-positive); }
+    .cm-wire[data-cm-bucket="A"] .cm-wire-tag { color: var(--cm-fg-link); }
+    .cm-wire[data-cm-bucket="B"] .cm-wire-tag { color: var(--cm-divergence); }
+    .cm-wire[data-cm-bucket="C"] .cm-wire-tag { color: var(--cm-fg-muted); }
+    .cm-wire-head {
+      display: block;
+      font-family: var(--cm-font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cm-fg-primary);
       text-decoration: none;
-      margin-left: auto;
+      margin-bottom: 8px;
+      line-height: 1.35;
     }
-    .va-event-foot a:hover { text-decoration: underline; }
-    .va-event-foot code {
-      color: var(--va-fg);
+    .cm-wire-bullet-0 {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      margin: 0;
+    }
+    .cm-wire-bullets {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .cm-wire-bullets li {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      padding-left: 14px;
+      position: relative;
+      margin-bottom: 4px;
+    }
+    .cm-wire-bullets li:before {
+      content: "•";
+      position: absolute;
+      left: 2px;
+      color: var(--cm-fg-faint);
+    }
+    .cm-wire-bullets li:last-child { margin-bottom: 0; }
+    .cm-wire-bullets li code {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0 4px;
+    }
+    .cm-wire-tag-2 {
+      color: var(--cm-fg-muted);
+      font-size: 10.5px;
+    }
+    .cm-placeholder-note {
+      font-style: normal;
+      color: var(--cm-fg-muted);
+      font-size: 12.5px;
+      line-height: 1.55;
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-divergence);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+    .cm-wire-list-placeholder .cm-wire {
+      opacity: 0.85;
+    }
+    .cm-wire-placeholder-lbl {
+      margin-left: auto;
+      color: var(--cm-divergence);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .cm-wire-meta { width: 100%; align-items: center; }
+
+    /* ========================================
+       PROGRAMMATIC ACCESS
+       ======================================== */
+    .cm-section-machine .cm-section-summary { max-width: 720px; }
+    .cm-endpoints-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      margin-bottom: 16px;
+    }
+    .cm-endpoints-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      vertical-align: middle;
+    }
+    .cm-endpoints-table tr:last-child td { border-bottom: 0; }
+    .cm-endpoints-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-fmt {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.03);
+      width: 80px;
+    }
+    .cm-endpoint-url {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+    }
+    .cm-endpoints-table a { color: var(--cm-fg-link); text-decoration: none; }
+    .cm-endpoints-table a:hover { text-decoration: underline; }
+    .cm-inline-code {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1px 5px;
+      color: var(--cm-fg-primary);
+    }
+    .cm-provenance-note {
+      font-family: var(--cm-font-sans);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-fg-link);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .cm-provenance-note code {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0 4px;
+    }
+    .cm-json-block {
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-json-block-head {
+      padding: 8px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-json-block-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-machine-json {
+      margin: 0;
+      padding: 14px var(--cm-space-card-pad);
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .cm-machine-json :global(.t-key)  { color: #7faedb; }
+    .cm-machine-json :global(.t-str)  { color: var(--cm-fg-secondary); }
+    .cm-machine-json :global(.t-num)  { color: #d4b850; }
+
+    /* ========================================
+       FOOTER
+       ======================================== */
+    .cm-event-foot {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 20px 0 8px;
+      border-top: 1px solid var(--cm-border-hairline);
+      margin-top: 32px;
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-faint);
+    }
+    .cm-event-foot a {
+      color: var(--cm-fg-link);
+      text-decoration: none;
+    }
+    .cm-event-foot a:hover { text-decoration: underline; }
+    .cm-event-foot code {
+      color: var(--cm-fg-secondary);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1px 5px;
     }
   </style>
 </Site>

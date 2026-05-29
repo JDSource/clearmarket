@@ -1,0 +1,44 @@
+ClearMarket Resolution Clarity Grade (RCG) - v2 scoring model,,,,,,,
+Weights are hypotheses - calibrate against a sample of ORDINARY markets (the 4 cases below are tail failures only),,,,,,,
+CANONICAL COPY: clearmarket repo root /rcg-scoring-model.csv (feeds the /methodology page). Synced to classify.py RCG_WEIGHTS + enhance.llm_rcg_factors. Detection split revised 2026-05-27: source-conflict -> LLM (was deterministic tie-break); temporal + mutability -> always-on.,,,,,,,
+,,,,,,,
+SCORING MODEL,,,,,,,
+Factor,Axis,Weight,Pass_pts,Partial_pts,Fail_pts,Detection,Notes
+Trigger objectivity,2,28,28,14,0,LLM,Objective measurable trigger vs discretionary criterion; heaviest - survives venue cleanup
+Contested reality,2,22,22,11,0,LLM,Ground truth controlled/disputed by an interested party who shapes the RECORD; being merely the SUBJECT of a verifiable announcement is not a fail
+Source clarity,1,18,18,9,0,hybrid,Reads the verified-source layer (deterministic Kalshi / gated-LLM Polymarket); table stakes - commoditizes fast
+Arbiter incentive,2,12,12,6,0,deterministic,Regulated or automated pass; permissionless oracle fail
+Source-conflict rule,2,8,8,4,0,LLM (situational),na if one source; pass = 2+ conflictable sources WITH a precedence/fallback/agreement rule; fail = 2+ sources with NO rule. Same source across multiple pages = na
+Temporal precision,2,7,7,3.5,0,LLM (always-on),Controlling timestamp precise and aligned with when the source updates vs lag/ambiguity
+Source mutability,2,5,5,2.5,0,LLM (always-on),Source editable/tamperable after the fact without a snapshot/archival rule
+TOTAL,,100,,,,,
+,,,,,,,
+SCORING RULES,,,,,,,
+R1 - Always-on factors (trigger / contested / source clarity / arbiter / temporal / mutability) score every market; the one situational factor (source-conflict rule) scores only when 2+ distinct sources are named and is excluded from the denominator otherwise,,,,,,,
+R2 - Final = 100 x (earned applicable points / total applicable points); then band; then apply caps,,,,,,,
+R3 - Caps are CEILINGS - a cap at B means the grade cannot exceed B; a market can still score lower on its own merits,,,,,,,
+R4 - Expose the applicable-factor count with the grade (e.g. B - scored on 6 of 7 factors) for comparability across complexity,,,,,,,
+R5 - All five LLM-judged factors (trigger + contested + source-conflict + temporal + mutability) are scored in ONE per-event call (enhance.llm_rcg_factors) - adding factors adds tokens not calls; cost stays ~one call per event,,,,,,,
+R6 - Partial credit = half the weight carried UNROUNDED (temporal 3.5 / mutability 2.5); only the final 100x score is rounded,,,,,,,
+,,,,,,,
+GRADE BANDS (applied after caps),,,,,,,
+Grade,Score_range,,,,,,
+A,80-100,,,,,,
+B,55-79,,,,,,
+C,0-54,,,,,,
+,,,,,,,
+HARD CAPS (ceilings - override upward grades),,,,,,,
+Cap,Rule,Effect,,,,,
+Cap1,2+ distinct sources that could disagree with no conflict/fallback rule (source-conflict = fail),Cap at C,,,,,
+Cap2,Discretionary trigger with no named adjudicating source,Cap at C,,,,,
+Cap3,Permissionless oracle arbiter AND discretionary trigger,Cap at C,,,,,
+Cap4,Trigger depends on a fact controlled or disputed by an interested party (adversarial ground truth),Cap at B,,,,,
+,,,,,,,
+SANITY CHECK - four documented failures (matches classify.py self-test under v2 rules),,,,,,,
+Case,Trigger,Contested,SourceClarity,Arbiter,Conflict,Temporal,Mutability,Applied,Score,Cap,Final
+Venezuela 2024,28,0,9,0,0,7,2.5,7,46,conflict+contested,C
+Zelensky suit,0,22,0,0,na,7,na,5,33,subjective-no-source,C
+OPM shutdown,28,22,18,0,na,0,2.5,6,77,none,B
+Ukraine map,28,0,9,0,na,7,0,6,48,contested (B ceiling),C
+,,,,,,,
+NOTE - v2 moves Ukraine map from B to C (contested reality + mutability fails); OPM stays B (UMA arbiter + temporal-lag fails). Target pattern: C/C/B/C,,,,,,,

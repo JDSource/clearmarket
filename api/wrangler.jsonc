@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clearmarket-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["0 * * * *"] },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clearmarket",
+      "database_id": "03c1760a-9a99-49b1-b388-6f118d7c31fb"
+    }
+  ]
+}

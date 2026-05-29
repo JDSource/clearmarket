@@ -25,7 +25,9 @@ const signals = defineCollection({
     ]),
     pre_news_classification: z.enum(['pre_news', 'concurrent', 'lagging']),
     published_at: z.string(),
-    event_id: z.string().regex(/^CM[0-9A-Z]{10}$/),
+    // Accepts the real prefixed ids (CM-EVT-XXXXXXXX, locked 2026-05-27) and the older
+    // compact demo ids (CMI3R4N4P5C1). Was /^CM[0-9A-Z]{10}$/ which rejected real ids.
+    event_id: z.string().regex(/^CM[-0-9A-Z]+$/),
     event_slug: z.string(),
     event_question: z.string(),
     linked_event_ids: z.array(z.string()).optional(),
@@ -165,6 +167,11 @@ const signals = defineCollection({
     })).optional(),
     judge_confidence: z.number().min(0).max(1).optional(),
     prompt_template: z.string().optional(),
+    // REQUIRED, min 1 (locked 2026-05-26 per Jeremy). Every wire item cites at least
+    // one source — provenance is the defensible layer, so a sourceless wire is not
+    // publishable. For pure-mechanical wires (cross_venue_divergence, volume_spike) the
+    // source is the venue market URL(s); for news/benchmark wires it is the underlying
+    // article / benchmark deep link. Deep-link enforcement (non-root URL) is a follow-up refine.
     sources: z.array(z.object({
       label: z.string(),
       url: z.string().url(),
@@ -173,7 +180,7 @@ const signals = defineCollection({
       // Added 2026-05-25 — enabled by retrieval-first stack returning per-result publish dates.
       published_at: z.string().optional(),
       retrieved_at: z.string().optional(),
-    })).optional(),
+    })).min(1, 'every wire item must cite at least one source'),
     field_provenance: z.object({
       pm_data: z.string().default('platform_api'),
       // Name the actual retriever in specimens: 'exa_search' / 'claude_web_search' /

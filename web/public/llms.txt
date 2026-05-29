@@ -1,36 +1,45 @@
 # ClearMarket
 
-Reference data layer for prediction markets. Cross-venue event linking, structured resolution sources, daily marks across Kalshi and Polymarket.
+Reference data layer for prediction markets. Cross-venue event linking, graded resolution clarity, named resolution sources, and catalysts across Kalshi and Polymarket. Open and free; built to be queried by agents.
 
 ## What this is
 
-ClearMarket normalizes Kalshi and Polymarket markets into a single 4-table schema:
-- events: canonical question, classified, with catalysts and editorial notes
-- markets: one row per venue listing, with parsed resolution rules and named sources
-- marks: daily price + liquidity snapshot per market
-- resolution_log: append-only audit trail of lifecycle events
+ClearMarket normalizes Kalshi and Polymarket markets into a single schema:
+- events: canonical question, classified, cross-venue linked, with catalyst dates
+- markets: one row per venue listing, with a Resolution Clarity Grade (A/B/C), named resolution source, and provenance
+- the same event priced on both venues is one event_id with markets attached from each
 
-Same event priced on both venues = one event_id, two markets, two marks.
+~2,100 events / ~18,000 markets. Prices refresh hourly. Read-only.
 
-## API (free tier, v0.2.0-beta)
+## REST API (open, free, no key)
 
-Base: https://clearmarket.fyi/api/v1/
+Base: https://api.clearmarket.fyi
 
-- GET /api/v1/index.json — discovery doc: endpoints, version, schema URLs
-- GET /api/v1/events.json — list of canonical events with summary marks
-- GET /api/v1/events/{slug}.json — full event detail: event + markets + marks + resolution_log
-- GET /api/v1/events/{slug}/markets.json — markets only for one event
+- GET /v1/events?category=&platform=&grade=&q=&limit=&offset= : list and filter events
+- GET /v1/events/{slug} : full event, all linked markets, grades, windowed catalysts
+- GET /v1/markets/{market_id} : single market, price, resolution provenance
+- GET /v1/catalysts/upcoming?days=N : scheduled catalysts across all events
+- POST /v1/keys {"email":"..."} : optional free key, lifts the limit to 10,000/day
 
-Static cached JSON. CORS open. Refresh daily. Soft rate limit ~100 req/day per IP at CDN edge.
+Open by default: full universe, no key, 1,000 requests/day per IP. CORS open.
+
+## MCP server (agent-first)
+
+Streamable HTTP at https://mcp.clearmarket.fyi. Open, read-only.
+
+Tools:
+- list_events : browse or search the universe (set q for free-text)
+- get_event : full graded record for one event
+- get_market : price and resolution provenance for one market
+- list_upcoming_catalysts : scheduled catalysts in the next N days
+
+Connect via mcp-remote (Claude Desktop / Cursor): npx -y mcp-remote https://mcp.clearmarket.fyi
 
 ## Example slugs
 
-- fed-april-2026-rate-decision (15 markets across Kalshi and Polymarket)
-- sp-500-close-end-of-2026 (27 strike markets)
-- netanyahu-out-by-april-30
-- iran-x-israelus-conflict-ends-by-april-30-766-662-668-546
-
-Full event list: https://clearmarket.fyi/api/v1/events.json
+- kxgdpyear-26 : will GDP growth in 2026 exceed 2%
+- kxinxy-26dec31h1600 : will the S&P 500 close above a level on Dec 31, 2026
+- bitcoin-vs-gold-vs-sp-500-in-2026 : will Bitcoin outperform gold and the S&P in 2026
 
 ## Schema
 

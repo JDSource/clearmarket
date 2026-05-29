@@ -36,7 +36,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
             <span class="va-wordmark">ClearMarket</span>
           </a>
           <nav>
-            <a class="va-nav-product" href="/events/">CM Data</a>
+            <a class="va-nav-product" href="/api/">CM Data</a>
             <a class="va-nav-product" href="/signals/">CM Signal</a>
             <span class="va-nav-sep" aria-hidden="true">·</span>
             <a href="/methodology/">Methodology</a>
@@ -44,6 +44,19 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
             <a class="va-cta-mini" href="mailto:hello@clearmarket.fyi">Contact</a>
           </nav>
         </header>
+        {/* Global system status bar — running grid header on every page (Gemini design direction).
+           TRUE values only: prices refresh hourly; ~2,100 events / ~18,000 markets; no daily-signal
+           cadence claim until CM Signal ships. */}
+        <div class="va-statusbar">
+          <span class="va-sb-dot" aria-hidden="true"></span>
+          <span>SYSTEM: LIVE</span>
+          <span class="va-sb-sep">·</span>
+          <span>PRICES: HOURLY REFRESH</span>
+          <span class="va-sb-sep">·</span>
+          <span>COVERAGE: ~2,100 EVENTS / ~18,000 MARKETS</span>
+          <span class="va-sb-sep">·</span>
+          <span>KALSHI + POLYMARKET</span>
+        </div>
         {/* Sub-nav slot — pages pass a <nav slot="subnav"> here. Renders directly under
            main header, sticky together as a single chrome block per patch brief. */}
         <slot name="subnav" />
@@ -57,11 +70,10 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
     {!bareChrome && (
       <footer class="va-foot">
         <div class="va-foot-row">
-          <a href="/events/">Events</a>
           <a href="/signals/">Signals</a>
           <a href="/methodology/">Methodology</a>
           <a href="/api/">API</a>
-          <a href="/mcp/">MCP</a>
+          <a href="/api/#mcp">MCP</a>
           <a href="/llms.txt">llms.txt</a>
           <a href="https://github.com/JDSource/clearmarket">GitHub</a>
           <a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a>
@@ -133,7 +145,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border-radius: 2px;
+      border-radius: 0;
       letter-spacing: 0.04em;
     }
     .va-wordmark {
@@ -160,6 +172,31 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       color: var(--va-accent) !important;
       font-weight: 600;
     }
+
+    /* Global status bar — institutional running header, zero-radius, hard rule */
+    .va-statusbar {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 7px 40px;
+      border-top: 1px solid var(--va-rule);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--va-mono);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: var(--va-fg-muted);
+      text-transform: uppercase;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .va-sb-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--va-up);
+      flex: 0 0 auto;
+    }
+    .va-sb-sep { color: var(--va-border); }
     .va-nav-sep {
       font-family: var(--va-mono);
       font-size: 11.5px;
@@ -169,7 +206,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
     .va-cta-mini {
       border: 1px solid var(--va-border);
       padding: 6px 12px;
-      border-radius: 2px;
+      border-radius: 0;
     }
     .va-cta-mini:hover { border-color: var(--va-fg); }
 

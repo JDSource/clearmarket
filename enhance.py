@@ -11,6 +11,7 @@ Output: ~/jeremy-os/outputs/clearmarket/samples/<specimen>/specimen.json
 
 Run:    python3 enhance.py
 """
+from __future__ import annotations
 
 import hashlib
 import json
@@ -83,7 +84,15 @@ def llm_call(prompt: str, system: str = "", max_tokens: int = 300,
     }
     if system:
         msg_kwargs["system"] = system
-    resp = client.messages.create(**msg_kwargs)
+    import time
+    for _attempt in range(4):
+        try:
+            resp = client.messages.create(**msg_kwargs)
+            break
+        except Exception:
+            if _attempt == 3:
+                raise
+            time.sleep(2 ** _attempt)   # 1s, 2s, 4s backoff — absorbs concurrency rate-limits
     text = resp.content[0].text.strip()
 
     s = _stats(model)
@@ -219,7 +228,7 @@ def generate_event_id(seed: str) -> str:
         body = VOWEL_FREE_ALPHABET[num % len(VOWEL_FREE_ALPHABET)] + body
         num //= len(VOWEL_FREE_ALPHABET)
     check_val = sum(VOWEL_FREE_ALPHABET.index(c) for c in body) % 10
-    return f"CM{body}{check_val}"
+    return f"CM-EVT-{body}{check_val}"
 
 
 def load_json(filename: str):
@@ -230,11 +239,11 @@ def load_json(filename: str):
 _market_id_counter = 1000
 
 
-def next_market_id() -> int:
+def next_market_id() -> str:
     global _market_id_counter
     mid = _market_id_counter
     _market_id_counter += 1
-    return mid
+    return f"CM-MKT-{mid:06d}"
 
 
 # -----------------------------------------------------------------
@@ -850,7 +859,11 @@ def llm_underlying_reference(market: dict) -> str:
     system = (
         "You are ClearMarket's editorial engine, identifying the real-world data source "
         "that determines a prediction market's resolution. Respond with ONE factual sentence, "
-        "max 40 words. No em-dashes. No marketing language. No preamble. "
+        "max 40 words. No em-dashes. No marketing language. "
+        "Start directly with the data source, institution, or document that resolves the market "
+        "(a noun phrase, or 'X publishes/determines/announces ...'). NEVER open with framing such as "
+        "'The underlying reference is', 'This market resolves', 'Resolution depends on', "
+        "'The real-world reference is', or 'The data source is' — name the source itself. "
         + _EDITORIAL_PROSE_RULES
     )
     user = (
@@ -992,6 +1005,87 @@ def llm_canonical_question(event: dict) -> str:
         "Return ONLY the rewritten question. No preamble, no quotes."
     )
     return llm_call(event["question"], system=system, max_tokens=80)
+
+
+# RCG factor rater — the FIVE LLM-judged factors, scored in ONE per-event call.
+# Deterministic factor (arbiter) and the hybrid (source clarity, from the §2 verified-source
+# layer) are computed in classify.grade_market; this supplies the rest. See METHODOLOGY.md §3.
+RCG_LLM_FACTORS = ("trigger_objectivity", "contested_reality", "source_conflict",
+                   "temporal_precision", "source_mutability")
+_RCG_RATINGS = {"pass", "partial", "fail", "na"}
+_RCG_SYSTEM = (
+    "You are a resolution-risk rater for prediction markets. Given a market's resolution "
+    "criteria, rate FIVE factors that determine how cleanly it will resolve. "
+    "Rate each pass | partial | fail | na.\n\n"
+    "trigger_objectivity (ALWAYS rate, never na): does resolution turn on an objective, "
+    "measurable, publicly-verifiable trigger (a number, a dated official action, a clearly "
+    "defined event)? pass = objective and measurable; partial = mostly objective with a "
+    "discretionary edge; fail = hinges on subjective judgment about whether something "
+    "'counts' (vague qualitative criteria).\n"
+    "contested_reality (ALWAYS rate, never na): is the underlying ground-truth fact neutral, or "
+    "is it controlled/disputed by an interested party who shapes the RECORD of what happened? "
+    "pass = neutral and independently verifiable, OR the interested party is merely the SUBJECT of "
+    "a publicly-verifiable announcement or action ('X publicly announces Y' is verifiable even though "
+    "X is interested); partial = some dispute but largely verifiable; fail = the ground truth itself is "
+    "reported, controlled, or disputed by a party with a stake in the outcome (a government reporting "
+    "its own election, combatants narrating a clash) with no neutral record.\n"
+    "source_conflict (na if there is only ONE source / a single deciding authority): when TWO OR MORE "
+    "sources that could give different answers are named, is there an explicit rule for which wins "
+    "(precedence, fallback, or required agreement)? pass = 2+ sources WITH a stated conflict/fallback "
+    "rule; fail = 2+ sources that could disagree with NO rule for the conflict; na = a single source or "
+    "single deciding authority (nothing to adjudicate). Multiple pages/links of the SAME source = na.\n"
+    "temporal_precision (rate for every market; na only if truly inapplicable): is the controlling "
+    "timestamp/cutoff precise and aligned with when the source updates? pass = precise and aligned; "
+    "partial = minor ambiguity; fail = ambiguous timing or source-update lag could flip the outcome.\n"
+    "source_mutability (rate for every market; na only if there is genuinely no data source): can the "
+    "resolution source be edited or tampered with after the fact without a snapshot rule? pass = immutable "
+    "source or a snapshot/archival rule is specified; partial = some mutability risk; fail = editable/"
+    "tamperable source (live map, single sensor, editable page) with no snapshot.\n\n"
+    "Return ONLY a JSON object mapping each factor to {\"rating\": \"...\", \"why\": \"<=12 words\"}. "
+    "No preamble, no prose."
+)
+
+
+def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
+    """Per-event Haiku rating of the five LLM-judged RCG factors. One call per event;
+    the ratings apply to every market in the event's strike ladder (METHODOLOGY.md §3).
+    Returns {factor: {"rating": pass|partial|fail|na, "why": str}} or None on failure
+    (None leaves grade_market at 'pending', the safe default)."""
+    if not event_markets:
+        return None
+    rep = next((m for m in event_markets
+                if m.get("market_id") == event.get("primary_market_id")), event_markets[0])
+    criteria = (rep.get("resolution_rules_raw") or rep.get("description_raw") or "").strip()
+    if not criteria:
+        return None
+    user = (
+        f"Question: {event.get('question')}\n"
+        f"Category: {event.get('category')}\n"
+        f"Resolution source (named): {rep.get('resolution_source') or 'none / subjective'}\n"
+        f"Arbiter: {rep.get('arbitration_model')}\n\n"
+        f"Resolution criteria:\n{criteria[:1800]}"
+    )
+    raw = llm_call(user, system=_RCG_SYSTEM, max_tokens=420)  # 5 factors x {rating, why}; 260 truncated
+    if raw.startswith("```"):
+        raw = raw.strip("`").lstrip("json").strip()
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return None
+    out = {}
+    for f in RCG_LLM_FACTORS:
+        v = data.get(f)
+        rating = (v.get("rating") if isinstance(v, dict) else v) if v is not None else None
+        why = v.get("why", "") if isinstance(v, dict) else ""
+        rating = (rating or "").strip().lower()
+        if rating not in _RCG_RATINGS:
+            rating = "na"
+        out[f] = {"rating": rating, "why": (why or "")[:80]}
+    # grade_market gates on these two always-on factors; if the model couldn't produce a
+    # usable value for either, bail to 'pending' rather than grade on a guess.
+    if out["trigger_objectivity"]["rating"] == "na" or out["contested_reality"]["rating"] == "na":
+        return None
+    return out
 
 
 def enrich_with_llm(events: list, markets: list, enabled: bool = True):

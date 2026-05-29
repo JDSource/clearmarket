@@ -40,11 +40,11 @@ function venueCodes(s: any): string {
 // Real values from samples/fed-apr-2026/specimen.json in the repo.
 // This is the DATA layer (CM). The wire briefs below are the EDITORIAL layer (CM Signal).
 const schemaJson = `{
-  <span class="t-key">"event_id"</span>:           <span class="t-id">"CMCYQ4MMGJN4"</span>,
+  <span class="t-key">"event_id"</span>:           <span class="t-id">"CM-EVT-CYQ4MMGJN4"</span>,
   <span class="t-key">"slug"</span>:               <span class="t-str">"fed-april-2026-rate-decision"</span>,
   <span class="t-key">"category"</span>:           <span class="t-str">"macro"</span>,
   <span class="t-key">"tags"</span>: [<span class="t-str">"fed-rate-decisions"</span>, <span class="t-str">"fomc"</span>, <span class="t-str">"monetary-policy"</span>],
-  <span class="t-key">"primary_market_id"</span>:  <span class="t-num">1013</span>,
+  <span class="t-key">"primary_market_id"</span>:  <span class="t-id">"CM-MKT-001013"</span>,
   <span class="t-key">"catalyst_dates"</span>: [
     { <span class="t-key">"date"</span>: <span class="t-num">"2026-04-29"</span>, <span class="t-key">"event"</span>: <span class="t-str">"FOMC meeting Day 1"</span> },
     { <span class="t-key">"date"</span>: <span class="t-num">"2026-04-30"</span>, <span class="t-key">"event"</span>: <span class="t-str">"FOMC statement + presser"</span> }
@@ -92,7 +92,7 @@ const schemaJson = `{
           </h1>
           <p class="va-sub">Read by desks. Queried by agents.</p>
           <p class="va-lede">
-            Reference-grade data for prediction markets: linked across venues, named resolution sources, every value traceable to its origin. Treated like any other asset class.
+            Graded resolutions · Cross-venue linked · Catalysts tagged
           </p>
           <div class="va-cta">
             <a href="#wires" class="va-btn va-btn-primary">Read today's wire →</a>
@@ -125,7 +125,7 @@ const schemaJson = `{
         <div class="va-signal-intro">
           <div class="va-signal-eyebrow">CLEARMARKET <span class="va-signal-mark">SIGNAL</span></div>
           <h2 class="va-signal-title">the intelligence layer.</h2>
-          <p class="va-signal-tagline">Prediction markets turn live opinion into a price. CM Signal flags where those prices diverge: from each other, from benchmarks, from the news, or on unusual volume.<br/>Published daily.</p>
+          <p class="va-signal-tagline">Prediction markets turn live opinion into a price. CM Signal flags where those prices diverge — from each other, from benchmarks, from the news — or move on unusual volume.<br/>Published daily.</p>
         </div>
       </div>
 

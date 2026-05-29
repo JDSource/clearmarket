@@ -1,0 +1,12 @@
+{
+  "name": "clearmarket-api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "seed:local": "wrangler d1 execute clearmarket --local --file=seed/schema.sql && wrangler d1 import clearmarket --local --file=seed/seed.sql",
+    "seed:remote": "wrangler d1 execute clearmarket --remote --file=seed/schema.sql && wrangler d1 import clearmarket --remote --file=seed/seed.sql",
+    "export": "node scripts/export-d1.mjs"
+  }
+}

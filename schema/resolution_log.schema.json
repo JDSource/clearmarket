@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://clearmarket.io/schema/resolution_log.json",
+  "$id": "https://clearmarket.fyi/schema/resolution_log.json",
   "title": "ClearMarket Resolution Log Entry",
   "description": "Append-only audit trail of lifecycle events for a market. Never updated, never deleted. Row sequence reconstructs the market's full history. v0.1 populates status_change / rule_change / resolved events via platform API diffing. resolution_proposed and disputed events require UMA subgraph reader (v0.3+). amended and reversed events require editorial observation.",
   "type": "object",
@@ -18,7 +18,8 @@
       "description": "BIGSERIAL auto-generated primary key."
     },
     "market_id": {
-      "type": "integer",
+      "type": "string",
+      "pattern": "^CM-MKT-[0-9]{6}$",
       "description": "FK to markets.market_id."
     },
     "event_type": {

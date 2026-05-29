@@ -1,0 +1,169 @@
+{
+  "generated": "2026-05-28",
+  "horizon": "2027-11-29",
+  "types": {
+    "cpi": {
+      "label": "CPI release",
+      "source_url": "https://www.bls.gov/cpi/",
+      "dates": [
+        "2026-06-10",
+        "2026-07-14",
+        "2026-08-12",
+        "2026-09-11",
+        "2026-10-14",
+        "2026-11-10",
+        "2026-12-10"
+      ]
+    },
+    "jobs": {
+      "label": "Employment Situation",
+      "source_url": "https://www.bls.gov/ces/",
+      "dates": [
+        "2026-06-05",
+        "2026-07-02",
+        "2026-08-07",
+        "2026-09-04",
+        "2026-10-02",
+        "2026-11-06",
+        "2026-12-04"
+      ]
+    },
+    "gdp": {
+      "label": "GDP release",
+      "source_url": "https://www.bea.gov/data/gdp/gross-domestic-product",
+      "dates": [
+        "2026-06-25",
+        "2026-07-30",
+        "2026-08-26",
+        "2026-09-30",
+        "2026-10-29",
+        "2026-11-25",
+        "2026-12-23"
+      ]
+    },
+    "fomc": {
+      "label": "FOMC rate decision",
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "dates": [
+        "2026-06-17",
+        "2026-07-29",
+        "2026-09-16",
+        "2026-10-28",
+        "2026-12-09"
+      ]
+    },
+    "earnings:AAPL": {
+      "label": "AAPL earnings",
+      "source_url": "https://finnhub.io/quote/AAPL",
+      "dates": [
+        "2026-07-29"
+      ]
+    },
+    "earnings:MSFT": {
+      "label": "MSFT earnings",
+      "source_url": "https://finnhub.io/quote/MSFT",
+      "dates": [
+        "2026-07-28"
+      ]
+    },
+    "earnings:GOOGL": {
+      "label": "GOOGL earnings",
+      "source_url": "https://finnhub.io/quote/GOOGL",
+      "dates": [
+        "2026-07-21"
+      ]
+    },
+    "earnings:AMZN": {
+      "label": "AMZN earnings",
+      "source_url": "https://finnhub.io/quote/AMZN",
+      "dates": [
+        "2026-07-29"
+      ]
+    },
+    "earnings:NVDA": {
+      "label": "NVDA earnings",
+      "source_url": "https://finnhub.io/quote/NVDA",
+      "dates": [
+        "2026-08-25"
+      ]
+    },
+    "earnings:META": {
+      "label": "META earnings",
+      "source_url": "https://finnhub.io/quote/META",
+      "dates": [
+        "2026-07-28"
+      ]
+    },
+    "earnings:TSLA": {
+      "label": "TSLA earnings",
+      "source_url": "https://finnhub.io/quote/TSLA",
+      "dates": [
+        "2026-07-21"
+      ]
+    },
+    "earnings:UBER": {
+      "label": "UBER earnings",
+      "source_url": "https://finnhub.io/quote/UBER",
+      "dates": [
+        "2026-08-04"
+      ]
+    },
+    "earnings:MELI": {
+      "label": "MELI earnings",
+      "source_url": "https://finnhub.io/quote/MELI",
+      "dates": [
+        "2026-08-05"
+      ]
+    },
+    "earnings:SNOW": {
+      "label": "SNOW earnings",
+      "source_url": "https://finnhub.io/quote/SNOW",
+      "dates": [
+        "2026-08-25"
+      ]
+    },
+    "earnings:DELL": {
+      "label": "DELL earnings",
+      "source_url": "https://finnhub.io/quote/DELL",
+      "dates": [
+        "2026-05-28"
+      ]
+    },
+    "earnings:AVGO": {
+      "label": "AVGO earnings",
+      "source_url": "https://finnhub.io/quote/AVGO",
+      "dates": [
+        "2026-06-03"
+      ]
+    },
+    "earnings:MU": {
+      "label": "MU earnings",
+      "source_url": "https://finnhub.io/quote/MU",
+      "dates": [
+        "2026-06-23"
+      ]
+    },
+    "earnings:MTN": {
+      "label": "MTN earnings",
+      "source_url": "https://finnhub.io/quote/MTN",
+      "dates": [
+        "2026-06-08"
+      ]
+    },
+    "earnings:HOOD": {
+      "label": "HOOD earnings",
+      "source_url": "https://finnhub.io/quote/HOOD",
+      "dates": [
+        "2026-07-28"
+      ]
+    },
+    "earnings:FUTU": {
+      "label": "FUTU earnings",
+      "source_url": "https://finnhub.io/quote/FUTU",
+      "dates": [
+        "2026-05-28",
+        "2026-08-18"
+      ]
+    }
+  }
+}

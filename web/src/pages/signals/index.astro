@@ -288,14 +288,13 @@ const dataCatalogJsonLd = {
   </article>
 
   <style>
+    /* Capped, centered content box. The old breakout hack (100vw + negative margins)
+       escaped the page container on wide monitors → full-bleed feed + column chasm.
+       A clean cap keeps the wire ledger dense and scannable, aligned with the rest of the site. */
     .cm-v2 {
-      max-width: 1280px;
-      width: calc(100vw - 80px);
-      margin-left: calc((1080px - 1280px) / 2);
-      margin-right: calc((1080px - 1280px) / 2);
-    }
-    @media (max-width: 1280px) {
-      .cm-v2 { margin: 0; width: 100%; }
+      max-width: 1080px;
+      width: 100%;
+      margin: 0 auto;
     }
     .cm-v2 pre, .cm-v2 code {
       background: transparent;
@@ -533,6 +532,14 @@ const dataCatalogJsonLd = {
       font-weight: 400;
       user-select: none;
     }
+    /* Box the filter switchboard (Gemini #4) — a hard zero-radius console frame so the
+       filters read as an intentional control surface, not loose floating text. */
+    #filters {
+      border: 1px solid var(--cm-border-rule);
+      background: var(--cm-bg-surface);
+      padding: 12px 16px 14px;
+      margin-bottom: 24px;
+    }
 
     /* ===== Ledger table — Bloomberg/Reuters density, mono-everything, hairlines only ===== */
     .cm-ledger-group { margin-bottom: 14px; }
@@ -541,6 +548,10 @@ const dataCatalogJsonLd = {
     .cm-ledger {
       width: 100%;
       border-collapse: collapse;
+      /* fixed layout makes the <colgroup> widths authoritative + IDENTICAL across every
+         date-group table, and immune to which rows a filter hides. Without it, auto-layout
+         re-sized columns per group/filter and the headlines drifted out of alignment. */
+      table-layout: fixed;
       font-family: var(--cm-font-mono);
       font-size: 11.5px;
       border-radius: 0;
@@ -548,10 +559,12 @@ const dataCatalogJsonLd = {
     .cm-ledger td {
       padding: 3px 12px 3px 0;
       border-bottom: 1px solid var(--cm-border-hairline);
-      vertical-align: middle;
+      vertical-align: top;       /* wrapped headlines align their first line to the timestamp */
       border-radius: 0;
     }
     .cm-ledger tr:last-child td { border-bottom: 0; }
+    /* Column widths now come from the <colgroup> + table-layout:fixed above — pinned and
+       identical across every group, so headlines start at the same x everywhere. */
 
     /* Section cap row — full-width tinted divider inside the table.
        Strong visual anchor for date boundaries. Bg tint creates separation
@@ -561,7 +574,7 @@ const dataCatalogJsonLd = {
       background: var(--cm-bg-surface);
       border-top: 1px solid var(--cm-border-rule);
       border-bottom: 1px solid var(--cm-border-rule);
-      padding: 5px 12px;
+      padding: 5px 12px 5px 0;
       font-family: var(--cm-font-mono);
       font-size: 10.5px;
       font-weight: 700;
@@ -614,6 +627,9 @@ const dataCatalogJsonLd = {
       letter-spacing: 0;
     }
     .cm-ledger-headline a:hover { color: var(--cm-fg-link); }
+    /* Explicit click affordance — a trailing arrow on hover signals the row opens the
+       deep-dive wire page (we stripped SaaS buttons, so the cue must be native-terminal). */
+    .cm-ledger-headline a:hover::after { content: " \2192"; color: var(--cm-fg-link); }
     .cm-ledger-venues {
       color: var(--cm-fg-secondary);
       font-size: 10.5px;
@@ -645,6 +661,8 @@ const dataCatalogJsonLd = {
 
     /* ===== API surfaces table (matches event/signal page) ===== */
     .cm-section-machine .cm-section-summary { max-width: 720px; }
+    /* Give the programmatic-access block clear separation from the wire feed above it. */
+    #api.cm-section-machine { margin-top: 56px; border-top: 1px solid var(--cm-border-hairline); padding-top: 28px; }
     .cm-endpoints-table {
       width: 100%;
       border-collapse: collapse;

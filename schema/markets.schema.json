@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://clearmarket.io/schema/markets.json",
+  "$id": "https://clearmarket.fyi/schema/markets.json",
   "title": "ClearMarket Market",
   "description": "One row per market per platform. Raw venue data + ClearMarket editorial fill on top. Auto-ingested daily from Kalshi and Polymarket public APIs. API response shape includes the derived field cross_platform_link, computed at serve time. Thematic grouping across events is handled via tags on the linked event, not via fields on markets.",
   "type": "object",
@@ -16,8 +16,9 @@
   ],
   "properties": {
     "market_id": {
-      "type": "integer",
-      "description": "BIGSERIAL auto-generated primary key."
+      "type": "string",
+      "pattern": "^CM-MKT-[0-9]{6}$",
+      "description": "ClearMarket canonical market ID. Format: 'CM-MKT-' + 6-digit zero-padded sequence. Stable forever — never changes."
     },
     "platform": {
       "type": "string",
@@ -30,7 +31,7 @@
     },
     "event_id": {
       "type": ["string", "null"],
-      "pattern": "^CM[0-9A-Z]{10}$",
+      "pattern": "^CM-EVT-[0-9A-Z]{10}$",
       "description": "FK to events.event_id. Nullable — editorial assignment. Market can exist without an event."
     },
     "platform_event_id": {
@@ -177,6 +178,30 @@
         null
       ],
       "description": "Objectivity classification of the data source."
+    },
+    "threshold": {
+      "type": ["number", "null"],
+      "description": "Numeric resolution threshold (e.g. 150000 for 'Bitcoin reaches $150,000'). Typed top-level field for cross-venue matching; the verbose parse stays in resolution_triggers. Null for non-numeric (occurrence) markets."
+    },
+    "direction": {
+      "type": ["string", "null"],
+      "enum": ["above", "below", "reach", "between", "occurrence", null],
+      "description": "Polarity of the claim relative to the threshold. An ATTRIBUTE, not an event discriminator — 'above'/'below' at the same threshold/window/settlement_style are the SAME claim (complementary; comparison normalizes polarity before computing a spread)."
+    },
+    "settlement_style": {
+      "type": ["string", "null"],
+      "enum": ["touch", "terminal", "relative", "occurrence", null],
+      "description": "How the contract settles on the underlying: 'touch' (level ever reached in a window), 'terminal' (level at a single point in time), 'relative' (new high/low), 'occurrence' (a discrete event happens). Distinct from arbitration_model (who arbitrates). Part of the cross-venue event key."
+    },
+    "claim_sig": {
+      "type": ["string", "null"],
+      "pattern": "^CMX-[0-9A-F]{10}$",
+      "description": "Cross-venue claim signature. Markets sharing a claim_sig are the SAME resolvable claim across venues (subject + threshold + settlement_style, plus window for terminal). The stable join key CM Signal references for cross-venue divergence. Null if the market has no cross-venue counterpart."
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Entity tags for search + cross-cutting retrieval (e.g. 'bitcoin', 'deutsche-bank'). Market-level (events also carry tags). v1 plain strings; later resolved to sameAs Wikidata QIDs."
     },
     "regulatory_class": {
       "type": ["string", "null"],

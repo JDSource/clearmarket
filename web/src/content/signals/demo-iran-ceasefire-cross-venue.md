@@ -32,7 +32,13 @@ bullets:
   - "Polymarket order flow international, USDC-denominated, includes Middle East and EU IPs; Kalshi US-onshore, USD, accessed via IBKR and Wealthsimple under CIRO authorization"
   - "Resolution mechanism differs: Polymarket UMA oracle, 'credible news consensus'; Kalshi staff resolution with named sources. Polymarket has historically resolved Mideast ceasefire contracts more leniently than Kalshi"
   - "Resolves May 31. Watch joint statements from Qatar/Oman mediators; resolution-source divergence is the primary risk on either venue"
-sources: []
+sources:
+  - label: "Polymarket — Iran-Israel ceasefire by May 31, 2026"
+    url: "https://polymarket.com/market/0xirilcease2026"
+    retrieved_at: "2026-05-09T08:15:00-04:00"
+  - label: "Kalshi — Iran-Israel ceasefire by May 31, 2026"
+    url: "https://kalshi.com/markets/KXIRIL-26MAY-CEASE"
+    retrieved_at: "2026-05-09T08:15:00-04:00"
 field_provenance:
   pm_data: "polymarket_clob_api, kalshi_api"
   news_context: "perplexity_grounded"

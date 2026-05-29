@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://clearmarket.io/schema/events.json",
+  "$id": "https://clearmarket.fyi/schema/events.json",
   "title": "ClearMarket Event",
   "description": "Canonical record of a prediction market question. One row per canonical tradable question; every event has one or more markets attached. The editorial layer that platforms don't ship. Thematic grouping across events is handled via tags, not a hierarchy. API response shape includes derived fields (venues_covered, current_primary_mark) computed at serve time from the normalized 4-table storage.",
   "type": "object",
@@ -16,8 +16,8 @@
   "properties": {
     "event_id": {
       "type": "string",
-      "pattern": "^CM[0-9A-Z]{10}$",
-      "description": "ClearMarket canonical ID. Format: 'CM' + 9-char vowel-free base36 + 1-char mod-10 check digit. 12 chars total. Stable forever — never changes."
+      "pattern": "^CM-EVT-[0-9A-Z]{10}$",
+      "description": "ClearMarket canonical event ID. Format: 'CM-EVT-' + 9-char vowel-free base36 + 1-char mod-10 check digit. Stable forever — never changes."
     },
     "slug": {
       "type": "string",
@@ -29,8 +29,8 @@
     },
     "category": {
       "type": "string",
-      "enum": ["macro", "geopolitics", "politics", "crypto", "sports"],
-      "description": "Top-level classification. 5-enum."
+      "enum": ["economics", "financials", "crypto", "companies", "technology", "health", "politics", "geopolitics", "climate"],
+      "description": "Top-level institutional classification. 9-enum (matches classify.py CATEGORIES_IN)."
     },
     "tags": {
       "type": "array",
@@ -38,7 +38,8 @@
       "description": "Cross-cutting filter tags (editorial + platform)."
     },
     "primary_market_id": {
-      "type": ["integer", "null"],
+      "type": ["string", "null"],
+      "pattern": "^CM-MKT-[0-9]{6}$",
       "description": "FK to markets.market_id. The market quoted as the event's headline price. Auto-computed nightly unless locked."
     },
     "primary_market_locked": {
@@ -50,14 +51,16 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["date", "event"],
+        "required": ["date", "label"],
         "properties": {
           "date": {"type": "string", "format": "date"},
-          "event": {"type": "string"}
+          "type": {"type": "string", "description": "Catalyst type: fomc / cpi / jobs / gdp / ppi / corporate_earnings / etc."},
+          "label": {"type": "string", "description": "Human-readable catalyst label."},
+          "source_url": {"type": "string", "description": "Deep link to the authoritative source for this date (provenance)."}
         },
         "additionalProperties": false
       },
-      "description": "Real-world events that can move the market before resolution. Sourced from verified public calendars."
+      "description": "Scheduled real-world events that drive resolution or repricing, with provenance. Macro from FRED, FOMC from the Fed calendar, earnings from API Ninjas, ad-hoc from Exa."
     },
     "published": {
       "type": "boolean",

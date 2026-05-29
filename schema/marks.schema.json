@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://clearmarket.io/schema/marks.json",
+  "$id": "https://clearmarket.fyi/schema/marks.json",
   "title": "ClearMarket Mark",
   "description": "Daily pricing and liquidity snapshot. One row per market per UTC date. Normalizes Kalshi + Polymarket into a single feed with consistent field names and units (USD). Populated via GitHub Actions daily cron against platform public APIs. v0.1 includes Polymarket CLOB calls to populate size and no-side fields.",
   "type": "object",
@@ -20,7 +20,8 @@
       "description": "BIGSERIAL auto-generated primary key."
     },
     "market_id": {
-      "type": "integer",
+      "type": "string",
+      "pattern": "^CM-MKT-[0-9]{6}$",
       "description": "FK to markets.market_id."
     },
     "snapshot_date": {

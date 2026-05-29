@@ -1,66 +1,186 @@
 ---
-import Base from '../layouts/Base.astro';
-import { getAllEvents, SPECIMEN_GENERATED_AT, SCHEMA_VERSION } from '../lib/specimens';
+import Site from '../layouts/Site.astro';
 
-const events = getAllEvents();
-const sampleSlug = 'fed-april-2026-rate-decision';
+// Production endpoints (custom domains cut over at go-live; Worker is the backing host).
+const API = 'https://api.clearmarket.fyi';
+const MCP = 'https://mcp.clearmarket.fyi';
+const sampleSlug = 'kxgdpyear-26';
+const updated = '2026-05-29';
 ---
-<Base title="ClearMarket API — v0.2.0-beta" description="Free-tier REST API for ClearMarket: reference data for prediction markets across Kalshi and Polymarket.">
-  <span class="pill">v0.2.0-beta</span>
-  <h1>API</h1>
-  <p class="lede">Free-tier JSON over HTTPS. {events.length} canonical events, refreshed daily. No auth. Soft rate limit at ~100 req/day per IP at the CDN edge.</p>
+<Site title="ClearMarket API + MCP" description="Open REST API and MCP server for ClearMarket: graded, cross-venue reference data for prediction markets across Kalshi and Polymarket.">
+  <div class="doc">
+    <aside class="doc-gutter">
+      <div class="dg-meta">
+        <div class="dg-row"><span class="dg-k">doc_id</span><span class="dg-v">cm-api-mcp</span></div>
+        <div class="dg-row"><span class="dg-k">version</span><span class="dg-v">v0.2</span></div>
+        <div class="dg-row"><span class="dg-k">updated</span><span class="dg-v">{updated}</span></div>
+        <div class="dg-row"><span class="dg-k">access</span><span class="dg-v">open · free</span></div>
+        <div class="dg-row"><span class="dg-k">transport</span><span class="dg-v">REST · MCP</span></div>
+      </div>
+      <nav class="dg-nav">
+        <a href="#overview">Overview</a>
+        <a href="#access">Access</a>
+        <a href="#rest">REST API</a>
+        <a href="#mcp">MCP server</a>
+        <a href="#agent">Agent / llms.txt</a>
+        <a href="#schema">Schema</a>
+      </nav>
+    </aside>
 
-  <p>Reference data layer for prediction markets. Same event priced on Kalshi and Polymarket is one <code>event_id</code> with markets attached from each venue. Marks are daily snapshots. The resolution log is append-only.</p>
+    <div class="doc-body">
+      <header class="doc-head" id="overview">
+        <h1>API <span class="dh-plus">+</span> MCP</h1>
+        <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. ~2,100 events / ~18,000 markets across Kalshi and Polymarket, each with a Resolution Clarity Grade, named resolution source, and cross-venue links. No key required.</p>
+        <p class="doc-note">The same event priced on both venues is one <code>event_id</code> with markets attached from each. Prices refresh hourly. Catalyst dates (CPI, FOMC, jobs, earnings) are joined per event. Read-only.</p>
+      </header>
 
-  <p>Snapshot date: <code>{SPECIMEN_GENERATED_AT}</code> · Schema version: <code>{SCHEMA_VERSION}</code></p>
+      <section class="surface" id="access">
+        <div class="surface-tab">ACCESS</div>
+        <p><strong>Open by default.</strong> Full universe, no key, <code>1,000</code> requests/day per IP. A free key lifts you to <code>10,000</code>/day:</p>
+        <pre><code>{`curl -s -X POST ${API}/v1/keys \\
+  -H 'content-type: application/json' \\
+  -d '{"email":"you@firm.com"}'`}</code></pre>
+        <p class="doc-note">Send it as <code>Authorization: Bearer &lt;key&gt;</code> or <code>?key=&lt;key&gt;</code>. CORS open.</p>
+      </section>
 
-  <h2>Endpoints</h2>
+      <section class="surface" id="rest">
+        <div class="surface-tab">REST · THE WORKBENCH</div>
+        <p>Query and filter the universe directly. Every response is the canonical schema with derived fields added at serve time.</p>
 
-  <h3>Discovery</h3>
-  <pre><code>GET https://clearmarket.fyi/api/v1/index.json</code></pre>
-  <p>Returns endpoint list, version, schema URLs, rate-limit policy.</p>
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/events?category=&platform=&grade=&q=&limit=&offset=</span></div>
+        <pre><code>{`curl -s '${API}/v1/events?category=economics&grade=A&limit=5' \\
+  | jq '.events[] | {slug, grade, question}'`}</code></pre>
 
-  <h3>Events list</h3>
-  <pre><code>GET https://clearmarket.fyi/api/v1/events.json</code></pre>
-  <p>Summary view of every published event with primary-market price snapshot.</p>
-  <pre><code>{`curl -s https://clearmarket.fyi/api/v1/events.json | jq '.events[] | .slug'`}</code></pre>
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/events/{`{slug}`}</span></div>
+        <p class="ep-desc">Full event: linked markets, grades, windowed catalysts.</p>
+        <pre><code>{`curl -s ${API}/v1/events/${sampleSlug} \\
+  | jq '{question, catalyst_dates, markets: (.markets | length)}'`}</code></pre>
 
-  <h3>Event detail</h3>
-  <pre><code>GET https://clearmarket.fyi/api/v1/events/{`{slug}`}.json</code></pre>
-  <p>Full event record, all linked markets, current marks, resolution log.</p>
-  <pre><code>{`curl -s https://clearmarket.fyi/api/v1/events/${sampleSlug}.json | jq '.markets[] | {venue: .platform, mid: .yes_bid}'`}</code></pre>
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/markets/{`{market_id}`}</span></div>
+        <p class="ep-desc">Single market: price, Resolution Clarity Grade, resolution provenance.</p>
 
-  <h3>Markets for an event</h3>
-  <pre><code>GET https://clearmarket.fyi/api/v1/events/{`{slug}`}/markets.json</code></pre>
-  <p>Markets only, for callers who don't need marks or the resolution log.</p>
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/catalysts/upcoming?days=N</span></div>
+        <p class="ep-desc">Scheduled catalysts across all events, cross-event view.</p>
+        <pre><code>{`curl -s '${API}/v1/catalysts/upcoming?days=14' | jq '.catalysts'`}</code></pre>
+      </section>
 
-  <h2>Available slugs</h2>
-  <ul>
-    {events.slice(0, 10).map((e) => (
-      <li><a href={`/api/v1/events/${e.slug}.json`}><code>{e.slug}</code></a> &mdash; {e.question}</li>
-    ))}
-    {events.length > 10 && <li>&hellip; and {events.length - 10} more at <a href="/api/v1/events.json"><code>/api/v1/events.json</code></a></li>}
-  </ul>
+      <section class="surface" id="mcp">
+        <div class="surface-tab">MCP · THE HANDSHAKE</div>
+        <p>The agent-first surface. Same data, spoken as tools an agent calls directly. No HTML to crawl, no REST to compose. Streamable HTTP at <code>{`${MCP}`}</code>. Open, read-only.</p>
 
-  <h2>Schema</h2>
-  <p>JSON Schema (draft 2020-12). The API response shapes are the schema with derived fields added at serve time.</p>
-  <ul>
-    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/events.schema.json"><code>events.schema.json</code></a></li>
-    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/markets.schema.json"><code>markets.schema.json</code></a></li>
-    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/marks.schema.json"><code>marks.schema.json</code></a></li>
-    <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/resolution_log.schema.json"><code>resolution_log.schema.json</code></a></li>
-  </ul>
+        <div class="console">
+          <div class="console-h">tools</div>
+          <div class="tool"><span class="tool-name">list_events</span><span class="tool-desc">browse / search the universe (set <code>q</code>)</span></div>
+          <div class="tool"><span class="tool-name">get_event</span><span class="tool-desc">full graded record for one event</span></div>
+          <div class="tool"><span class="tool-name">get_market</span><span class="tool-desc">price + resolution provenance</span></div>
+          <div class="tool"><span class="tool-name">list_upcoming_catalysts</span><span class="tool-desc">scheduled catalysts, next N days</span></div>
+        </div>
 
-  <h2>Status</h2>
-  <ul>
-    <li>v0.2 beta: static cached JSON, daily refresh, 15 canonical events</li>
-    <li>v0.3: live ingestion, expanded universe (~200 events), MCP server, agent registry</li>
-    <li>v0.4: licensable feed (Markit-shape) for institutional desks</li>
-  </ul>
+        <h3>Claude Desktop / Cursor</h3>
+        <p class="ep-desc">Add to <code>claude_desktop_config.json</code> or <code>~/.cursor/mcp.json</code> (bridges stdio to the remote server via <code>mcp-remote</code>):</p>
+        <pre><code>{`{
+  "mcpServers": {
+    "clearmarket": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "${MCP}"]
+    }
+  }
+}`}</code></pre>
 
-  <h2>For agents</h2>
-  <p><code><a href="/llms.txt">/llms.txt</a></code> describes endpoints in plain text for LLM-driven clients.</p>
+        <h3>Verify (raw JSON-RPC)</h3>
+        <pre><code>{`curl -s -X POST ${MCP} -H 'content-type: application/json' \\
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \\
+  | jq '.result.tools[].name'`}</code></pre>
+      </section>
 
-  <h2>Repository</h2>
-  <p><a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a></p>
-</Base>
+      <section class="surface" id="agent">
+        <div class="surface-tab">AGENT · THE MANIFEST</div>
+        <p>A plain-text surface engineered for LLM context windows. Zero markup, token-optimized, enumerates every endpoint and tool.</p>
+        <div class="manifest">
+          <a href="/llms.txt">/llms.txt</a> <span class="manifest-tag">[density: high] [context: token-optimized]</span>
+        </div>
+      </section>
+
+      <section class="surface" id="schema">
+        <div class="surface-tab">SCHEMA</div>
+        <p>JSON Schema (draft 2020-12). API responses are the schema with derived fields added at serve time.</p>
+        <ul class="schema-list">
+          <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/events.schema.json"><code>events.schema.json</code></a></li>
+          <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/markets.schema.json"><code>markets.schema.json</code></a></li>
+          <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/marks.schema.json"><code>marks.schema.json</code></a></li>
+          <li><a href="https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/resolution_log.schema.json"><code>resolution_log.schema.json</code></a></li>
+        </ul>
+        <p class="doc-note">Repository: <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a></p>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    .doc {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    /* Left gutter — sticky doc metadata + section nav */
+    .doc-gutter { position: sticky; top: 120px; font-family: var(--va-mono); }
+    /* Hard vertical rule between gutter and body (Gemini #3) — runs the full body height */
+    .doc-body { border-left: 1px solid var(--va-border); padding-left: 40px; }
+    .dg-meta { border-left: 2px solid var(--va-accent); padding-left: 12px; margin-bottom: 24px; }
+    .dg-row { display: flex; justify-content: space-between; gap: 10px; font-size: 10.5px; padding: 3px 0; letter-spacing: 0.03em; }
+    .dg-k { color: var(--va-fg-faint); text-transform: uppercase; }
+    .dg-v { color: var(--va-fg-muted); }
+    .dg-nav { display: flex; flex-direction: column; gap: 2px; }
+    .dg-nav a { font-size: 11.5px; color: var(--va-fg-muted); text-decoration: none; padding: 5px 0; border-bottom: 1px solid var(--va-rule); letter-spacing: 0.03em; }
+    .dg-nav a:hover { color: var(--va-accent); }
+
+    .doc-body { min-width: 0; max-width: 760px; }
+    .doc-head { margin-bottom: 8px; }
+    .doc-head h1 { font-family: var(--va-sans); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--va-fg); }
+    .dh-plus { color: var(--va-accent); }
+    .doc-lede { font-size: 17px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 16px; }
+    .doc-note { font-size: 14px; line-height: 1.6; color: var(--va-fg-muted); }
+
+    .doc-body p { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; }
+    .doc-body strong { color: var(--va-fg); }
+    .doc-body h3 { font-family: var(--va-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); margin: 28px 0 10px; }
+    .doc-body a { color: var(--va-accent); text-decoration: none; }
+    .doc-body a:hover { text-decoration: underline; }
+    .doc-body code { font-family: var(--va-mono); font-size: 0.86em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); border-radius: 0; }
+    .doc-body pre { font-family: var(--va-mono); font-size: 12.5px; line-height: 1.55; background: var(--va-bg-2); border: 1px solid var(--va-border); padding: 14px 16px; overflow-x: auto; margin: 0 0 16px; border-radius: 0; color: var(--va-fg); }
+    .doc-body pre code { background: transparent; border: 0; padding: 0; }
+
+    /* Surface sections — each data-ingress path as its own bordered block */
+    .surface { border-top: 1px solid var(--va-border); padding-top: 22px; margin-top: 40px; scroll-margin-top: 130px; }
+    .surface-tab { display: inline-block; font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: var(--va-bg); background: var(--va-accent); padding: 3px 9px; margin-bottom: 14px; }
+
+    /* REST endpoint lines */
+    .ep { display: flex; align-items: baseline; gap: 10px; font-family: var(--va-mono); font-size: 13px; border: 1px solid var(--va-border); padding: 9px 12px; margin: 14px 0 6px; background: var(--va-bg-2); }
+    .ep-verb { color: var(--va-up); font-weight: 700; font-size: 11px; }
+    .ep-path { color: var(--va-fg); overflow-x: auto; white-space: nowrap; }
+    .ep-desc { margin: 0 0 8px; font-size: 13px; }
+
+    /* MCP console / tool list */
+    .console { border: 1px solid var(--va-border); background: var(--va-bg-2); margin: 16px 0; }
+    .console-h { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--va-fg-faint); padding: 7px 12px; border-bottom: 1px solid var(--va-rule); }
+    .tool { display: flex; gap: 12px; align-items: baseline; padding: 8px 12px; border-bottom: 1px solid var(--va-rule); font-size: 13px; }
+    .tool:last-child { border-bottom: 0; }
+    .tool-name { font-family: var(--va-mono); color: var(--va-accent); font-weight: 600; flex: 0 0 auto; }
+    .tool-desc { color: var(--va-fg-muted); font-size: 13px; }
+
+    /* Agent manifest line */
+    .manifest { font-family: var(--va-mono); font-size: 13px; border: 1px dashed var(--va-border); padding: 12px 14px; margin-top: 12px; }
+    .manifest-tag { color: var(--va-fg-faint); font-size: 11px; margin-left: 8px; }
+
+    .schema-list { list-style: none; padding: 0; }
+    .schema-list li { padding: 4px 0; }
+
+    @media (max-width: 820px) {
+      .doc { grid-template-columns: 1fr; gap: 24px; }
+      .doc-gutter { position: static; top: auto; }
+      .doc-body { border-left: 0; padding-left: 0; }
+      .dg-nav { flex-flow: row wrap; gap: 8px 16px; }
+      .dg-nav a { border-bottom: 0; padding: 2px 0; }
+    }
+  </style>
+</Site>

@@ -993,11 +993,15 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     }
 
     /* Atomic claim block */
+    /* Each atomic brief encased in a hard 1px box with uniform 1rem padding (Gemini
+       checklist): gives the eye a boundary, stops mono text bleeding into a wall,
+       and keeps each [01]/[02] block visually distinct from the narrative summary. */
     .cm-claim {
-      padding: 14px 0;
-      border-bottom: 1px solid var(--cm-border-hairline);
+      padding: 16px;
+      border: 1px solid var(--cm-border-hairline);
+      margin-bottom: 12px;
     }
-    .cm-claim:last-of-type { border-bottom: 0; }
+    .cm-claim:last-of-type { margin-bottom: 0; }
     .cm-claim-head {
       display: flex;
       align-items: baseline;
@@ -1022,7 +1026,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     /* Key-value rows */
     .cm-kv {
       margin: 0;
-      padding: 0 0 0 16px;
+      padding: 0;
       font-family: var(--cm-font-mono);
       font-size: 12px;
       line-height: 1.7;
