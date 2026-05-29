@@ -104,6 +104,7 @@ async function buildEvent(env: Env, slug: string): Promise<any | null> {
   const catalysts = windowCatalysts(parseJson(e.catalyst_types, []) as string[], cal, cutoff, parseJson(e.catalyst_dates, []) as any[]);
   return {
     event_id: e.event_id, slug: e.slug, question: e.question, category: e.category,
+    event_type: e.event_type ?? 'BINARY', ladder_distribution: parseJson(e.ladder_distribution, null),
     tags: parseJson(e.tags, []), catalyst_types: parseJson(e.catalyst_types, []), catalyst_dates: catalysts,
     editorial_notes: e.editorial_notes, venues_covered: venues, primary_market_id: e.primary_market_id,
     markets: mkts.map(marketOut),

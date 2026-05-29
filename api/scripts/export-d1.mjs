@@ -39,6 +39,8 @@ CREATE TABLE events (
   category TEXT NOT NULL,
   tags TEXT,
   primary_market_id TEXT,
+  event_type TEXT,            -- 'BINARY' | 'LADDER' (multinomial strike ladder)
+  ladder_distribution TEXT,   -- JSON {direction, implied_band, strikes[]} for LADDER events (patch_ladders.py)
   catalyst_types TEXT,        -- JSON array of catalyst-type pointers: ["cpi","fomc","earnings:NVDA"]
   catalyst_dates TEXT,        -- JSON array of BESPOKE per-event catalysts only (Exa/FDA); recurring derived at read-time
   venue TEXT,
@@ -167,7 +169,8 @@ function chunkBySize(rows, prefix) {
 
 const eRows = events.map((e) => `(${[
   q(e.event_id), q(e.slug), q(e.question), q(e.category), json(e.tags),
-  q(e.primary_market_id), json(e.catalyst_types ?? []), json(e.catalyst_dates ?? []), q(e.venue), q(e.editorial_notes),
+  q(e.primary_market_id), q(e.event_type ?? 'BINARY'), json(e.ladder_distribution ?? null),
+  json(e.catalyst_types ?? []), json(e.catalyst_dates ?? []), q(e.venue), q(e.editorial_notes),
   demoSet.has(e.slug) ? '1' : '0', e.published === false ? '0' : '1',
   q(e.created_at), q(e.updated_at),
 ].join(',')})`);
@@ -197,7 +200,7 @@ const mRows = markets.map((m) => `(${[
 ].join(',')})`);
 
 const batches = [
-  ...chunkBySize(eRows, 'INSERT INTO events (event_id,slug,question,category,tags,primary_market_id,catalyst_types,catalyst_dates,venue,editorial_notes,is_demo,published,created_at,updated_at) VALUES'),
+  ...chunkBySize(eRows, 'INSERT INTO events (event_id,slug,question,category,tags,primary_market_id,event_type,ladder_distribution,catalyst_types,catalyst_dates,venue,editorial_notes,is_demo,published,created_at,updated_at) VALUES'),
   ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,claim_sig,tags) VALUES'),
   ...(calRows.length ? chunkBySize(calRows, 'INSERT INTO catalyst_calendar (type,label,source_url,dates) VALUES') : []),
 ];
