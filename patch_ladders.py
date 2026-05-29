@@ -25,6 +25,7 @@ from gen_news_cycle import ladder_read
 
 ROOT = Path(__file__).parent
 BUNDLE = ROOT / "web/data/universe-enriched-linked.json"
+LABEL_CACHE = ROOT / "data/ladder-labels.json"   # event_id -> clean label; committed + human-editable
 NO_LLM = "--no-llm" in sys.argv
 
 
@@ -39,7 +40,7 @@ def deterministic_label(sample, underlying):
 
 
 def llm_labels(rows):
-    """One Haiku call per chunk -> clean metric labels. rows: [(sample, underlying, band)]."""
+    """One Haiku call per chunk -> clean metric labels. rows: [(sample, underlying, band, slug, resolve)]."""
     from anthropic import Anthropic
     key = os.getenv("ANTHROPIC_API_KEY")
     if not key:
@@ -49,14 +50,17 @@ def llm_labels(rows):
     for i in range(0, len(rows), 50):
         chunk = rows[i:i + 50]
         listing = "\n".join(
-            f'{j}. sample="{s[:70]}" | source="{u[:50]}" | implied_band={b}'
-            for j, (s, u, b) in enumerate(chunk)
+            f'{j}. sample="{s[:65]}" | source="{u[:40]}" | implied_band={b} | slug={sl} | resolves={rv}'
+            for j, (s, u, b, sl, rv) in enumerate(chunk)
         )
         sys_p = ("Write a concise, neutral metric label for each prediction-market LADDER event: the "
-                 "thing measured + the period. NO '[X]' placeholders, no 'Will', no question mark. "
-                 "Examples: 'Federal funds rate upper bound, June 2026 meeting'; 'Core CPI month-over-month, "
-                 "May 2026'; 'ICE removals, FY2026'; 'US corporate bankruptcies, 2026'. Return a STRICT JSON "
-                 'array of strings in the same order, nothing else.')
+                 "thing measured + the SPECIFIC period. Derive the period from the slug and resolve date "
+                 "(e.g. slug 'kxfed-26jun' -> 'June 2026 meeting'; resolves 2026-05-31 -> 'May 31, 2026'). "
+                 "Two events that differ only by period MUST get different labels, so always include the "
+                 "specific month/meeting/date, never just the year. NO '[X]' placeholders, no 'Will', no "
+                 "question mark. Examples: 'Federal funds rate upper bound, June 2026 meeting'; 'Core CPI "
+                 "month-over-month, May 2026'; 'ICE removals, FY2026'. Return a STRICT JSON array of strings "
+                 'in the same order, nothing else.')
         resp = client.messages.create(
             model="claude-haiku-4-5-20251001", max_tokens=2000, system=sys_p,
             messages=[{"role": "user", "content": listing}],
@@ -85,14 +89,26 @@ def main():
         else:
             e["event_type"] = "BINARY"
 
-    # labels
-    labels = None
-    if not NO_LLM and ladders:
+    # labels — CACHED by event_id for run-to-run stability. LLM output is non-deterministic, but a
+    # reference-data title must not silently reword on every build, so a label is generated once and
+    # pinned. Only NEW ladder events hit Haiku; the cache is committed + human-editable (hand-fix a
+    # specific label in data/ladder-labels.json and it sticks forever).
+    cache = json.loads(LABEL_CACHE.read_text()) if LABEL_CACHE.exists() else {}
+    need = [(e, lr, s, u) for (e, lr, s, u) in ladders if e["event_id"] not in cache]
+    n_new = 0
+    if not NO_LLM and need:
         try:
-            labels = llm_labels([(s, u, lr["implied_band"]) for _, lr, s, u in ladders])
+            rows = [(s, u, lr["implied_band"], e["slug"],
+                     (lr["anchor_market"].get("resolve_at") or lr["anchor_market"].get("close_at") or "")[:10])
+                    for (e, lr, s, u) in need]
+            for (e, _, _, _), lab in zip(need, llm_labels(rows) or []):
+                if lab:
+                    cache[e["event_id"]] = lab
+                    n_new += 1
+            LABEL_CACHE.write_text(json.dumps(cache, indent=2, sort_keys=True))
         except Exception as ex:
-            print(f"  Haiku label pass failed ({ex}); using deterministic fallback")
-    for idx, (e, lr, sample, underlying) in enumerate(ladders):
+            print(f"  Haiku label pass failed ({ex}); using cache + deterministic fallback")
+    for e, lr, sample, underlying in ladders:
         lo, hi = lr["implied_band"]
         e["ladder_distribution"] = {
             "direction": lr["direction"],
@@ -100,12 +116,11 @@ def main():
             "strikes": [{"threshold": t, "prob": p} for t, p in lr["strikes"]],
         }
         e["primary_market_id"] = lr["anchor_market"]["market_id"]
-        label = (labels[idx] if labels and idx < len(labels) else None) or deterministic_label(sample, underlying)
-        e["question"] = label
+        e["question"] = cache.get(e["event_id"]) or deterministic_label(sample, underlying)
 
     BUNDLE.write_text(json.dumps(b, default=str))
     print(f"patched {len(ladders)} LADDER events / {len(b['events'])} total "
-          f"(labels: {'Haiku' if labels else 'deterministic'})")
+          f"(labels: {len(cache)} cached, {n_new} new this run)")
 
 
 if __name__ == "__main__":
