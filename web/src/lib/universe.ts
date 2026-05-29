@@ -7,7 +7,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const BUNDLE_PATH = resolve(process.cwd(), 'data/universe-enriched-full.json');
+// -linked is the current bundle: post cross-venue link, with catalyst_types, per-market strike
+// fields, and the build-time ladder patch (event_type / ladder_distribution). The old -full bundle
+// was pre-link + had none of that, so event pages showed stale data + broken ladders.
+const BUNDLE_PATH = resolve(process.cwd(), 'data/universe-enriched-linked.json');
 
 export type Mark = {
   mark_id: string;

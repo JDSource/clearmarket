@@ -487,6 +487,13 @@ function colorizeJson(obj: unknown): string {
     .replace(/: (".*?")/g, ': <span class="t-str">$1</span>')
     .replace(/: (-?\d+\.?\d*)/g, ': <span class="t-num">$1</span>');
 }
+
+// Strike-ladder distribution (build-time patch via patch_ladders.py). For multinomial events
+// (Fed rate, CPI, counts) we render the coherent distribution instead of one mislabeled strike.
+const ladder = (event as any).event_type === 'LADDER' ? (event as any).ladder_distribution : null;
+const ladderBand = ladder && ladder.implied_band
+  ? ladder.implied_band.filter((x: any) => x !== null && x !== undefined).join(' – ')
+  : null;
 ---
 <Site title={`${event.question} · ClearMarket (v2)`} description={`Cross-venue reference data for "${event.question}". ${event.venues_covered.join(' + ')}.`} canonical={canonicalURL}>
   <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
@@ -553,6 +560,27 @@ function colorizeJson(obj: unknown): string {
         <span class="cm-horizon-value" data-cm-field="volume_24h_usd">{allMarketsResolved ? 'settled' : formatVol(dayVol)}</span>
       </span>
     </div>
+
+    {/* ===== LADDER DISTRIBUTION — multinomial strike events (Fed rate, CPI, counts).
+         Renders the full market-implied distribution + band instead of one strike. ===== */}
+    {ladder && (
+      <section class="cm-ladder" data-cm-field="ladder_distribution">
+        <div class="cm-ladder-h">market-implied distribution
+          {ladderBand && <span class="cm-ladder-band"> · implied {ladderBand}</span>}
+        </div>
+        <table class="cm-ladder-table">
+          <tbody>
+            {ladder.strikes.map((s: any) => (
+              <tr class="cm-ladder-row">
+                <td class="cm-ladder-strike">{ladder.direction} {s.threshold}</td>
+                <td class="cm-ladder-barcell"><span class="cm-ladder-bar" style={`width:${Math.max(2, s.prob)}%`}></span></td>
+                <td class="cm-ladder-prob">{s.prob}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    )}
 
     {/* ===== OUTCOME STRIP — resolved-state only. Plain-language answer to the
          event question, sits between meta strip and Editorial Brief. Carries
@@ -1357,6 +1385,21 @@ function colorizeJson(obj: unknown): string {
     /* Flat ticker — every token + pipe is a flat child. justify-content:
        space-between distributes tokens evenly across the full strip width;
        no ml-auto exceptions. Each field gets the same visual weight. */
+    /* Ladder distribution table (multinomial strike events) */
+    .cm-ladder { margin: 0 0 22px; }
+    .cm-ladder-h {
+      font-family: var(--cm-font-mono); font-size: 10.5px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--cm-fg-muted); margin-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-hairline); padding-bottom: 5px;
+    }
+    .cm-ladder-band { color: var(--cm-fg-link); }
+    .cm-ladder-table { width: 100%; border-collapse: collapse; font-family: var(--cm-font-mono); font-size: 12px; }
+    .cm-ladder-row td { padding: 2px 0; vertical-align: middle; border-radius: 0; }
+    .cm-ladder-strike { color: var(--cm-fg-secondary); white-space: nowrap; width: 150px; }
+    .cm-ladder-barcell { width: 100%; padding: 2px 12px !important; }
+    .cm-ladder-bar { display: inline-block; height: 8px; background: var(--cm-fg-link); min-width: 2px; vertical-align: middle; }
+    .cm-ladder-prob { color: var(--cm-fg-primary); text-align: right; width: 50px; font-variant-numeric: tabular-nums; }
+
     .cm-horizon {
       display: flex;
       align-items: center;
