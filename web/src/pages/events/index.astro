@@ -84,7 +84,7 @@ const totalMarkets = rows.reduce((s, r) => s + r.n, 0);
             <td class="ev-cat">{r.category}</td>
             <td class="ev-ven">{r.venues.join(' + ')}</td>
             <td class="ev-grade">{r.grade ? <span class={`ev-g ev-g-${r.grade}`}>{r.grade}</span> : <span class="ev-g-na">—</span>}</td>
-            <td class="ev-px">{r.ladder ? <span class="ev-ladder">ladder · {r.n}</span> : (r.price != null ? `${(r.price * 100).toFixed(0)}%` : '—')}</td>
+            <td class="ev-px">{r.ladder ? <span class="ev-ladder">ladder · {r.n}</span> : (r.n > 1 ? <span class="ev-ladder">{r.n} markets</span> : (r.price != null ? `${(r.price * 100).toFixed(0)}%` : '—'))}</td>
           </tr>
         ))}
       </tbody>

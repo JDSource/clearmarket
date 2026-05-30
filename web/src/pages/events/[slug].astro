@@ -498,12 +498,8 @@ function colorizeJson(obj: unknown): string {
     .replace(/: (-?\d+\.?\d*)/g, ': <span class="t-num">$1</span>');
 }
 
-// Strike-ladder distribution (build-time patch via patch_ladders.py). For multinomial events
-// (Fed rate, CPI, counts) we render the coherent distribution instead of one mislabeled strike.
-const ladder = (event as any).event_type === 'LADDER' ? (event as any).ladder_distribution : null;
-const ladderBand = ladder && ladder.implied_band
-  ? ladder.implied_band.filter((x: any) => x !== null && x !== undefined).join(' – ')
-  : null;
+// ladder_distribution stays in the bundle/API/MCP (and drives the event-type label);
+// the on-page distribution chart was removed — the venue-grouped markets table shows the strikes.
 ---
 <Site title={`${event.question} · ClearMarket (v2)`} description={`Cross-venue reference data for "${event.question}". ${event.venues_covered.join(' + ')}.`} canonical={canonicalURL}>
   <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
@@ -572,26 +568,8 @@ const ladderBand = ladder && ladder.implied_band
       </span>
     </div>
 
-    {/* ===== LADDER DISTRIBUTION — multinomial strike events (Fed rate, CPI, counts).
-         Renders the full market-implied distribution + band instead of one strike. ===== */}
-    {ladder && (
-      <section class="cm-ladder" data-cm-field="ladder_distribution">
-        <div class="cm-ladder-h">market-implied distribution
-          {ladderBand && <span class="cm-ladder-band"> · implied {ladderBand}</span>}
-        </div>
-        <table class="cm-ladder-table">
-          <tbody>
-            {ladder.strikes.map((s: any) => (
-              <tr class="cm-ladder-row">
-                <td class="cm-ladder-strike">{ladder.direction} {s.threshold}</td>
-                <td class="cm-ladder-barcell"><span class="cm-ladder-bar" style={`width:${Math.max(2, s.prob)}%`}></span></td>
-                <td class="cm-ladder-prob">{s.prob}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    )}
+    {/* Ladder distribution chart removed — the venue-grouped markets table below already
+       shows every strike's P(YES). ladder_distribution stays in the API/MCP payload. */}
 
     {/* ===== OUTCOME STRIP — resolved-state only. Plain-language answer to the
          event question, sits between meta strip and Editorial Brief. Carries
@@ -990,34 +968,16 @@ const ladderBand = ladder && ladder.implied_band
     <section id="signal" class="cm-section">
       <div class="cm-section-h">recent wire items</div>
       {linkedSignals.length === 0 ? (
-        <>
-          {/* STATE 3 — threshold explainer. Active for events that don't cross detection thresholds.
-              Two-tier presentation: status header → three bracketed bucket metrics → footer cycle reference. */}
-          <div class="cm-signal-state3">
-            <div class="cm-signal-state3-head">
-              <span class="cm-signal-state3-status">monitoring status: active</span>
-              <span class="cm-signal-state3-tag">no active wire</span>
-            </div>
-            <div class="cm-signal-state3-body">
-              <div class="cm-signal-state3-lede">Coverage is triggered by:</div>
-              <dl class="cm-signal-state3-rules">
-                <div class="cm-signal-state3-rule">
-                  <dt><span class="cm-signal-state3-bucket">Bucket A</span><span class="cm-signal-state3-token">[ CROSS-VENUE SPREAD ]</span></dt>
-                  <dd>Same event priced differently on Kalshi vs Polymarket &gt; 5.0pp</dd>
-                </div>
-                <div class="cm-signal-state3-rule">
-                  <dt><span class="cm-signal-state3-bucket">Bucket B</span><span class="cm-signal-state3-token">[ BENCHMARK DRIFT ]</span></dt>
-                  <dd>PM consensus drifts from external benchmark (FedWatch, polling avg, futures) &gt; 25bp</dd>
-                </div>
-                <div class="cm-signal-state3-rule">
-                  <dt><span class="cm-signal-state3-bucket">Bucket C</span><span class="cm-signal-state3-token">[ NEWS CYCLE ]</span></dt>
-                  <dd>Top-5 daily news story references this market (Perplexity scan, 04:00 ET)</dd>
-                </div>
-              </dl>
-              <div class="cm-signal-state3-foot">This market currently resides below detection thresholds. Detection cycle runs daily at 04:00 ET.</div>
-            </div>
+        <div class="cm-signal-state3">
+          <div class="cm-signal-state3-head">
+            <span class="cm-signal-state3-status">monitoring status: active</span>
+            <span class="cm-signal-state3-tag">no active wire</span>
           </div>
-        </>
+          <div class="cm-signal-state3-body">
+            <p class="cm-signal-state3-lede">No CM Signal wire has been published for this event yet.</p>
+            <p class="cm-signal-state3-foot">CM Signal&rsquo;s news-cycle scan surfaces the day&rsquo;s top stories alongside the prediction markets pricing them. When a story references this event, its wire is published here and links back to this page.</p>
+          </div>
+        </div>
       ) : (
         <ul class="cm-wire-list">
           {linkedSignals.map((s) => (
