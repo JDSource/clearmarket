@@ -267,12 +267,14 @@ const dataCatalogJsonLd = {
     {/* ===== API SURFACES ===== */}
     <section id="api" class="cm-section cm-section-machine">
       <div class="cm-section-h">programmatic access &middot; one payload, every surface</div>
-      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers fetch the JSON list or any single wire. Indexers (Perplexity etc.) auto-discover via RSS. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
+      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers fetch the JSON list or any single wire. Agents call the MCP tools. Indexers (Perplexity etc.) auto-discover via RSS. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
       <table class="cm-endpoints-table">
         <tbody>
           <tr><td class="cm-fmt">HTML</td><td>this page &mdash; embedded JSON-LD <code class="cm-inline-code">@type: DataCatalog</code></td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
           <tr><td class="cm-fmt">JSON</td><td>full wire list, newest first</td><td><a href="/signals.json"><code class="cm-endpoint-url">/signals.json</code></a></td></tr>
           <tr><td class="cm-fmt">JSON</td><td>any single wire record</td><td><code class="cm-endpoint-url">/signals/&lt;slug&gt;.json</code></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>every wire for a given event</td><td><code class="cm-endpoint-url">/signals/for-event/&lt;event_id&gt;.json</code></td></tr>
+          <tr><td class="cm-fmt">MCP</td><td>agent tool calls (read-only)</td><td><code class="cm-endpoint-url">list_signals · get_signal</code></td></tr>
           <tr><td class="cm-fmt">RSS</td><td>auto-discovered feed for indexers (Perplexity etc.)</td><td><a href="/signals/rss.xml"><code class="cm-endpoint-url">/signals/rss.xml</code></a></td></tr>
           <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
         </tbody>

@@ -6,7 +6,8 @@
  * no SDK. Read-only + OPEN (no auth) by design — agent adoption is the goal.
  *
  * Methods: initialize | notifications/initialized | tools/list | tools/call.
- * Tools (5): get_event, list_events, get_market, list_upcoming_catalysts, search.
+ * Tools (6): list_events, get_event, get_market, list_upcoming_catalysts, list_signals, get_signal.
+ * (Signal tools fetch the published static /signals feed — wires stay single-sourced as content.)
  *
  * NB: tool descriptions are how an agent decides to call us — lead with the
  * differentiators (graded resolution clarity, cross-venue links, provenance).
@@ -88,6 +89,36 @@ const TOOLS = [
       properties: { days: { type: 'integer', minimum: 1, maximum: 365, default: 30 } },
     },
   },
+  {
+    name: 'list_signals',
+    description:
+      'Browse the CM Signal daily wire — short, structured prediction-market bulletins (the price is the lede, ' +
+      'news is context). Filter by event_id (every wire touching a specific event), category, venue, or detection ' +
+      'type (news_cycle, cross_venue_divergence, benchmark_drift, volume_spike). Returns compact records, newest ' +
+      'first; call get_signal for the full bulletin. Use to find ClearMarket\'s editorial read on what is moving.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'string', description: 'Return only wires that target or link to this CM event_id.' },
+        category: { type: 'string', enum: CATEGORIES },
+        venue: { type: 'string', enum: ['kalshi', 'polymarket'] },
+        detection_path: { type: 'string', enum: ['news_cycle', 'cross_venue_divergence', 'benchmark_drift', 'volume_spike'] },
+        limit: { type: 'integer', minimum: 1, maximum: 100, default: 30 },
+      },
+    },
+  },
+  {
+    name: 'get_signal',
+    description:
+      'Fetch one full CM Signal wire by slug: headline, the 3-5 structured bullets, atomic claims with per-field ' +
+      'provenance tiers, the target + linked events, primary and related markets with prices, and sources. Use ' +
+      'when you have a wire slug (from list_signals) and need the complete bulletin with its proof chain.',
+    inputSchema: {
+      type: 'object',
+      properties: { slug: { type: 'string', description: 'Wire slug, e.g. "us-iran-nuclear-deal-before-2027-polymarket-77-2026-05-29".' } },
+      required: ['slug'],
+    },
+  },
 ];
 
 // ---- data builders (open; full universe; no auth) ----------------------
@@ -151,6 +182,31 @@ async function buildUpcoming(env: Env, days: number): Promise<any> {
   return { window_days: d, from: today, to: until, count: items.length, catalysts: items };
 }
 
+// ---- signals (fetched from the published static feed; wires are single-sourced as content) ----
+function signalsBase(env: Env): string {
+  return (env.SIGNALS_BASE || 'https://clearmarket.fyi').replace(/\/+$/, '');
+}
+
+async function buildSignalsList(env: Env, p: Record<string, any>): Promise<any> {
+  const res = await fetch(`${signalsBase(env)}/signals.json`, { cf: { cacheTtl: 300 } } as any);
+  if (!res.ok) return { error: `Signal feed unavailable (${res.status}).`, count: 0, signals: [] };
+  const feed = await res.json<any>();
+  let items: any[] = feed.signals ?? [];
+  if (p.event_id) items = items.filter((s) => s.target_event_id === p.event_id || (s.linked_event_ids ?? []).includes(p.event_id));
+  if (p.category) items = items.filter((s) => s.category_tag === p.category);
+  if (p.venue) items = items.filter((s) => (s.venues ?? []).includes(p.venue));
+  if (p.detection_path) items = items.filter((s) => s.detection_path === p.detection_path);
+  const limit = Math.min(Math.max(Number(p.limit ?? 30) || 30, 1), 100);
+  return { count: Math.min(items.length, limit), total_matched: items.length, signals: items.slice(0, limit) };
+}
+
+async function buildSignal(env: Env, slug: string): Promise<any | null> {
+  const res = await fetch(`${signalsBase(env)}/signals/${encodeURIComponent(slug)}.json`, { cf: { cacheTtl: 300 } } as any);
+  if (res.status === 404) return null;
+  if (!res.ok) return { error: `Signal fetch failed (${res.status}).` };
+  return res.json();
+}
+
 // ---- tool dispatch -----------------------------------------------------
 async function callTool(env: Env, name: string, a: Record<string, any>): Promise<any> {
   switch (name) {
@@ -164,6 +220,11 @@ async function callTool(env: Env, name: string, a: Record<string, any>): Promise
       return r ?? { error: `No market with id "${a.market_id}".` };
     }
     case 'list_upcoming_catalysts': return buildUpcoming(env, Number(a.days ?? 30));
+    case 'list_signals': return buildSignalsList(env, a);
+    case 'get_signal': {
+      const r = await buildSignal(env, String(a.slug ?? ''));
+      return r ?? { error: `No wire with slug "${a.slug}". Try list_signals.` };
+    }
     default: throw new Error(`Unknown tool: ${name}`);
   }
 }

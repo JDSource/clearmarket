@@ -18,6 +18,10 @@ import { handleMcp } from './mcp';
 
 export interface Env {
   DB: D1Database;
+  // Base URL of the published static site that serves the CM Signal feed
+  // (/signals.json, /signals/<slug>.json). MCP signal tools fetch from here so
+  // wires stay single-sourced as static content (no D1 duplication). Defaults to prod.
+  SIGNALS_BASE?: string;
 }
 
 const CORS = {

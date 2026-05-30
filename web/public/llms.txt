@@ -33,15 +33,19 @@ Tools:
 - get_event : full graded record for one event
 - get_market : price and resolution provenance for one market
 - list_upcoming_catalysts : scheduled catalysts in the next N days
+- list_signals : browse the CM Signal wire (filter by event_id, category, venue, detection_path)
+- get_signal : full wire bulletin by slug
 
 Connect via mcp-remote (Claude Desktop / Cursor): npx -y mcp-remote https://mcp.clearmarket.fyi
 
-## CM Signal (daily wire) — static, under /signals
+## CM Signal (daily wire) — under /signals (its own namespace, not /v1/)
 
 - https://clearmarket.fyi/signals/ : wire index (HTML + embedded JSON-LD DataCatalog)
 - https://clearmarket.fyi/signals.json : full wire list, newest first
 - https://clearmarket.fyi/signals/{slug}.json : single wire record
+- https://clearmarket.fyi/signals/for-event/{event_id}.json : every wire for a given CM event
 - https://clearmarket.fyi/signals/rss.xml : feed for indexers
+- also via MCP: list_signals / get_signal (above)
 
 ## Example slugs
 

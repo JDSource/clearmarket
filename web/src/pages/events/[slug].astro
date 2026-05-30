@@ -419,9 +419,11 @@ for (const platform of ['kalshi', 'polymarket'] as const) {
   groupedSources.push(...map.values());
 }
 
-// Signals for this event
+// Signals for this event — match the primary target event_id OR a linked event_id
 const allSignals = await getCollection('signals');
-const linkedSignals = allSignals.filter((s) => (s.data.linked_event_ids ?? []).includes(event.event_id)).slice(0, 5);
+const linkedSignals = allSignals
+  .filter((s) => s.data.event_id === event.event_id || (s.data.linked_event_ids ?? []).includes(event.event_id))
+  .slice(0, 5);
 
 // Site URLs
 const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
