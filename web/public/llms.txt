@@ -18,6 +18,7 @@ Base: https://api.clearmarket.fyi
 - GET /v1/events?category=&platform=&grade=&q=&limit=&offset= : list and filter events
 - GET /v1/events/{slug} : full event, all linked markets, grades, windowed catalysts
 - GET /v1/markets/{market_id} : single market, price, resolution provenance
+- GET /v1/markets/movers?min_mult=&limit= : day-over-day volume movers (volume-spike signal)
 - GET /v1/catalysts/upcoming?days=N : scheduled catalysts across all events
 - POST /v1/keys {"email":"..."} : optional free key, lifts the limit to 10,000/day
 
@@ -34,6 +35,13 @@ Tools:
 - list_upcoming_catalysts : scheduled catalysts in the next N days
 
 Connect via mcp-remote (Claude Desktop / Cursor): npx -y mcp-remote https://mcp.clearmarket.fyi
+
+## CM Signal (daily wire) — static, under /signals
+
+- https://clearmarket.fyi/signals/ : wire index (HTML + embedded JSON-LD DataCatalog)
+- https://clearmarket.fyi/signals.json : full wire list, newest first
+- https://clearmarket.fyi/signals/{slug}.json : single wire record
+- https://clearmarket.fyi/signals/rss.xml : feed for indexers
 
 ## Example slugs
 

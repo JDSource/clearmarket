@@ -266,13 +266,13 @@ const dataCatalogJsonLd = {
 
     {/* ===== API SURFACES ===== */}
     <section id="api" class="cm-section cm-section-machine">
-      <div class="cm-section-h">programmatic access &middot; four surfaces, same payload</div>
-      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers query REST. Agentic AI clients call MCP tools. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
+      <div class="cm-section-h">programmatic access &middot; one payload, every surface</div>
+      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers fetch the JSON list or any single wire. Indexers (Perplexity etc.) auto-discover via RSS. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
       <table class="cm-endpoints-table">
         <tbody>
           <tr><td class="cm-fmt">HTML</td><td>this page &mdash; embedded JSON-LD <code class="cm-inline-code">@type: DataCatalog</code></td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
-          <tr><td class="cm-fmt">JSON</td><td>REST API list endpoint with filters</td><td><a href="https://api.clearmarket.fyi/v1/signals"><code class="cm-endpoint-url">https://api.clearmarket.fyi/v1/signals</code></a></td></tr>
-          <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.list_signals(filters)</code></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>full wire list, newest first</td><td><a href="/signals.json"><code class="cm-endpoint-url">/signals.json</code></a></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>any single wire record</td><td><code class="cm-endpoint-url">/signals/&lt;slug&gt;.json</code></td></tr>
           <tr><td class="cm-fmt">RSS</td><td>auto-discovered feed for indexers (Perplexity etc.)</td><td><a href="/signals/rss.xml"><code class="cm-endpoint-url">/signals/rss.xml</code></a></td></tr>
           <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
         </tbody>
@@ -281,7 +281,7 @@ const dataCatalogJsonLd = {
 
     <div class="cm-event-foot">
       <span><span class="cm-meta-l">view</span> <a href="/signals/archive/">resolved archive &rarr;</a></span>
-      <span><span class="cm-meta-l">events</span> <a href="/events-v2/">event catalog &rarr;</a></span>
+      <span><span class="cm-meta-l">events</span> <a href="/events/">event catalog &rarr;</a></span>
       <a href="/">&larr; home</a>
     </div>
 
