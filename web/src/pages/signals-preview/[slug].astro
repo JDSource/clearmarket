@@ -1370,6 +1370,19 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       letter-spacing: 0.1em;
       margin-right: 4px;
     }
+
+    /* ===== mobile (LinkedIn lands on wire detail) ===== */
+    @media (max-width: 720px) {
+      .cm-v2 { padding: 18px 14px 50px; box-sizing: border-box; overflow-wrap: break-word; }
+      .cm-h1 { font-size: 18px; line-height: 1.3; }
+      .cm-horizon { flex-wrap: wrap; gap: 6px 10px; }
+      .cm-horizon-pipe { display: none; }
+      /* kv-rows: 3-col grid -> stacked label-over-value */
+      .cm-kv-row, .cm-kv-wide .cm-kv-row { grid-template-columns: 1fr; gap: 0; margin-bottom: 7px; }
+      .cm-kv-row dt { margin-bottom: 1px; }
+      .cm-kv-link, .cm-prov-link { word-break: break-all; }
+      .cm-v2 pre { overflow-x: auto; }
+    }
   </style>
 
   <script is:inline>

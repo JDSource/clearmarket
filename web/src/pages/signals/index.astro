@@ -729,6 +729,37 @@ const dataCatalogJsonLd = {
       margin-right: 4px;
     }
     .cm-event-foot > a:last-child { margin-left: auto; }
+
+    /* ===== mobile: ledger table -> stacked cards (LinkedIn traffic lands here) ===== */
+    @media (max-width: 720px) {
+      .cm-v2 { padding: 18px 14px 56px; }
+      .cm-h1 { font-size: 18px; flex-wrap: wrap; }
+      .cm-index-lede { font-size: 12px; }
+      .cm-horizon { flex-wrap: wrap; gap: 6px 10px; }
+      .cm-horizon-pipe { display: none; }
+      .cm-filter-row { flex-wrap: wrap; row-gap: 6px; }
+      .cm-subnav { overflow-x: auto; white-space: nowrap; }
+
+      .cm-ledger, .cm-ledger tbody, .cm-ledger-row { display: block; width: 100%; box-sizing: border-box; }
+      .cm-ledger colgroup { display: none; }
+      .cm-ledger-cap td { display: block; }
+      .cm-ledger-row {
+        border: 1px solid var(--cm-border-hairline); padding: 11px 12px; margin-bottom: 8px;
+      }
+      .cm-ledger-row td { border: none !important; padding: 0; }
+      /* headline first, full width */
+      .cm-ledger-row .cm-ledger-headline { display: block; margin-bottom: 7px; }
+      .cm-ledger-row .cm-ledger-headline a { font-size: 15px; line-height: 1.35; white-space: normal; }
+      /* meta cells reflow inline under the headline */
+      .cm-ledger-row .cm-ledger-time,
+      .cm-ledger-row .cm-ledger-id,
+      .cm-ledger-row .cm-ledger-type,
+      .cm-ledger-row .cm-ledger-venues,
+      .cm-ledger-row .cm-ledger-formats {
+        display: inline-block; margin-right: 10px; font-size: 11px; line-height: 1.6;
+      }
+      .cm-ledger-row .cm-ledger-id { color: var(--cm-fg-faint); }
+    }
   </style>
 
   {/* ===== Client-side filter + sort ===== */}
