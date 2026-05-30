@@ -18,7 +18,7 @@ Run before `cd api && npm run export` (D1 seed) and before `cd web && npm run bu
 Usage: python3 patch_ladders.py [--no-llm]
 """
 import json, os, re, sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from gen_news_cycle import ladder_read
@@ -120,6 +120,12 @@ def main():
         }
         e["primary_market_id"] = lr["anchor_market"]["market_id"]
         e["question"] = cache.get(e["event_id"]) or deterministic_label(sample, underlying)
+
+    dups = {l: n for l, n in Counter(e["question"] for e, _, _, _ in ladders).items() if n > 1}
+    if dups:
+        print(f"  WARNING: {len(dups)} duplicate ladder labels — hand-disambiguate in {LABEL_CACHE.name}:")
+        for l, n in sorted(dups.items()):
+            print(f"    [{n}x] {l}")
 
     BUNDLE.write_text(json.dumps(b, default=str))
     print(f"patched {len(ladders)} LADDER events / {len(b['events'])} total "
