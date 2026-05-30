@@ -30,6 +30,7 @@ ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 BUNDLE = ROOT / "web/data/universe-enriched-linked.json"
 OUT_DIR = ROOT / "web/src/content/signals"
 SONNET = "claude-sonnet-4-6"
+API_BASE = os.getenv("CM_API_BASE", "https://api.clearmarket.fyi")  # live marks_daily volume signal
 
 DRY = "--dry-run" in sys.argv
 MAX_ITEMS = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 5
@@ -96,6 +97,27 @@ def exa_news(query, days=3, n=10):
 def _domain(url):
     m = re.search(r"https?://(?:www\.)?([^/]+)", url or "")
     return m.group(1) if m else ""
+
+
+def fetch_movers(min_mult=2.0):
+    """Day-over-day 24h-volume movers from the live API (marks_daily), keyed by event slug.
+    Fail-safe: returns {} on any error or when <2 daily snapshots exist, so the generator runs
+    identically until the series accrues. This is the volume_spike content/ranking signal."""
+    try:
+        r = requests.get(f"{API_BASE}/v1/markets/movers",
+                         params={"min_mult": min_mult, "limit": 100}, timeout=8)
+        r.raise_for_status()
+        out = {}
+        for m in r.json().get("movers", []):
+            sl = m.get("slug")
+            if sl and (sl not in out or (m.get("volume_mult") or 0) > out[sl]["mult"]):
+                out[sl] = {"mult": m.get("volume_mult"), "pct": m.get("volume_delta_pct")}
+        if out:
+            print(f"movers: {len(out)} events with >= {min_mult}x day/day volume")
+        return out
+    except Exception as ex:
+        print(f"  movers fetch skipped ({ex}); volume_spike annotations off this run")
+        return {}
 
 
 def ladder_read(markets):
@@ -176,6 +198,9 @@ def main():
         mkt_count[eid] = mkt_count.get(eid, 0) + 1
         mbye.setdefault(eid, []).append(m)
 
+    # live day-over-day volume signal (empty until >=2 daily snapshots exist; degrades silently)
+    movers = fetch_movers()
+
     # 1. retrieve
     stories, seen = [], set()
     for q in QUERIES:
@@ -232,17 +257,19 @@ def main():
         rows = []
         for c in cands:
             eid = c["event_id"]
+            mv = movers.get(c.get("slug"))
+            vol = f' | VOLUME +{mv["pct"]:.0f}% day/day ({mv["mult"]:.1f}x)' if mv and mv.get("pct") is not None else ""
             lr = ladder_by_eid.get(eid)
             if lr:
                 lo, hi = lr["implied_band"]
                 band = f"~{lo}-{hi}" if lo is not None and hi is not None else (f">={lo}" if lo is not None else f"<{hi}")
                 strikes_str = ", ".join(f"{t}:{p}%" for t, p in lr["strikes"])
                 rows.append(f'    - event_id={eid} | LADDER ({lr["direction"]}), market-implied {band}: '
-                            f'[{strikes_str}] | sample: "{lr["sample_question"][:70]}"')
+                            f'[{strikes_str}]{vol} | sample: "{lr["sample_question"][:70]}"')
             else:
                 plat, pct, rs = mkt_info(c)
                 rows.append(f'    - event_id={eid} | {plat} prediction market now at {pct} '
-                            f'| resolves via: {rs} | "{c.get("question","")[:85]}"')
+                            f'| resolves via: {rs}{vol} | "{c.get("question","")[:85]}"')
         clist = "\n".join(rows)
         story_blocks.append(
             f'STORY {i}: "{s["title"]}" ({s["publisher"]}, {s.get("published_at")})\n'
@@ -299,9 +326,13 @@ def main():
         "- BULLET 1 (binary events): the pricing lede (venue + probability as a percent, from the provided price).\n"
         "- BULLET 2: connect the news to the price in PLAIN language - state whether the market is consistent "
         "with the news or at odds with it. BANNED words: 'fade'/'fading' (jargon). BANNED claims: that the "
-        "market 'moved'/'spiked'/'repriced'/'jumped' - we have NO intraday history, so state the current level "
-        "only. GOOD: 'Cook signaled readiness to hike, but the Polymarket contract still puts only 30% on an "
-        "actual hike'; 'the Kalshi contract at 99% is consistent with the hold officials described'.\n"
+        "market 'moved'/'spiked'/'repriced'/'jumped' in PRICE - we have NO intraday price history, so state the "
+        "current price level only. VOLUME EXCEPTION: if and only if a candidate row carries a measured "
+        "'VOLUME +X% day/day' figure, that is real day-over-day volume from our marks history - you MAY state "
+        "that TRADING VOLUME rose by that figure (volume only, never price), and it is a strong signal the claim "
+        "is drawing fresh attention. With no such figure, the no-moves rule stands fully. GOOD: 'Cook signaled "
+        "readiness to hike, but the Polymarket contract still puts only 30% on an actual hike'; 'the Kalshi "
+        "contract at 99% is consistent with the hold officials described, with volume up 180% day over day'.\n"
         "- BULLET 3: only substantive, concrete context. NO op-ed filler ('this confirms inflation is "
         "re-accelerating' is BANNED). If you have nothing concrete, fold it into bullet 2 and use 4 bullets.\n"
         "- BULLET 4 (highest value): a companion/related prediction market - a longer horizon, the other venue, "
