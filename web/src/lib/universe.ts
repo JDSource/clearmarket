@@ -129,6 +129,43 @@ const allEvents: Event[] = bundle.events
 const eventsBySlug = new Map(allEvents.map((e) => [e.slug, e]));
 const eventsById = new Map(allEvents.map((e) => [e.event_id, e]));
 
+// Cross-venue link index: markets sharing a claim_sig are the same claim across venues.
+const marketById = new Map<string, Market>(allMarkets.map((m) => [m.market_id, m]));
+const marketsBySig = new Map<string, Market[]>();
+for (const m of allMarkets) {
+  const sig = (m as any).claim_sig as string | null;
+  if (!sig) continue;
+  const list = marketsBySig.get(sig);
+  if (list) list.push(m);
+  else marketsBySig.set(sig, [m]);
+}
+
+export type CrossVenueLink = {
+  market_id: string;
+  platform: 'kalshi' | 'polymarket';
+  event_slug: string | null;
+  question: string | null;
+  last_price: number | null;
+  grade: string | null;
+};
+
+// Twin markets on the OTHER venue that price the same claim as this market.
+export function getCrossVenueLinks(market_id: string): CrossVenueLink[] {
+  const m = marketById.get(market_id);
+  const sig = m ? ((m as any).claim_sig as string | null) : null;
+  if (!m || !sig) return [];
+  return (marketsBySig.get(sig) ?? [])
+    .filter((p) => p.market_id !== market_id && p.platform !== m.platform)
+    .map((p) => ({
+      market_id: p.market_id,
+      platform: p.platform,
+      event_slug: eventsById.get(p.event_id ?? '')?.slug ?? null,
+      question: p.question_raw ?? null,
+      last_price: p.last_price ?? null,
+      grade: (p as any).resolution_clarity_grade ?? null,
+    }));
+}
+
 export function getAllEvents(): Event[] {
   return allEvents;
 }

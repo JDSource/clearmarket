@@ -31,6 +31,7 @@ import {
   getAllEvents,
   getEventBySlug,
   getMarketsForEvent,
+  getCrossVenueLinks,
   getMarksForEvent,
   SPECIMEN_GENERATED_AT,
   SCHEMA_VERSION,
@@ -50,6 +51,13 @@ export async function getStaticPaths() {
 const { event } = Astro.props as { event: Event };
 
 const markets = getMarketsForEvent(event.event_id);
+
+// Cross-venue links: markets on this event whose claim also trades on the other venue
+// (same claim_sig). Surfaced inline — the event stays venue-shaped; the twin shows in place.
+const crossVenueRows = markets
+  .map((m) => ({ market: m, twins: getCrossVenueLinks(m.market_id) }))
+  .filter((r) => r.twins.length > 0);
+const hasCrossVenue = crossVenueRows.length > 0;
 const marks = getMarksForEvent(event.event_id);
 
 // Latest mark per market
@@ -502,6 +510,7 @@ const ladderBand = ladder && ladder.implied_band
 
   <nav class="cm-subnav" aria-label="Event sections" slot="subnav">
     <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
+    {hasCrossVenue && <a href="#cross-venue" data-section="cross-venue" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Cross-venue</a>}
     <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>
     {event.catalyst_dates && event.catalyst_dates.length > 0 && <a href="#catalysts" data-section="catalysts" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Catalysts</a>}
     <a href="#signal" data-section="signal" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Signal</a>
@@ -768,6 +777,34 @@ const ladderBand = ladder && ladder.implied_band
         );
       })}
     </section>
+
+    {/* ===== CROSS-VENUE LINKS: same claim on the other venue ===== */}
+    {hasCrossVenue && (
+      <section id="cross-venue" class="cm-section">
+        <div class="cm-section-h">cross-venue links <span class="cm-section-tag">| same claim, priced on both venues</span></div>
+        <table class="cm-xv-table">
+          <thead>
+            <tr><th class="cm-xv-claim">claim</th><th class="cm-xv-px">this market</th><th class="cm-xv-px">other venue</th></tr>
+          </thead>
+          <tbody>
+            {crossVenueRows.map(({ market, twins }) => (
+              <tr>
+                <td class="cm-xv-claim" data-cm-field="claim_sig">{market.question_raw}</td>
+                <td class="cm-xv-px"><span class="cm-xv-venue">{market.platform}</span> <span class="cm-num">{formatPrice(market.last_price)}</span></td>
+                <td class="cm-xv-px">
+                  {twins.map((t) => (
+                    t.event_slug
+                      ? <a class="cm-xv-link" href={`/events/${t.event_slug}/`}><span class="cm-xv-venue">{t.platform}</span> <span class="cm-num">{formatPrice(t.last_price)}</span> &rarr;</a>
+                      : <span><span class="cm-xv-venue">{t.platform}</span> <span class="cm-num">{formatPrice(t.last_price)}</span></span>
+                  ))}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="cm-xv-note">Linked at the market grain via <code>claim_sig</code> — each row is the same underlying claim trading on both venues. Each venue resolves on its own source; prices are not arbitrage-adjusted.</p>
+      </section>
+    )}
 
     {/* ===== RESOLUTION ARCHITECTURE: full-width ===== */}
     <section id="resolution" class="cm-section">
@@ -2191,6 +2228,34 @@ const ladderBand = ladder && ladder.implied_band
     @media (max-width: 900px) {
       .cm-split { grid-template-columns: 1fr; }
     }
+
+    /* cross-venue links table */
+    .cm-xv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 13px;
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-xv-table th {
+      text-align: left;
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-xv-table td { padding: 9px 12px; border-bottom: 1px solid var(--cm-border-hairline); vertical-align: top; }
+    .cm-xv-table tr:last-child td { border-bottom: 0; }
+    .cm-xv-claim { color: var(--cm-fg-primary); font-family: var(--cm-font-sans); }
+    .cm-xv-px { white-space: nowrap; }
+    .cm-xv-venue { color: var(--cm-fg-muted); text-transform: capitalize; }
+    .cm-xv-link { color: var(--cm-fg-link); text-decoration: none; }
+    .cm-xv-link:hover { text-decoration: underline; }
+    .cm-xv-note { font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-muted); margin-top: 10px; line-height: 1.5; }
+    .cm-xv-note code { color: var(--cm-fg-secondary); }
 
     .cm-res-table {
       width: 100%;
