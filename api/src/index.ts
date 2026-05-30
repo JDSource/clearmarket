@@ -7,6 +7,7 @@
  *   GET  /v1/events            list + filter (category, platform, grade, q, limit, offset)
  *   GET  /v1/events/:slug      full event + its markets
  *   GET  /v1/markets/:id       single market
+ *   GET  /v1/markets/movers    day-over-day volume movers (volume_spike signal)
  *   POST /v1/keys              { email } -> issues a free API key
  *
  * Auth (Option 3): demo events are public no-auth; everything else needs a
@@ -274,6 +275,41 @@ async function getMarket(env: Env, id: string, _auth: Auth): Promise<Response> {
   return json(marketOut(m));
 }
 
+// Volume movers: day-over-day 24h-volume change from the two most recent marks_daily snapshots.
+// The deterministic signal behind volume_spike wires. Open; returns [] until >=2 days have accrued.
+async function listMovers(env: Env, url: URL): Promise<Response> {
+  const minMult = Math.max(Number(url.searchParams.get('min_mult') ?? 2) || 2, 1);
+  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 50) || 50, 1), 200);
+  const { results: days } = await env.DB.prepare(
+    'SELECT DISTINCT day FROM marks_daily ORDER BY day DESC LIMIT 2'
+  ).all<{ day: string }>();
+  if (days.length < 2) {
+    return json({ metric: 'volume_24h', min_mult: minMult, count: 0, movers: [],
+      notice: `Need two daily snapshots to compute a move; have ${days.length}. Series accrues nightly.` });
+  }
+  const [dayNow, dayPrev] = [days[0].day, days[1].day];
+  const { results } = await env.DB.prepare(
+    `SELECT t.market_id, t.last_price, t.volume_24h_usd AS vol_now, p.volume_24h_usd AS vol_prev,
+            m.platform, m.question_raw, m.event_id, e.slug, e.question AS event_question, e.category
+       FROM marks_daily t
+       JOIN marks_daily p ON p.market_id = t.market_id AND p.day = ?
+       JOIN markets m ON m.market_id = t.market_id
+       JOIN events e ON e.event_id = m.event_id AND e.published = 1
+      WHERE t.day = ? AND p.volume_24h_usd > 0 AND t.volume_24h_usd >= p.volume_24h_usd * ?
+      ORDER BY t.volume_24h_usd / p.volume_24h_usd DESC
+      LIMIT ?`
+  ).bind(dayPrev, dayNow, minMult, limit).all<any>();
+  const movers = results.map((r) => ({
+    market_id: r.market_id, slug: r.slug, event_question: r.event_question, category: r.category,
+    platform: r.platform, question_raw: r.question_raw, last_price: num(r.last_price),
+    volume_24h_usd: num(r.vol_now), volume_24h_usd_prev: num(r.vol_prev),
+    volume_mult: Math.round((r.vol_now / r.vol_prev) * 100) / 100,
+    volume_delta_pct: Math.round(((r.vol_now - r.vol_prev) / r.vol_prev) * 1000) / 10,
+  }));
+  return json({ metric: 'volume_24h', day: dayNow, prior_day: dayPrev, min_mult: minMult,
+    count: movers.length, movers });
+}
+
 // Cross-event view: every scheduled catalyst in the next N days, across the whole calendar.
 // Public (shared reference data, no per-event linkage). The query the old per-event arrays couldn't answer.
 async function upcomingCatalysts(env: Env, url: URL): Promise<Response> {
@@ -447,6 +483,7 @@ export default {
     if (auth instanceof Response) return auth;
 
     if (path === '/v1/events') return listEvents(env, url, auth);
+    if (path === '/v1/markets/movers') return listMovers(env, url);
     const evMatch = path.match(/^\/v1\/events\/([^/]+)$/);
     if (evMatch) return getEvent(env, decodeURIComponent(evMatch[1]), auth);
     const mkMatch = path.match(/^\/v1\/markets\/([^/]+)$/);
