@@ -1,0 +1,201 @@
+---
+/* CM Data — browse the universe.
+ * Static list of every published event (always works, instant client-side filter).
+ * Search hits the live API (/v1/events?q=) to dogfood it, with a fallback to the
+ * embedded list when the API is unreachable (pre-DNS) or rate-limited.
+ */
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import { getAllEvents, getMarketsForEvent, SCHEMA_VERSION } from '../../lib/universe';
+
+const API_BASE = 'https://api.clearmarket.fyi';
+
+const rows = getAllEvents().map((e) => {
+  const mkts = getMarketsForEvent(e.event_id);
+  const primary = mkts.find((m) => m.market_id === e.primary_market_id) || mkts[0];
+  const isLadder = (e as any).event_type === 'LADDER';
+  return {
+    slug: e.slug,
+    question: e.question,
+    category: e.category || 'other',
+    venues: e.venues_covered,
+    grade: (primary as any)?.resolution_clarity_grade || null,
+    price: isLadder ? null : ((primary as any)?.last_price ?? null),
+    ladder: isLadder,
+    n: mkts.length,
+  };
+});
+rows.sort((a, b) => a.question.localeCompare(b.question));
+
+const cats = Array.from(new Set(rows.map((r) => r.category))).sort();
+const totalMarkets = rows.reduce((s, r) => s + r.n, 0);
+---
+
+<Site
+  title="CM Data — browse the universe · ClearMarket"
+  description="Browse every graded, cross-venue prediction-market event in the ClearMarket reference universe. Kalshi + Polymarket."
+>
+  <section class="ev-wrap">
+    <header class="ev-head">
+      <div class="ev-eyebrow">CM DATA · REFERENCE UNIVERSE</div>
+      <h1>Browse the universe</h1>
+      <p class="ev-sub">
+        {rows.length.toLocaleString()} graded events · {totalMarkets.toLocaleString()} markets · Kalshi + Polymarket.
+        Every row is queryable: <a href="/api/#rest">REST</a> · <a href="/api/#mcp">MCP</a> · <a href="/api/#agent">agents</a>.
+      </p>
+    </header>
+
+    <div class="ev-controls">
+      <form class="ev-search" role="search" id="ev-search-form" action="/events/" method="get">
+        <input
+          type="search"
+          id="ev-q"
+          name="q"
+          placeholder="Search events — recession, bitcoin 150k, fed rate…"
+          autocomplete="off"
+          aria-label="Search events"
+        />
+      </form>
+      <div class="ev-api-hint" id="ev-api-hint" hidden>
+        API: <a id="ev-api-link" href="#" target="_blank" rel="noopener"><code></code></a>
+      </div>
+      <div class="ev-chips" id="ev-chips">
+        <button class="ev-chip is-on" data-cat="">all</button>
+        {cats.map((c) => <button class="ev-chip" data-cat={c}>{c}</button>)}
+      </div>
+    </div>
+
+    <div class="ev-count" id="ev-count">{rows.length.toLocaleString()} events</div>
+
+    <table class="ev-table" id="ev-table">
+      <thead>
+        <tr>
+          <th class="ev-th-q">Event</th>
+          <th class="ev-th-cat">Category</th>
+          <th class="ev-th-ven">Venues</th>
+          <th class="ev-th-grade">Grade</th>
+          <th class="ev-th-px">Primary</th>
+        </tr>
+      </thead>
+      <tbody id="ev-body">
+        {rows.map((r) => (
+          <tr class="ev-row" data-cat={r.category} data-q={r.question.toLowerCase()}>
+            <td class="ev-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
+            <td class="ev-cat">{r.category}</td>
+            <td class="ev-ven">{r.venues.join(' + ')}</td>
+            <td class="ev-grade">{r.grade ? <span class={`ev-g ev-g-${r.grade}`}>{r.grade}</span> : <span class="ev-g-na">—</span>}</td>
+            <td class="ev-px">{r.ladder ? <span class="ev-ladder">ladder · {r.n}</span> : (r.price != null ? `${(r.price * 100).toFixed(0)}%` : '—')}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <div class="ev-empty" id="ev-empty" hidden>No events match. Try a broader term.</div>
+  </section>
+
+  <script define:vars={{ API_BASE }} is:inline>
+    const body = document.getElementById('ev-body');
+    const rowsEl = Array.from(body.querySelectorAll('.ev-row'));
+    const countEl = document.getElementById('ev-count');
+    const emptyEl = document.getElementById('ev-empty');
+    const qInput = document.getElementById('ev-q');
+    const chips = Array.from(document.querySelectorAll('.ev-chip'));
+    const apiHint = document.getElementById('ev-api-hint');
+    const apiLink = document.getElementById('ev-api-link');
+    let activeCat = '';
+
+    function apply() {
+      const q = qInput.value.trim().toLowerCase();
+      let shown = 0;
+      for (const tr of rowsEl) {
+        const okCat = !activeCat || tr.dataset.cat === activeCat;
+        const okQ = !q || tr.dataset.q.includes(q);
+        const vis = okCat && okQ;
+        tr.hidden = !vis;
+        if (vis) shown++;
+      }
+      countEl.textContent = shown.toLocaleString() + ' event' + (shown === 1 ? '' : 's');
+      emptyEl.hidden = shown !== 0;
+      if (q) {
+        const url = API_BASE + '/v1/events?q=' + encodeURIComponent(q);
+        apiLink.href = url;
+        apiLink.querySelector('code').textContent = 'GET /v1/events?q=' + q;
+        apiHint.hidden = false;
+      } else {
+        apiHint.hidden = true;
+      }
+    }
+
+    let t;
+    qInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(apply, 120); });
+    qInput.closest('form').addEventListener('submit', (e) => { e.preventDefault(); apply(); });
+    chips.forEach((c) => c.addEventListener('click', () => {
+      chips.forEach((x) => x.classList.remove('is-on'));
+      c.classList.add('is-on');
+      activeCat = c.dataset.cat;
+      apply();
+    }));
+
+    // prefill from ?q= (header search submits here)
+    const params = new URLSearchParams(location.search);
+    const q0 = params.get('q');
+    if (q0) { qInput.value = q0; }
+    apply();
+    qInput.focus();
+  </script>
+</Site>
+
+<style>
+  .ev-wrap { max-width: 1180px; margin: 0 auto; padding: 36px 24px 80px; }
+  .ev-head { border-bottom: 1px solid var(--cm-border-rule); padding-bottom: 20px; margin-bottom: 22px; }
+  .ev-eyebrow { font-family: var(--cm-font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--cm-fg-muted); margin-bottom: 10px; }
+  .ev-head h1 { font-family: var(--cm-font-sans); font-size: 30px; font-weight: 600; color: var(--cm-fg-primary); margin: 0 0 8px; letter-spacing: -0.01em; }
+  .ev-sub { font-size: 14px; color: var(--cm-fg-secondary); margin: 0; line-height: 1.55; }
+  .ev-sub a { color: var(--cm-fg-link); text-decoration: none; }
+  .ev-sub a:hover { text-decoration: underline; }
+
+  .ev-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+  .ev-search { margin: 0; }
+  .ev-search input {
+    width: 100%; box-sizing: border-box; font-family: var(--cm-font-mono); font-size: 14px;
+    padding: 12px 14px; background: var(--cm-bg-surface); color: var(--cm-fg-primary);
+    border: 1px solid var(--cm-border-emphasis); border-radius: 0; outline: none;
+  }
+  .ev-search input:focus { border-color: var(--cm-fg-link); }
+  .ev-search input::placeholder { color: var(--cm-fg-faint); }
+  .ev-api-hint { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); }
+  .ev-api-hint a { color: var(--cm-fg-link); text-decoration: none; }
+  .ev-api-hint code { font-family: var(--cm-font-mono); }
+
+  .ev-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ev-chip {
+    font-family: var(--cm-font-mono); font-size: 11px; letter-spacing: 0.04em; text-transform: lowercase;
+    padding: 5px 10px; background: transparent; color: var(--cm-fg-muted);
+    border: 1px solid var(--cm-border-hairline); border-radius: 0; cursor: pointer; transition: all 0.12s;
+  }
+  .ev-chip:hover { color: var(--cm-fg-primary); border-color: var(--cm-border-emphasis); }
+  .ev-chip.is-on { background: var(--cm-fg-primary); color: var(--cm-bg-deep); border-color: var(--cm-fg-primary); }
+
+  .ev-count { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); margin-bottom: 8px; }
+
+  .ev-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .ev-table thead th {
+    text-align: left; font-family: var(--cm-font-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--cm-fg-muted);
+    padding: 8px 12px; border-bottom: 1px solid var(--cm-border-rule); position: sticky; top: 0;
+    background: var(--cm-bg-deep);
+  }
+  .ev-row td { padding: 9px 12px; border-bottom: 1px solid var(--cm-border-hairline); vertical-align: middle; }
+  .ev-q a { color: var(--cm-fg-primary); text-decoration: none; font-weight: 500; }
+  .ev-q a:hover { color: var(--cm-fg-link); }
+  .ev-cat { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-secondary); text-transform: lowercase; }
+  .ev-ven { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); white-space: nowrap; }
+  .ev-grade { text-align: center; }
+  .ev-g { font-family: var(--cm-font-mono); font-size: 12px; font-weight: 600; padding: 2px 7px; }
+  .ev-g-A { color: var(--cm-positive); }
+  .ev-g-B { color: var(--cm-fg-secondary); }
+  .ev-g-C { color: var(--cm-divergence); }
+  .ev-g-na { color: var(--cm-fg-faint); }
+  .ev-px { font-family: var(--cm-font-mono); font-size: 13px; color: var(--cm-fg-primary); white-space: nowrap; }
+  .ev-ladder { color: var(--cm-fg-muted); font-size: 12px; }
+  .ev-empty { font-family: var(--cm-font-mono); font-size: 13px; color: var(--cm-fg-muted); padding: 28px 12px; text-align: center; }
+</style>

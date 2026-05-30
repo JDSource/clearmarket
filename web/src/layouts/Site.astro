@@ -36,12 +36,15 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
             <span class="va-wordmark">ClearMarket</span>
           </a>
           <nav>
-            <a class="va-nav-product" href="/api/">CM Data</a>
+            <a class="va-nav-product" href="/events/">CM Data</a>
             <a class="va-nav-product" href="/signals/">CM Signal</a>
             <span class="va-nav-sep" aria-hidden="true">·</span>
+            <a href="/api/">API</a>
             <a href="/methodology/">Methodology</a>
             <a href="https://github.com/JDSource/clearmarket">GitHub</a>
-            <a class="va-cta-mini" href="mailto:hello@clearmarket.fyi">Contact</a>
+            <form class="va-nav-search" role="search" action="/events/" method="get">
+              <input type="search" name="q" placeholder="Search events…" aria-label="Search events" autocomplete="off" />
+            </form>
           </nav>
         </header>
         {/* Global system status bar — running grid header on every page (Gemini design direction).
@@ -172,6 +175,22 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       color: var(--va-accent) !important;
       font-weight: 600;
     }
+    .va-nav-search { margin: 0; display: flex; }
+    .va-nav-search input {
+      font-family: var(--va-mono);
+      font-size: 11.5px;
+      color: var(--va-fg);
+      background: var(--va-bg-surface, rgba(255,255,255,0.04));
+      border: 1px solid var(--va-rule);
+      border-radius: 0;
+      padding: 5px 9px;
+      width: 150px;
+      outline: none;
+      letter-spacing: 0.02em;
+      transition: border-color 0.12s, width 0.12s;
+    }
+    .va-nav-search input::placeholder { color: var(--va-fg-faint); }
+    .va-nav-search input:focus { border-color: var(--va-accent); width: 190px; }
 
     /* Global status bar — institutional running header, zero-radius, hard rule */
     .va-statusbar {
