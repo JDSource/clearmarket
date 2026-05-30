@@ -1,21 +1,24 @@
 #!/usr/bin/env bash
 # CM data build pipeline — run before any deploy so every surface (event pages, D1/API)
-# serves coherent, ladder-patched data. Order matters: patch the bundle FIRST, then
-# regenerate the D1 seed and the static site from the patched bundle.
+# serves coherent data. Order matters: sanitize + patch the bundle FIRST, then
+# regenerate the D1 seed and the static site from the cleaned bundle.
 #
-#   ./build-data.sh            # patch + export seed + build site (local)
+#   ./build-data.sh            # fix + patch + export seed + build site (local)
 #   ./build-data.sh --no-llm   # skip the Haiku label pass (deterministic labels)
 set -euo pipefail
 cd "$(dirname "$0")"
 export PATH="/usr/local/opt/node@22/bin:$PATH"
 
-echo "[1/3] patch_ladders — reconstruct strike ladders into the bundle"
+echo "[1/4] fix_questions — replace LLM-garbage/placeholder questions with the raw venue question"
+python3 fix_questions.py
+
+echo "[2/4] patch_ladders — reconstruct strike ladders into the bundle"
 python3 patch_ladders.py "${1:-}"
 
-echo "[2/3] export D1 seed from the patched bundle"
+echo "[3/4] export D1 seed from the cleaned + patched bundle"
 ( cd api && npm run export )
 
-echo "[3/3] build the static site from the patched bundle"
+echo "[4/4] build the static site from the cleaned + patched bundle"
 ( cd web && npm run build )
 
 cat <<'NEXT'
