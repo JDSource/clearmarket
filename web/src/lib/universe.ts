@@ -166,6 +166,27 @@ export function getCrossVenueLinks(market_id: string): CrossVenueLink[] {
     }));
 }
 
+// Markets sharing a claim_sig = the same canonical claim across venues.
+export function getMarketsBySig(sig: string): Market[] {
+  return marketsBySig.get(sig) ?? [];
+}
+
+// Canonical cross-venue pairs (built by merge_canon.py) — the data-driven /compare set.
+export type CanonPair = {
+  slug: string; title: string; claim: string; sector: string;
+  horizon: string; claim_sig: string; markets: number; clean: boolean; confidence: string;
+};
+let canonPairs: CanonPair[] = [];
+try {
+  canonPairs = JSON.parse(readFileSync(resolve(process.cwd(), 'data/canon-pairs.json'), 'utf-8'));
+} catch { canonPairs = []; }
+export function getCanonPairs(): CanonPair[] {
+  return canonPairs;
+}
+export function getMarkByMarketId(id: string): Mark | undefined {
+  return synthMarkByMarketId.get(id);
+}
+
 export function getAllEvents(): Event[] {
   return allEvents;
 }

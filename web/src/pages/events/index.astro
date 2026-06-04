@@ -1,221 +1,506 @@
 ---
-/* CM Data — browse the universe.
- * Static list of every published event (always works, instant client-side filter).
- * Search hits the live API (/v1/events?q=) to dogfood it, with a fallback to the
- * embedded list when the API is unreachable (pre-DNS) or rate-limited.
+/* CM Data - event universe at /events/
+ *
+ * Terminal-ledger aesthetic, ported to EXACT visual alignment with the locked
+ * /signals/ wire index. Every event row is anchored by its CM-EVT- id (a solid
+ * mono wall on the left edge), category + venues + shape + cumulative volume read
+ * as hard-edged machine columns. Search is a borderless terminal-prompt node that
+ * also surfaces the equivalent /v1/events?q= API call (dogfooding it).
+ *
+ * No grade column - grade is a per-market property, not an event one, and a single
+ * letter at the event level would be misleading.
+ *
+ * Header / filter / section tokens are replicated from signals/index.astro, where
+ * the brand/sep/role H1 variant + bracket-selection cm-filter set live locally
+ * (they are not in the shared cm-event.css). Volume column is mono, tabular-nums,
+ * right-aligned so the decimal edge stacks down the column.
  */
 import Site from '../../layouts/Site.astro';
 import '../../styles/tokens.css';
-import { getAllEvents, getMarketsForEvent, SCHEMA_VERSION } from '../../lib/universe';
+import '../../styles/cm-event.css';
+import { getAllEvents, getMarketsForEvent } from '../../lib/universe';
+import { eventDisplayQuestion } from '../../lib/labels';
 
 const API_BASE = 'https://api.clearmarket.fyi';
 
+// Cumulative volume - mono, tabular, no em-dash. Zero renders as a flat "$0".
+function fmtVol(v: number): string {
+  if (!v) return '$0';
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
+}
+
 const rows = getAllEvents().map((e) => {
   const mkts = getMarketsForEvent(e.event_id);
-  const primary = mkts.find((m) => m.market_id === e.primary_market_id) || mkts[0];
   const isLadder = (e as any).event_type === 'LADDER';
+  // Compact, hard-edged shape codes for the ledger column: LADDER n / BIN / n MKT.
+  const shape = isLadder
+    ? `LADDER ${mkts.length}`
+    : mkts.length <= 1
+      ? 'BIN'
+      : `${mkts.length} MKT`;
+  // Market count used for the data-attr (filter/search untouched by display change).
+  const mktCount = isLadder ? mkts.length : mkts.length <= 1 ? 1 : mkts.length;
+  const vol = mkts.reduce((s, m) => s + ((m as any).volume_total_usd || 0), 0);
   return {
+    id: e.event_id,
     slug: e.slug,
-    question: e.question,
+    question: eventDisplayQuestion(e.question, mkts),
     category: e.category || 'other',
     venues: e.venues_covered,
-    grade: (primary as any)?.resolution_clarity_grade || null,
-    price: isLadder ? null : ((primary as any)?.last_price ?? null),
-    ladder: isLadder,
-    n: mkts.length,
+    shape,
+    mktCount,
+    vol,
+    venueStr: e.venues_covered
+      .map((v) => (v === 'polymarket' ? 'POLY' : v === 'kalshi' ? 'KAL' : v.toUpperCase()))
+      .join(' · '),
   };
 });
-rows.sort((a, b) => a.question.localeCompare(b.question));
+rows.sort((a, b) => (b.vol - a.vol) || a.question.localeCompare(b.question));
 
 const cats = Array.from(new Set(rows.map((r) => r.category))).sort();
-const totalMarkets = rows.reduce((s, r) => s + r.n, 0);
+const canonicalURL = 'https://clearmarket.fyi/events/';
 ---
 
-<Site
-  title="CM Data — browse the universe · ClearMarket"
-  description="Browse every graded, cross-venue prediction-market event in the ClearMarket reference universe. Kalshi + Polymarket."
->
-  <section class="ev-wrap">
-    <header class="ev-head">
-      <div class="ev-eyebrow">CM DATA · REFERENCE UNIVERSE</div>
-      <h1>Browse the universe</h1>
-      <p class="ev-sub">
-        {rows.length.toLocaleString()} graded events · {totalMarkets.toLocaleString()} markets · Kalshi + Polymarket.
-        Every row is queryable: <a href="/api/#rest">REST</a> · <a href="/api/#mcp">MCP</a> · <a href="/api/#agent">agents</a>.
-      </p>
-    </header>
+<Site title="CM Data - event universe · ClearMarket" description="Browse every graded, cross-venue prediction-market event in the ClearMarket reference universe. Kalshi + Polymarket." canonical={canonicalURL}>
+  <article class="cm-v2">
+    <h1 class="cm-h1">
+      <span class="cm-h1-brand">CLEARMARKET DATA</span>
+      <span class="cm-h1-sep">//</span>
+      <span class="cm-h1-role">EVENT UNIVERSE</span>
+    </h1>
+    <p class="cm-index-lede">Every graded, cross-venue prediction-market event · Kalshi + Polymarket · queryable at every surface</p>
 
-    <div class="ev-controls">
-      <form class="ev-search" role="search" id="ev-search-form" action="/events/" method="get">
-        <input
-          type="search"
-          id="ev-q"
-          name="q"
-          placeholder="Search events — recession, bitcoin 150k, fed rate…"
-          autocomplete="off"
-          aria-label="Search events"
-        />
+    <div class="cm-horizon">
+      <span class="cm-horizon-token"><span class="cm-horizon-label">events:</span> <span class="cm-horizon-value" id="ev-count">{rows.length.toLocaleString()}</span></span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token"><span class="cm-horizon-label">markets:</span> <span class="cm-horizon-value">~18,000</span></span>
+      <span class="cm-horizon-pipe">|</span>
+      <span class="cm-horizon-token"><span class="cm-horizon-label">query:</span> <a class="cm-horizon-value cm-horizon-link" href="/api/#rest">REST</a> · <a class="cm-horizon-value cm-horizon-link" href="/api/#mcp">MCP</a></span>
+    </div>
+
+    {/* Sticky control deck: search row + category filter row + column headers stay
+       pinned to the top of the viewport while the ~2,100-row grid scrolls beneath.
+       Solid --cm-bg-deep bg + z-index so data rows never bleed through. The thead
+       top offset is set in JS to the live deck height (filter row can wrap). */}
+    <div class="evl-deck" id="ev-deck">
+      <form class="evl-search" role="search" id="ev-search-form" action="/events/" method="get">
+        <span class="evl-prompt" aria-hidden="true">&gt;</span>
+        <input type="search" id="ev-q" name="q" placeholder="SEARCH UNIVERSE - RECESSION, BITCOIN 150K, FED RATE, OR A VENUE ID" autocomplete="off" aria-label="Search events" />
       </form>
-      <div class="ev-api-hint" id="ev-api-hint" hidden>
-        API: <a id="ev-api-link" href="#" target="_blank" rel="noopener"><code></code></a>
-      </div>
-      <div class="ev-chips" id="ev-chips">
-        <button class="ev-chip is-on" data-cat="">all</button>
-        {cats.map((c) => <button class="ev-chip" data-cat={c}>{c}</button>)}
+      <div class="evl-api" id="ev-api-hint" hidden>API: <a id="ev-api-link" href="#" target="_blank" rel="noopener"><code></code></a></div>
+
+      <div class="cm-filter-row" id="ev-chips">
+        <span class="cm-filter-label">CATEGORY</span>
+        <button class="cm-filter cm-filter-active" data-cat="">ALL</button>
+        {cats.map((c) => (<Fragment><span class="cm-filter-sep">|</span><button class="cm-filter" data-cat={c}>{c.toUpperCase()}</button></Fragment>))}
       </div>
     </div>
 
-    <div class="ev-count" id="ev-count">{rows.length.toLocaleString()} events</div>
-
-    <table class="ev-table" id="ev-table">
-      <thead>
-        <tr>
-          <th class="ev-th-q">Event</th>
-          <th class="ev-th-cat">Category</th>
-          <th class="ev-th-ven">Venues</th>
-          <th class="ev-th-grade">Grade</th>
-          <th class="ev-th-px">Primary</th>
-        </tr>
-      </thead>
-      <tbody id="ev-body">
-        {rows.map((r) => (
-          <tr class="ev-row" data-cat={r.category} data-q={r.question.toLowerCase()}>
-            <td class="ev-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
-            <td class="ev-cat">{r.category}</td>
-            <td class="ev-ven">{r.venues.join(' + ')}</td>
-            <td class="ev-grade">{r.grade ? <span class={`ev-g ev-g-${r.grade}`}>{r.grade}</span> : <span class="ev-g-na">—</span>}</td>
-            <td class="ev-px">{r.ladder ? <span class="ev-ladder">ladder · {r.n}</span> : (r.n > 1 ? <span class="ev-ladder">{r.n} markets</span> : (r.price != null ? `${(r.price * 100).toFixed(0)}%` : '—'))}</td>
+    <div class="cm-table-wrap">
+      <table class="evl-table" id="ev-table">
+        <thead id="ev-head">
+          <tr>
+            <th class="evl-th-id">event id</th>
+            <th class="evl-th-q">event</th>
+            <th class="evl-th-cat evl-th-sort" data-sort="cat" tabindex="0" role="button" aria-label="Sort by category">category <span class="evl-sort-ind" aria-hidden="true">&#8597;</span></th>
+            <th class="evl-th-ven">venue</th>
+            <th class="evl-th-shape evl-th-sort" data-sort="shape" tabindex="0" role="button" aria-label="Sort by shape">shape <span class="evl-sort-ind" aria-hidden="true">&#8597;</span></th>
+            <th class="evl-th-vol evl-th-sort" data-sort="vol" tabindex="0" role="button" aria-label="Sort by volume">vol (cum) <span class="evl-sort-ind" aria-hidden="true">&#8597;</span></th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-    <div class="ev-empty" id="ev-empty" hidden>No events match. Try a broader term.</div>
-  </section>
+        </thead>
+        <tbody id="ev-body">
+          {rows.map((r) => (
+            <tr class="evl-row" data-cat={r.category} data-vol={r.vol} data-mkt={r.mktCount} data-q={`${r.question.toLowerCase()} ${r.id.toLowerCase()}`}>
+              <td class="evl-id"><a href={`/events/${r.slug}/`}>{r.id}</a></td>
+              <td class="evl-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
+              <td class="evl-cat">{r.category.toUpperCase()}</td>
+              <td class="evl-ven">{r.venueStr}</td>
+              <td class="evl-shape">{r.shape}</td>
+              <td class="evl-vol">{fmtVol(r.vol)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="cm-ledger-empty" id="ev-empty" hidden>No events match. <a href="/events/">Reset</a>.</p>
+  </article>
 
   <script define:vars={{ API_BASE }} is:inline>
     const body = document.getElementById('ev-body');
-    const rowsEl = Array.from(body.querySelectorAll('.ev-row'));
+    const rowsEl = Array.from(body.querySelectorAll('.evl-row'));
     const countEl = document.getElementById('ev-count');
     const emptyEl = document.getElementById('ev-empty');
     const qInput = document.getElementById('ev-q');
-    const chips = Array.from(document.querySelectorAll('.ev-chip'));
+    const chips = Array.from(document.querySelectorAll('.cm-filter'));
     const apiHint = document.getElementById('ev-api-hint');
     const apiLink = document.getElementById('ev-api-link');
+    const deck = document.getElementById('ev-deck');
+    const head = document.getElementById('ev-head');
+    const sortHeads = Array.from(document.querySelectorAll('.evl-th-sort'));
     let activeCat = '';
+    // Sort state: null key = server default order (vol desc, then question).
+    // dir 'asc' | 'desc'. Sort acts on the currently-filtered visible rows only.
+    let sortKey = null;
+    let sortDir = 'desc';
 
     function apply() {
       const q = qInput.value.trim().toLowerCase();
       let shown = 0;
       for (const tr of rowsEl) {
-        const okCat = !activeCat || tr.dataset.cat === activeCat;
-        const okQ = !q || tr.dataset.q.includes(q);
-        const vis = okCat && okQ;
-        tr.hidden = !vis;
-        if (vis) shown++;
+        const vis = (!activeCat || tr.dataset.cat === activeCat) && (!q || tr.dataset.q.includes(q));
+        tr.hidden = !vis; if (vis) shown++;
       }
-      countEl.textContent = shown.toLocaleString() + ' event' + (shown === 1 ? '' : 's');
+      countEl.textContent = shown.toLocaleString();
       emptyEl.hidden = shown !== 0;
-      if (q) {
-        const url = API_BASE + '/v1/events?q=' + encodeURIComponent(q);
-        apiLink.href = url;
-        apiLink.querySelector('code').textContent = 'GET /v1/events?q=' + q;
-        apiHint.hidden = false;
-      } else {
-        apiHint.hidden = true;
-      }
+      if (q) { apiLink.href = API_BASE + '/v1/events?q=' + encodeURIComponent(q); apiLink.querySelector('code').textContent = 'GET /v1/events?q=' + q; apiHint.hidden = false; }
+      else { apiHint.hidden = true; }
+      reorder();
+    }
+
+    // Re-stack the currently-visible rows per the active sort. Hidden rows are left
+    // in place at the tail so they don't affect the visible ordering.
+    function reorder() {
+      if (!sortKey) return;
+      const vis = rowsEl.filter((r) => !r.hidden);
+      const mul = sortDir === 'asc' ? 1 : -1;
+      vis.sort((a, b) => {
+        let d = 0;
+        if (sortKey === 'vol') d = (parseFloat(a.dataset.vol) || 0) - (parseFloat(b.dataset.vol) || 0);
+        else if (sortKey === 'shape') d = (parseInt(a.dataset.mkt) || 0) - (parseInt(b.dataset.mkt) || 0);
+        else if (sortKey === 'cat') d = a.dataset.cat.localeCompare(b.dataset.cat);
+        if (d === 0) d = a.dataset.q.localeCompare(b.dataset.q);
+        return d * mul;
+      });
+      vis.forEach((r) => body.appendChild(r));
+    }
+
+    function setSort(key) {
+      if (sortKey === key) { sortDir = sortDir === 'asc' ? 'desc' : 'asc'; }
+      else { sortKey = key; sortDir = (key === 'cat') ? 'asc' : 'desc'; }
+      sortHeads.forEach((th) => {
+        const active = th.dataset.sort === sortKey;
+        th.classList.toggle('evl-th-active', active);
+        const ind = th.querySelector('.evl-sort-ind');
+        if (ind) ind.innerHTML = active ? (sortDir === 'asc' ? '&#9650;' : '&#9660;') : '&#8597;';
+      });
+      reorder();
     }
 
     let t;
     qInput.addEventListener('input', () => { clearTimeout(t); t = setTimeout(apply, 120); });
     qInput.closest('form').addEventListener('submit', (e) => { e.preventDefault(); apply(); });
-    chips.forEach((c) => c.addEventListener('click', () => {
-      chips.forEach((x) => x.classList.remove('is-on'));
-      c.classList.add('is-on');
-      activeCat = c.dataset.cat;
-      apply();
-    }));
+    chips.forEach((c) => c.addEventListener('click', () => { chips.forEach((x) => x.classList.remove('cm-filter-active')); c.classList.add('cm-filter-active'); activeCat = c.dataset.cat; apply(); }));
+    sortHeads.forEach((th) => {
+      th.addEventListener('click', () => setSort(th.dataset.sort));
+      th.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSort(th.dataset.sort); } });
+    });
 
-    // prefill from ?q= (header search submits here)
-    const params = new URLSearchParams(location.search);
-    const q0 = params.get('q');
-    if (q0) { qInput.value = q0; }
+    // The Site layout has a sticky chrome (header + status bar) pinned at top:0.
+    // Stack our control deck directly beneath it, then pin the column-header row
+    // directly beneath the deck. Both offsets are measured live: chrome height +
+    // deck height both vary (nav wraps, filter row wraps) across widths.
+    const chrome = document.querySelector('.va-sticky-chrome');
+    function syncDeckOffset() {
+      if (!deck || !head) return;
+      const chromeH = chrome ? chrome.getBoundingClientRect().height : 0;
+      deck.style.top = chromeH + 'px';
+      const deckH = deck.getBoundingClientRect().height;
+      head.querySelectorAll('th').forEach((th) => { th.style.top = (chromeH + deckH) + 'px'; });
+    }
+    syncDeckOffset();
+    window.addEventListener('resize', syncDeckOffset);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(syncDeckOffset);
+      ro.observe(deck);
+      if (chrome) ro.observe(chrome);
+    }
+
+    const q0 = new URLSearchParams(location.search).get('q');
+    if (q0) qInput.value = q0;
     apply();
-    qInput.focus();
   </script>
 </Site>
 
 <style>
-  .ev-wrap { max-width: 1180px; margin: 0 auto; padding: 36px 24px 80px; }
-  .ev-head { border-bottom: 1px solid var(--cm-border-rule); padding-bottom: 20px; margin-bottom: 22px; }
-  .ev-eyebrow { font-family: var(--cm-font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--cm-fg-muted); margin-bottom: 10px; }
-  .ev-head h1 { font-family: var(--cm-font-sans); font-size: 30px; font-weight: 600; color: var(--cm-fg-primary); margin: 0 0 8px; letter-spacing: -0.01em; }
-  .ev-sub { font-size: 14px; color: var(--cm-fg-secondary); margin: 0; line-height: 1.55; }
-  .ev-sub a { color: var(--cm-fg-link); text-decoration: none; }
-  .ev-sub a:hover { text-decoration: underline; }
+  /* ===========================================================================
+   * Header / section / filter tokens replicated VERBATIM from signals/index.astro.
+   * The brand/sep/role H1 variant + the bracket-selection cm-filter set live LOCALLY
+   * in that file (not in the shared cm-event.css), so they are duplicated here the
+   * same way to bring this index into exact visual alignment with the wire ledger.
+   * The shared cm-event.css cm-h1 is the LARGE single-event detail header - these
+   * rules override it for the index's compact brand // role line.
+   * =========================================================================== */
 
-  .ev-controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
-  .ev-search { margin: 0; }
-  .ev-search input {
-    width: 100%; box-sizing: border-box; font-family: var(--cm-font-mono); font-size: 14px;
-    padding: 12px 14px; background: var(--cm-bg-surface); color: var(--cm-fg-primary);
-    border: 1px solid var(--cm-border-emphasis); border-radius: 0; outline: none;
+  /* H1 - tight terminal header, brand lands first, role subordinate */
+  .cm-v2 .cm-h1 {
+    font-family: var(--cm-font-mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 12px 0 4px;
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
-  .ev-search input:focus { border-color: var(--cm-fg-link); }
-  .ev-search input::placeholder { color: var(--cm-fg-faint); }
-  .ev-api-hint { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); }
-  .ev-api-hint a { color: var(--cm-fg-link); text-decoration: none; }
-  .ev-api-hint code { font-family: var(--cm-font-mono); }
-
-  .ev-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .ev-chip {
-    font-family: var(--cm-font-mono); font-size: 11px; letter-spacing: 0.04em; text-transform: lowercase;
-    padding: 5px 10px; background: transparent; color: var(--cm-fg-muted);
-    border: 1px solid var(--cm-border-hairline); border-radius: 0; cursor: pointer; transition: all 0.12s;
+  .cm-h1-brand { color: var(--cm-fg-primary); }
+  .cm-h1-sep   { color: var(--cm-border-rule); font-weight: 400; }
+  .cm-h1-role  { color: var(--cm-fg-muted); font-weight: 400; letter-spacing: 0.12em; }
+  .cm-index-lede {
+    font-family: var(--cm-font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--cm-fg-muted);
+    max-width: 100%;
+    margin: 0 0 12px;
+    letter-spacing: 0.02em;
   }
-  .ev-chip:hover { color: var(--cm-fg-primary); border-color: var(--cm-border-emphasis); }
-  .ev-chip.is-on { background: var(--cm-fg-primary); color: var(--cm-bg-deep); border-color: var(--cm-fg-primary); }
 
-  .ev-count { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); margin-bottom: 8px; }
+  /* Section header - flanking-rule pattern, system-log style */
+  .cm-v2 .cm-section { margin: 32px 0 14px; }
+  .cm-v2 .cm-section:first-of-type { margin-top: 22px; }
+  .cm-v2 .cm-section-h {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--cm-font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--cm-fg-muted);
+    padding-bottom: 0;
+    border-bottom: 0;
+    margin-bottom: 10px;
+  }
+  .cm-v2 .cm-section-h::before {
+    content: "";
+    flex: 0 0 24px;
+    border-top: 1px solid var(--cm-border-rule);
+  }
+  .cm-v2 .cm-section-h::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--cm-border-rule);
+  }
+  .cm-section-tag {
+    color: var(--cm-fg-faint);
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    margin-left: 4px;
+    text-transform: lowercase;
+  }
 
-  .ev-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .ev-table thead th {
-    text-align: left; font-family: var(--cm-font-mono); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--cm-fg-muted);
-    padding: 8px 12px; border-bottom: 1px solid var(--cm-border-rule); position: sticky; top: 0;
+  /* ===== Sticky control deck =====
+   * Search row + category filter row pinned to the top of the viewport as one solid
+   * panel. The column-header row (thead) sticks directly beneath via a JS-set top
+   * offset equal to this deck's live height. Solid --cm-bg-deep (page bg) so the
+   * scrolling grid never bleeds through; z-index above the sticky thead. */
+  .evl-deck {
+    position: sticky;
+    top: 0;
+    z-index: 5;
     background: var(--cm-bg-deep);
+    padding-top: 6px;
   }
-  .ev-row td { padding: 9px 12px; border-bottom: 1px solid var(--cm-border-hairline); vertical-align: middle; }
-  .ev-q a { color: var(--cm-fg-primary); text-decoration: none; font-weight: 500; }
-  .ev-q a:hover { color: var(--cm-fg-link); }
-  .ev-cat { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-secondary); text-transform: lowercase; }
-  .ev-ven { font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-muted); white-space: nowrap; }
-  .ev-grade { text-align: center; }
-  .ev-g { font-family: var(--cm-font-mono); font-size: 12px; font-weight: 600; padding: 2px 7px; }
-  .ev-g-A { color: var(--cm-positive); }
-  .ev-g-B { color: var(--cm-fg-secondary); }
-  .ev-g-C { color: var(--cm-divergence); }
-  .ev-g-na { color: var(--cm-fg-faint); }
-  .ev-px { font-family: var(--cm-font-mono); font-size: 13px; color: var(--cm-fg-primary); white-space: nowrap; }
-  .ev-ladder { color: var(--cm-fg-muted); font-size: 12px; }
-  .ev-empty { font-family: var(--cm-font-mono); font-size: 13px; color: var(--cm-fg-muted); padding: 28px 12px; text-align: center; }
 
-  @media (max-width: 720px) {
-    .ev-wrap { padding: 24px 16px 60px; }
-    .ev-head h1 { font-size: 24px; }
-    .ev-sub { font-size: 13px; }
-    /* Collapse the table to stacked cards: hide the header row, each row becomes a block */
-    .ev-table thead { display: none; }
-    .ev-table, .ev-table tbody, .ev-row, .ev-row td { display: block; width: 100%; box-sizing: border-box; }
-    .ev-row {
-      border: 1px solid var(--cm-border-hairline); padding: 10px 12px; margin-bottom: 8px;
-      display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline;
+  /* ===== Search - terminal-prompt input field =====
+   * A clearly bordered recess so the eye registers it as an input (not a status
+   * line). Leading ">" prompt + a BLINKING block cursor (motion is the strongest
+   * "this is a text field" cue, and a blinking caret is terminal-native).
+   * Logic + API hint untouched. */
+  .evl-search {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 12px;
+    border: 1px solid var(--cm-fg-link);
+    padding: 10px 12px;
+    background: var(--cm-bg-surface);
+  }
+  .evl-prompt {
+    font-family: var(--cm-font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--cm-fg-link);
+    user-select: none;
+    line-height: 1.2;
+  }
+  .evl-search input {
+    flex: 1;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--cm-font-mono);
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    padding: 0;
+    background: transparent;
+    color: var(--cm-fg-primary);
+    border: 0;
+    border-radius: 0;
+    outline: none;
+  }
+  .evl-search:focus-within { border-color: var(--cm-fg-primary); background: var(--cm-bg-deep); }
+  .evl-search input::placeholder {
+    color: var(--cm-fg-faint);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  /* strip the native search-cancel cross so it stays flat-terminal */
+  .evl-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  .evl-api { font-family: var(--cm-font-mono); font-size: 11.5px; color: var(--cm-fg-muted); margin-bottom: 10px; }
+  .evl-api a { color: var(--cm-fg-link); text-decoration: none; }
+  .evl-api a:hover { text-decoration: underline; }
+
+  /* ===== Category filter - replicated bracket-selection set from signals/index.astro.
+   * cm-filter* is local to that file, not shared; brackets are always in the DOM with
+   * reserved space (visibility toggles) so chips never reflow on hover/active. ===== */
+  .cm-filter-row {
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 2px 0;
+    font-family: var(--cm-font-mono); font-size: 11.5px; letter-spacing: 0.02em;
+  }
+  .cm-filter-label {
+    color: var(--cm-fg-muted); letter-spacing: 0.14em; font-weight: 700; min-width: 72px; font-size: 10.5px;
+  }
+  .cm-filter {
+    color: var(--cm-fg-faint); padding: 0; border: 0; background: transparent; border-radius: 0;
+    font-family: var(--cm-font-mono); font-size: 11.5px; letter-spacing: 0.04em; cursor: pointer;
+    text-transform: uppercase;
+  }
+  .cm-filter:hover { color: var(--cm-fg-primary); }
+  .cm-filter.cm-filter-active { color: var(--cm-fg-primary); font-weight: 700; }
+  .cm-filter::before { content: "[ "; color: var(--cm-fg-link); font-weight: 400; visibility: hidden; }
+  .cm-filter::after  { content: " ]"; color: var(--cm-fg-link); font-weight: 400; visibility: hidden; }
+  .cm-filter.cm-filter-active::before,
+  .cm-filter.cm-filter-active::after,
+  .cm-filter:hover::before,
+  .cm-filter:hover::after { visibility: visible; }
+  .cm-filter-sep { color: var(--cm-border-rule); font-weight: 400; user-select: none; }
+
+  /* ===== Ledger table - terminal aesthetic, mono meta, hairline rules, no card frames.
+   * The event-id column is the left anchor wall (mono, monochrome link colour). ===== */
+  .evl-table { width: 100%; border-collapse: collapse; table-layout: auto; }
+  /* Column headers stick directly beneath the control deck. top is set inline by JS
+   * to the deck's live height; the 0 fallback here keeps them sticky pre-hydration.
+   * z-index 2 sits below the deck (5) so the deck always overlaps on scroll. */
+  .evl-table thead th {
+    text-align: left; font-family: var(--cm-font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--cm-fg-faint);
+    padding: 9px 12px; border-bottom: 1px solid var(--cm-border-rule);
+    position: sticky; top: 0; background: var(--cm-bg-deep); z-index: 2;
+  }
+  .evl-th-vol { text-align: right; }
+
+  /* Sortable headers - click to sort the currently-filtered visible rows. A muted
+   * up-down chevron marks sortability; it flips to a sharp high-contrast up/down
+   * glyph on the active column. Non-sortable headers carry no indicator. */
+  .evl-th-sort { cursor: pointer; user-select: none; outline: none; }
+  .evl-th-sort:hover { color: var(--cm-fg-muted); }
+  .evl-th-sort:focus-visible { color: var(--cm-fg-primary); }
+  .evl-th-sort.evl-th-active { color: var(--cm-fg-primary); }
+  .evl-sort-ind {
+    font-family: var(--cm-font-mono); font-size: 9px; margin-left: 3px;
+    color: var(--cm-fg-faint); font-weight: 400;
+  }
+  .evl-th-active .evl-sort-ind { color: var(--cm-fg-link); font-weight: 700; font-size: 10px; }
+  .evl-row { border-bottom: 1px solid var(--cm-border-hairline); transition: background 0.1s; }
+  .evl-row:hover { background: var(--cm-bg-surface); }
+  .evl-row td { padding: 8px 12px; vertical-align: top; }
+
+  /* left anchor wall - CM-EVT- ids, mono, tabular, link-blue, fixed-ish width, no wrap */
+  .evl-id { width: 130px; white-space: nowrap; }
+  .evl-id a {
+    font-family: var(--cm-font-mono); font-size: 11px; letter-spacing: 0.02em;
+    color: var(--cm-fg-link); text-decoration: none; font-variant-numeric: tabular-nums;
+  }
+  .evl-id a:hover { color: var(--cm-fg-primary); }
+
+  .evl-q a { font-family: var(--cm-font-sans); font-size: 13.5px; color: var(--cm-fg-primary); text-decoration: none; line-height: 1.35; }
+  .evl-q a:hover { color: var(--cm-fg-link); }
+  .evl-cat { font-family: var(--cm-font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; color: var(--cm-fg-muted); white-space: nowrap; }
+  .evl-ven { font-family: var(--cm-font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--cm-fg-secondary); white-space: nowrap; }
+  .evl-shape { font-family: var(--cm-font-mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--cm-fg-muted); white-space: nowrap; }
+  .evl-vol {
+    font-family: var(--cm-font-mono); font-size: 12px; color: var(--cm-fg-primary);
+    text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+
+  /* empty-state - matches wire-index ledger empty */
+  .cm-ledger-empty {
+    font-family: var(--cm-font-mono); font-size: 11.5px; color: var(--cm-fg-muted); padding: 12px 0;
+  }
+  .cm-ledger-empty a { color: var(--cm-fg-link); }
+
+  /* mobile - mirror the wire index: drop the scroll wrap, stack each row as a bordered
+   * card, event id on its own line as the card label, question under it, meta inline. */
+  @media (max-width: 760px) {
+    .cm-v2 .cm-h1 { font-size: 13px; flex-wrap: wrap; }
+    .cm-table-wrap { overflow-x: visible; }
+    .evl-table thead { display: none; }
+    .evl-table, .evl-table tbody, .evl-row, .evl-row td { display: block; width: 100%; box-sizing: border-box; }
+    /* The card-reflow display:block overrides the `hidden` attribute the JS filter sets —
+       so search/category filtering computed but never visually hid rows. Re-assert it. */
+    .evl-row[hidden] { display: none; }
+    /* Punchier outer border so each event card reads as a discrete object when scrolling
+       fast (Gemini: differentiate card boundaries from the muted telemetry inside). */
+    .evl-row { border: 1px solid var(--cm-border-rule); padding: 11px 12px; margin-bottom: 8px; }
+    .evl-row td { border: none; padding: 0; white-space: normal; }
+    .evl-id { width: auto; margin-bottom: 4px; }
+    .evl-id a { font-size: 10.5px; color: var(--cm-fg-faint); }
+    .evl-q { margin-bottom: 6px; }
+    .evl-q a { font-size: 15px; line-height: 1.35; }
+    .evl-cat, .evl-ven, .evl-shape, .evl-vol {
+      display: inline-block; margin-right: 12px; font-size: 11px; line-height: 1.7; text-align: left;
     }
-    .ev-row td { border: none; padding: 0; }
-    .ev-q { grid-column: 1 / -1; }
-    .ev-q a { font-size: 15px; }
-    .ev-cat { grid-column: 1; }
-    .ev-ven { grid-column: 1; }
-    .ev-grade { grid-column: 2; grid-row: 2 / 4; text-align: right; align-self: center; }
-    .ev-px { grid-column: 2; grid-row: 1; text-align: right; }
+  }
+
+  /* ===== mobile (~390px iPhone) — additive, desktop untouched =====
+   * (a) Category filter chips read as a clean wrapped chip set, not a piped run-on:
+   *     hide pipe separators, chips wrap with gap, CATEGORY label on its own line.
+   * (b) Event-card metadata renders as a single tight inline dotted row
+   *     (ECONOMICS · POLY · 5 MKT · $261.5M), not one field per line. */
+  @media (max-width: 640px) {
+    /* Category chips → single-line horizontal SWIPE track (Gemini direction): no wrapping
+       into 4 dead lines; thumb-scroll left↔right, scrollbar hidden. */
+    .cm-filter-sep { display: none; }
+    .cm-filter-row {
+      flex-wrap: nowrap;
+      gap: 8px;
+      align-items: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding-bottom: 4px;
+    }
+    .cm-filter-row::-webkit-scrollbar { display: none; }
+    .cm-filter-label { flex: 0 0 auto; margin: 0; }
+    .cm-filter { flex: 0 0 auto; padding: 4px 8px; line-height: 1.3; }
+    .cm-filter::before,
+    .cm-filter::after { visibility: visible; }
+
+    /* (b) card metadata as one tight inline dotted row, not one-field-per-line */
+    .evl-row .evl-cat,
+    .evl-row .evl-ven,
+    .evl-row .evl-shape,
+    .evl-row .evl-vol {
+      display: inline;        /* beats `.evl-row td { display: block }` (0,2,0 > 0,1,1) */
+      width: auto;
+      margin-right: 0;
+      line-height: 1.5;
+    }
+    .evl-row .evl-cat::after,
+    .evl-row .evl-ven::after,
+    .evl-row .evl-shape::after {
+      content: "·";
+      color: var(--cm-border-rule);
+      margin: 0 6px;
+    }
   }
 </style>

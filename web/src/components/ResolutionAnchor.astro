@@ -1,0 +1,335 @@
+---
+/* ResolutionAnchor — the resolution-governance spine of every ClearMarket page.
+ * The differentiator that is present on 100% of pages (cross-venue is present on ~6%).
+ * Sits directly under the page header, ABOVE any price grid / ladder / outcome table.
+ *
+ * Merchandises the RCG: grade + 0-100 score + "scored on N of 7 factors" + active hard
+ * caps + the full 7-factor breakdown (5 LLM-judged factors with their `why`, 2 derived
+ * deterministically), governance facts (source / proposer / arbiter) with capture-risk
+ * framing + provenance tier, the editorial resolution read, verbatim contract rules
+ * (default-expanded), and a resolution timeline (resolution_log, empty-state at v0.2).
+ *
+ * Terminal visuals baked in: zero-radius, tight density, monospace rules, [!] status flags.
+ */
+import type { Event, Market } from '../lib/universe';
+const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+
+const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
+const primary =
+  markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0];
+
+const grade = ((primary?.resolution_clarity_grade ?? 'C') as string).toUpperCase() as 'A' | 'B' | 'C';
+const score = (primary as any)?.rcg_score ?? null;
+const caps: string[] = (primary as any)?.rcg_caps ?? [];
+const applied = (primary as any)?.rcg_applied_factors ?? null;
+
+// --- governance facts (from the representative market) ---
+const sourceName = primary?.resolution_source ?? null;
+const sourceUrl = primary?.source_citation ?? null;
+const proposer = primary?.resolution_proposer ?? null;
+const arbiter = primary?.arbitration_model ?? null;
+const underlyingRef = primary?.underlying_reference ?? null;
+
+function hostOf(url: string | null): string | null {
+  if (!url) return null;
+  return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || null;
+}
+// provenance tier per methodology: direct / editorial / subjective
+const provenanceTier = sourceUrl ? 'direct' : underlyingRef ? 'editorial' : 'subjective';
+
+const PROPOSER_FRAME: Record<string, string> = {
+  managed_whitelist: 'UMA MOOV2 whitelist · 37 approved proposers',
+  permissionless: 'Permissionless · anyone may propose',
+  platform_staff: 'Exchange staff',
+  gov_agency: 'Government agency',
+};
+const ARBITER_FRAME: Record<string, { label: string; risk: string }> = {
+  uma_oracle: { label: 'UMA optimistic oracle · token-holder vote', risk: 'capture risk' },
+  kalshi_staff: { label: 'Kalshi staff · CFTC backstop', risk: 'regulated' },
+  polymarket_staff: { label: 'Polymarket staff', risk: 'discretionary' },
+  platform_auto: { label: 'Automated settlement', risk: 'no dispute path' },
+  determinations_committee: { label: 'Determinations committee', risk: 'discretionary' },
+};
+
+// --- the 7 RCG factors ---
+const rf = ((event as any).rcg_factors ?? {}) as Record<string, { rating: string; why: string }>;
+
+// derived factor 3 (source clarity) — deterministic from source fields
+let sourceClarity: { rating: string; why: string };
+if (sourceUrl && sourceName) sourceClarity = { rating: 'pass', why: `Named authoritative source with usable link (${sourceName}).` };
+else if (sourceUrl) sourceClarity = { rating: 'partial', why: `Source link present (${hostOf(sourceUrl)}) but no named publisher of record.` };
+else if (underlyingRef) sourceClarity = { rating: 'partial', why: `Editorial reference only (${underlyingRef.slice(0, 70)}); no platform-named source.` };
+else sourceClarity = { rating: 'fail', why: 'No named data source; resolves by consensus of reporting.' };
+
+// derived factor 4 (arbiter incentive) — deterministic from arbitration model
+let arbiterIncentive: { rating: string; why: string };
+if (arbiter === 'kalshi_staff' || arbiter === 'platform_auto') arbiterIncentive = { rating: 'pass', why: 'Regulated / automated arbiter; low capture risk.' };
+else if (arbiter === 'uma_oracle') arbiterIncentive = { rating: 'partial', why: 'UMA optimistic oracle. MOOV2 whitelist limits proposers but dispute resolution remains token-holder vote (capture risk).' };
+else arbiterIncentive = { rating: 'partial', why: 'Discretionary arbiter; resolver incentive not fully insulated.' };
+
+const FACTORS = [
+  { key: 'trigger_objectivity', label: 'trigger objectivity', weight: 28, ...(rf.trigger_objectivity ?? { rating: 'na', why: '' }), provenance: 'editorial' },
+  { key: 'contested_reality', label: 'contested reality', weight: 22, ...(rf.contested_reality ?? { rating: 'na', why: '' }), provenance: 'editorial' },
+  { key: 'source_clarity', label: 'source clarity', weight: 18, ...sourceClarity, provenance: 'derived' },
+  { key: 'arbiter_incentive', label: 'arbiter incentive', weight: 12, ...arbiterIncentive, provenance: 'derived' },
+  { key: 'source_conflict', label: 'source-conflict rule', weight: 8, ...(rf.source_conflict ?? { rating: 'na', why: '' }), provenance: 'editorial' },
+  { key: 'temporal_precision', label: 'temporal precision', weight: 7, ...(rf.temporal_precision ?? { rating: 'na', why: '' }), provenance: 'editorial' },
+  { key: 'source_mutability', label: 'source mutability', weight: 5, ...(rf.source_mutability ?? { rating: 'na', why: '' }), provenance: 'editorial' },
+];
+
+const CAP_LABELS: Record<string, string> = {
+  multi_source_no_conflict_rule: 'Multiple sources named, no precedence rule → ceiling C',
+  adversarial_ground_truth: 'Adversarial ground truth (contested reality) → ceiling B',
+  discretionary_trigger_no_source: 'Discretionary trigger, no named source → ceiling C',
+  permissionless_oracle_discretionary: 'Permissionless oracle + discretionary trigger → ceiling C',
+};
+
+// status flag
+let statusFlag: string;
+if (caps.includes('adversarial_ground_truth')) statusFlag = '[!] STATUS: ADVERSARIAL GROUND TRUTH';
+else if (grade === 'C') statusFlag = '[!] STATUS: RESOLUTION RISK';
+else if (grade === 'B') statusFlag = '[~] STATUS: REVIEW';
+else statusFlag = '[ok] STATUS: CLEAN';
+
+// editorial read
+const editorialNotes = ((event as any).editorial_notes ?? '').trim();
+const editorialBullets = editorialNotes
+  ? editorialNotes.split(/(?<=\.)\s+/).map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+  : [];
+
+// verbatim rules per venue
+const rulesByVenue = VENUES.map((v) => {
+  const vm = markets.filter((m) => m.platform === v);
+  const rep = vm[0];
+  return {
+    venue: v,
+    count: vm.length,
+    rules: rep?.resolution_rules_raw ?? null,
+    underlyingRef: rep?.underlying_reference ?? null,
+    currency: rep?.settlement_currency ?? null,
+  };
+});
+
+function ratingClass(r: string): string {
+  return `ra-${r}`;
+}
+function ratingLabel(r: string): string {
+  if (r === 'pass') return 'PASS';
+  if (r === 'partial') return 'PART';
+  if (r === 'fail') return 'FAIL';
+  return 'N/A';
+}
+---
+<section class="ra" id="resolution" data-cm-anchor="resolution">
+  <div class="ra-head">
+    <span class="ra-head-title">resolution governance</span>
+    <span class={`ra-status ra-status-${grade.toLowerCase()}`}>{statusFlag}</span>
+  </div>
+
+  <div class="ra-top">
+    {/* RCG grade block */}
+    <div class="ra-grade-block">
+      <div class={`ra-grade ra-grade-${grade.toLowerCase()}`}>{grade}</div>
+      <div class="ra-grade-meta">
+        <div class="ra-score">{score !== null ? score : '—'}<span class="ra-score-d">/100</span></div>
+        <div class="ra-applied">scored on {applied ?? 7} of 7 factors</div>
+        {caps.length > 0 && caps.map((c) => (
+          <div class="ra-cap"><span class="ra-cap-mark">[!]</span> {CAP_LABELS[c] ?? c}</div>
+        ))}
+      </div>
+    </div>
+
+    {/* governance facts */}
+    <dl class="ra-gov">
+      <div class="ra-gov-row">
+        <dt>source</dt>
+        <dd>
+          {sourceName ? <span class="ra-mono">{sourceName}</span> : sourceUrl ? <span class="ra-mono">{hostOf(sourceUrl)}</span> : <span class="ra-faint">consensus of reporting · no named source</span>}
+          {sourceUrl && <a class="ra-link" href={sourceUrl} rel="noopener nofollow"> ↗</a>}
+          <span class={`ra-prov ra-prov-${provenanceTier}`}>{provenanceTier}</span>
+        </dd>
+      </div>
+      <div class="ra-gov-row">
+        <dt>proposer</dt>
+        <dd><span class="ra-mono">{proposer ?? '—'}</span>{proposer && PROPOSER_FRAME[proposer] && <span class="ra-frame">{PROPOSER_FRAME[proposer]}</span>}</dd>
+      </div>
+      <div class="ra-gov-row">
+        <dt>arbiter</dt>
+        <dd>
+          <span class="ra-mono">{arbiter ?? '—'}</span>
+          {arbiter && ARBITER_FRAME[arbiter] && <span class="ra-frame">{ARBITER_FRAME[arbiter].label}</span>}
+          {arbiter && ARBITER_FRAME[arbiter] && <span class={`ra-risk ra-risk-${ARBITER_FRAME[arbiter].risk === 'regulated' ? 'ok' : 'warn'}`}>{ARBITER_FRAME[arbiter].risk}</span>}
+        </dd>
+      </div>
+    </dl>
+  </div>
+
+  {/* 7-factor breakdown */}
+  <div class="ra-factors">
+    <div class="ra-factors-head"><span>factor</span><span class="ra-fh-w">wt</span><span class="ra-fh-r">rating</span><span>assessment</span></div>
+    {FACTORS.map((f) => (
+      <div class={`ra-factor ${f.rating === 'fail' ? 'ra-factor-fail' : ''}`}>
+        <span class="ra-f-label">{f.label}</span>
+        <span class="ra-f-weight">{f.weight}</span>
+        <span class={`ra-f-rating ${ratingClass(f.rating)}`}>{ratingLabel(f.rating)}</span>
+        <span class="ra-f-why">{f.why || '—'}<span class={`ra-f-prov ra-prov-${f.provenance}`}>{f.provenance}</span></span>
+      </div>
+    ))}
+  </div>
+
+  {/* resolution detail — editorial read + verbatim rules + lifecycle. Collapsible but
+     DEFAULT-OPEN (verbatim stays expanded per spec); collapsing pulls the price table up. */}
+  <details class="ra-detail" open>
+    <summary class="ra-detail-summary"><span class="ra-detail-arrow" aria-hidden="true">▾</span> resolution detail <span class="ra-sub-tag">| read · verbatim rules · lifecycle</span></summary>
+
+    {editorialBullets.length > 0 && (
+      <div class="ra-read">
+        <div class="ra-sub">resolution read <span class="ra-sub-tag">| editorial</span></div>
+        <ul class="ra-read-list">
+          {editorialBullets.map((b: string) => <li>{b}</li>)}
+        </ul>
+      </div>
+    )}
+
+    <div class="ra-rules">
+      <div class="ra-sub">verbatim contract rules</div>
+      {rulesByVenue.map((r) => (
+        <div class="ra-rules-block">
+          <div class="ra-rules-venue"><span class="ra-rules-venue-name">{r.venue}</span><span class="ra-rules-venue-meta">{r.count} {r.count === 1 ? 'market' : 'markets'}{r.currency ? ` · ${r.currency}` : ''}</span></div>
+          {r.underlyingRef && <div class="ra-rules-ref"><span class="ra-rules-ref-k">underlying ref</span> {r.underlyingRef}</div>}
+          {r.rules
+            ? <div class="ra-rules-text">{r.rules}</div>
+            : <div class="ra-rules-text ra-faint">No verbatim resolution text captured for this venue.</div>}
+        </div>
+      ))}
+    </div>
+
+    <div class="ra-timeline">
+      <div class="ra-sub">resolution timeline <span class="ra-sub-tag">| lifecycle log</span></div>
+      <div class="ra-timeline-empty">
+        <span class="ra-tl-dot">●</span> monitoring active · no lifecycle events recorded. status changes, rule changes, disputes, amendments and reversals append here as they occur.
+      </div>
+    </div>
+  </details>
+</section>
+
+<style>
+  .ra {
+    border: 1px solid var(--cm-border-rule);
+    background: var(--cm-bg-surface);
+    margin-bottom: 28px;
+    font-family: var(--cm-font-mono);
+  }
+  .ra-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 14px;
+    background: var(--cm-bg-deep);
+    border-bottom: 1px solid var(--cm-border-rule);
+  }
+  .ra-head-title { font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--cm-fg-primary); }
+  .ra-status { font-size: 10.5px; font-weight: 700; letter-spacing: 0.10em; }
+  .ra-status-a { color: var(--cm-positive); }
+  .ra-status-b { color: var(--cm-fg-secondary); }
+  .ra-status-c { color: var(--cm-divergence); }
+
+  .ra-top { display: grid; grid-template-columns: minmax(190px, 0.8fr) 1.6fr; gap: 0; border-bottom: 1px solid var(--cm-border-hairline); }
+  @media (max-width: 760px) { .ra-top { grid-template-columns: 1fr; } }
+
+  /* grade block */
+  .ra-grade-block { display: flex; gap: 14px; align-items: flex-start; padding: 14px; border-right: 1px solid var(--cm-border-hairline); }
+  .ra-grade {
+    font-size: 46px; font-weight: 700; line-height: 0.9; width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid; flex-shrink: 0;
+  }
+  .ra-grade-a { color: var(--cm-positive); border-color: var(--cm-positive); }
+  .ra-grade-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+  .ra-grade-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
+  .ra-score { font-size: 22px; font-weight: 700; color: var(--cm-fg-primary); font-variant-numeric: tabular-nums; }
+  .ra-score-d { font-size: 12px; color: var(--cm-fg-faint); font-weight: 400; }
+  .ra-applied { font-size: 10.5px; color: var(--cm-fg-muted); letter-spacing: 0.04em; margin-top: 2px; }
+  .ra-cap { font-size: 10.5px; color: var(--cm-divergence); margin-top: 8px; line-height: 1.4; }
+  .ra-cap-mark { font-weight: 700; }
+
+  /* governance facts */
+  .ra-gov { margin: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ra-gov-row { display: grid; grid-template-columns: 70px 1fr; gap: 12px; align-items: baseline; }
+  .ra-gov-row dt { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-faint); margin: 0; }
+  .ra-gov-row dd { margin: 0; font-size: 12px; color: var(--cm-fg-secondary); display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+  .ra-mono { color: var(--cm-fg-primary); }
+  .ra-frame { font-size: 11px; color: var(--cm-fg-muted); }
+  .ra-link { color: var(--cm-fg-link); text-decoration: none; }
+  .ra-faint { color: var(--cm-fg-faint); }
+  .ra-risk { font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 5px; }
+  .ra-risk-warn { color: var(--cm-divergence); border: 1px solid var(--cm-divergence); }
+  .ra-risk-ok { color: var(--cm-positive); border: 1px solid var(--cm-positive); }
+  .ra-prov { font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 4px; }
+  .ra-prov-direct { color: var(--cm-positive); background: rgba(16,216,148,0.10); }
+  .ra-prov-editorial { color: var(--cm-fg-link); background: rgba(92,157,255,0.10); }
+  .ra-prov-derived { color: var(--cm-fg-muted); background: rgba(255,255,255,0.04); }
+  .ra-prov-subjective { color: var(--cm-divergence); background: rgba(240,168,48,0.10); }
+
+  /* factor grid */
+  .ra-factors { padding: 10px 14px 12px; border-bottom: 1px solid var(--cm-border-hairline); }
+  .ra-factors-head, .ra-factor {
+    display: grid; grid-template-columns: 150px 28px 50px 1fr; gap: 12px; align-items: baseline;
+  }
+  .ra-factors-head { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-faint); padding-bottom: 6px; border-bottom: 1px solid var(--cm-border-hairline); margin-bottom: 4px; }
+  .ra-fh-w { text-align: right; }
+  .ra-factor { padding: 5px 0; border-bottom: 1px dashed var(--cm-border-hairline); }
+  .ra-factor:last-child { border-bottom: 0; }
+  .ra-factor-fail { background: rgba(240,168,48,0.05); }
+  .ra-f-label { font-size: 11.5px; color: var(--cm-fg-primary); }
+  .ra-f-weight { font-size: 11px; color: var(--cm-fg-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  .ra-f-rating { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
+  .ra-f-why { font-size: 11px; line-height: 1.45; color: var(--cm-fg-secondary); }
+  .ra-f-prov { font-size: 8px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 0 4px; margin-left: 8px; vertical-align: 1px; }
+  .ra-pass { color: var(--cm-positive); }
+  .ra-partial { color: var(--cm-fg-secondary); }
+  .ra-fail { color: var(--cm-divergence); }
+  .ra-na { color: var(--cm-fg-faint); }
+
+  /* sub-blocks */
+  .ra-sub { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--cm-fg-muted); padding: 10px 14px 6px; }
+  .ra-sub-tag { color: var(--cm-fg-faint); letter-spacing: 0.08em; }
+
+  .ra-read { border-bottom: 1px solid var(--cm-border-hairline); }
+  .ra-read-list { margin: 0; padding: 0 14px 12px 30px; list-style: none; }
+  .ra-read-list li { position: relative; font-family: var(--cm-font-sans); font-size: 12.5px; line-height: 1.5; color: var(--cm-fg-primary); margin-bottom: 5px; }
+  .ra-read-list li::before { content: "│"; position: absolute; left: -14px; color: var(--cm-fg-faint); }
+
+  .ra-rules { border-bottom: 1px solid var(--cm-border-hairline); }
+  .ra-rules-block { padding: 0 14px 12px; }
+  .ra-rules-venue { display: flex; align-items: baseline; gap: 10px; padding: 4px 0 6px; }
+  .ra-rules-venue-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-primary); }
+  .ra-rules-venue-meta { font-size: 10px; color: var(--cm-fg-muted); }
+  .ra-rules-ref { font-size: 11px; color: var(--cm-fg-secondary); padding: 4px 0; font-family: var(--cm-font-sans); }
+  .ra-rules-ref-k { font-family: var(--cm-font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cm-fg-faint); margin-right: 6px; }
+  .ra-rules-text { font-family: var(--cm-font-sans); font-size: 11.5px; line-height: 1.5; color: var(--cm-fg-secondary); white-space: pre-wrap; padding-left: 12px; border-left: 2px solid var(--cm-border-rule); }
+
+  .ra-timeline { }
+  .ra-timeline-empty { padding: 2px 14px 12px; font-size: 11px; color: var(--cm-fg-muted); line-height: 1.5; }
+  .ra-tl-dot { color: var(--cm-positive); font-size: 8px; vertical-align: 1px; margin-right: 4px; }
+
+  /* collapsible resolution detail (default-open) */
+  .ra-detail > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--cm-fg-muted); border-top: 1px solid var(--cm-border-hairline);
+    background: var(--cm-bg-deep); user-select: none;
+  }
+  .ra-detail > summary::-webkit-details-marker { display: none; }
+  .ra-detail > summary:hover { color: var(--cm-fg-secondary); }
+  .ra-detail-arrow { font-size: 9px; color: var(--cm-fg-faint); transition: transform .15s ease; }
+  .ra-detail:not([open]) .ra-detail-arrow { transform: rotate(-90deg); }
+
+  /* density pass — ~25% tighter vertical rhythm */
+  .ra-head { padding: 5px 14px; }
+  .ra-grade-block { padding: 10px 14px; gap: 12px; }
+  .ra-grade { width: 56px; height: 56px; font-size: 40px; }
+  .ra-gov { padding: 9px 14px; gap: 6px; }
+  .ra-factors { padding: 8px 14px 9px; }
+  .ra-factor { padding: 3.5px 0; }
+  .ra-sub { padding: 7px 14px 5px; }
+  .ra-read-list { padding-bottom: 9px; }
+</style>

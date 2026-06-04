@@ -1,0 +1,2232 @@
+    /* ========================================
+       CONTAINER OVERRIDE — widen to 1280
+       Site.astro's .va-main caps at 1080 — break out cleanly.
+       ======================================== */
+    .cm-v2 {
+      max-width: 1280px;
+      width: calc(100vw - 80px);
+      margin-left: calc((1080px - 1280px) / 2);
+      margin-right: calc((1080px - 1280px) / 2);
+      /* never let the breakout container create horizontal pan/overscroll */
+      overflow-x: clip;
+      overscroll-behavior-x: none;
+    }
+    @media (max-width: 1280px) {
+      .cm-v2 { margin: 0; width: 100%; }
+    }
+
+    /* ========================================
+       BASE.ASTRO OVERRIDES — kill light-theme pre/code styles globally inside .cm-v2
+       ======================================== */
+    .cm-v2 pre {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
+    }
+    .cm-v2 code {
+      background: transparent;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      font-family: var(--cm-font-mono);
+      color: inherit;
+      font-size: inherit;
+    }
+    .cm-v2 a {
+      text-decoration: none;
+    }
+
+    /* ========================================
+       SUB-NAV — Nansen sticky filter strip
+       ======================================== */
+    .cm-subnav {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 10px 40px;
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      background: var(--cm-bg-surface);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-subnav a {
+      color: var(--cm-fg-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .cm-subnav a:hover { color: var(--cm-fg-primary); }
+    /* Active section gets primary color; accent mark only renders for active link */
+    .cm-subnav-link.cm-subnav-active { color: var(--cm-fg-primary); }
+    .cm-active-mark {
+      color: var(--cm-positive);
+      font-size: 14px;
+      line-height: 1;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      transition: opacity 0.12s ease, width 0.12s ease;
+    }
+    .cm-subnav-active .cm-active-mark {
+      opacity: 1;
+      width: auto;
+    }
+    .cm-subnav-snapshot {
+      margin-left: auto;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.08em;
+    }
+    .cm-dot-positive { color: var(--cm-positive); }
+    .cm-dot-settled { color: var(--cm-fg-muted); }
+    /* Catalyst rows for past events — checkmark prefix + low-contrast text */
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-date::before {
+      content: "✓ ";
+      color: var(--cm-positive);
+      font-weight: 700;
+      margin-right: 4px;
+    }
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-event-title,
+    .cm-catalyst-grid-row.cm-catalyst-past .cm-catalyst-date {
+      color: var(--cm-fg-muted);
+    }
+
+    /* ========================================
+       HEADER — divergence flag + resolves line ABOVE H1, flush-left,
+       both aligned with H1's first character. Resolves is plain green
+       bracketed text (not a chip — no background/border).
+       ======================================== */
+    .cm-headline-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      /* Negative margin offsets the chip's padding+border so the visible text
+         aligns precisely with the H1's first character (true flush-left). */
+      margin-left: -7px;
+    }
+    /* Resolves rendered inline at end of H1 — terminal-shape, positive-green,
+       sized for legibility but still clearly subordinate to the H1 weight. */
+    .cm-h1-resolves {
+      color: var(--cm-positive);
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      margin-left: 14px;
+      vertical-align: baseline;
+    }
+    /* Resolved-state inline annotation — muted red (Bloomberg HALT/EXPIRED tone).
+       Distinguishable from active green (RESOLVES) without screaming alarm.
+       Same size + weight as cm-h1-resolves so inline-tag rhythm stays consistent. */
+    .cm-h1-resolved {
+      color: var(--cm-negative);
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+      margin-left: 14px;
+      vertical-align: baseline;
+      opacity: 0.85;
+    }
+    /* Resolved-state badge above H1 — muted red, same shape as divergence flag
+       but distinct color. Reads as "this contract is off-screen" — institutional
+       convention for expired/halted indicators. */
+    .cm-resolved-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-negative);
+      background: rgba(239, 93, 106, 0.10);
+      border: 1px solid var(--cm-negative);
+      line-height: 1;
+    }
+    /* Per-row resolved chip for the All Markets table — same red treatment but
+       smaller so it sits inline alongside data without dominating the row. */
+    .cm-row-resolved {
+      display: inline-block;
+      padding: 1px 5px;
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cm-negative);
+      background: rgba(239, 93, 106, 0.10);
+      border: 1px solid var(--cm-negative);
+      opacity: 0.85;
+      line-height: 1;
+      vertical-align: middle;
+    }
+    /* Anchor the resolved badge at a consistent column position regardless of
+       label length: give the label span a fixed inline-block width, then the
+       badge sits at the same x-offset across all rows. Keep the cell as a
+       normal table cell — applying display:flex to <td> breaks column widths. */
+    .cm-td-strike .cm-td-label-text {
+      display: inline-block;
+      width: 60px;
+    }
+    .cm-td-q .cm-td-label-text,
+    .cm-td-q-range .cm-td-label-text {
+      display: inline-block;
+      width: 96px;
+    }
+    .cm-td-strike .cm-row-resolved,
+    .cm-td-q .cm-row-resolved,
+    .cm-td-q-range .cm-row-resolved {
+      margin-left: 0;
+    }
+    /* Legacy class — preserved for safety */
+    .cm-resolves-line { display: none; }
+
+    /* Legacy classes — preserved for safety, no longer rendered */
+    .cm-flag-row { display: none; }
+    .cm-id-row { display: none; }
+    .cm-atomic-id { display: none; }
+    .cm-headline-row { display: block; }
+    .cm-headline-chips { display: none; }
+    .cm-resolves-chip { display: none; }
+    .cm-divergence-flag {
+      display: inline-flex;
+      align-items: center;
+      margin-left: 12px;
+      padding: 2px 6px;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      border: 1px solid var(--cm-divergence);
+      line-height: 1;
+    }
+    .cm-h1 {
+      font-family: var(--cm-font-mono);
+      font-size: clamp(17px, 1.7vw, 22px);
+      line-height: 1.25;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--cm-fg-primary);
+      margin: 0 0 6px;
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    /* Legacy banner classes — preserved for safety, no longer rendered */
+    .cm-banner, .cm-banner-meta, .cm-banner-snapshot, .cm-divergence-chip { display: none; }
+
+    /* Editorial callout legacy class — preserved for safety, no longer rendered */
+    .cm-editorial-callout { display: none; }
+
+    /* ========================================
+       META HORIZON STRIP — 28px low-contrast ambient layer
+       Bloomberg/Eikon pattern: zero card framing, label-to-value horizontal keyway,
+       middle-dot separators inside clusters, hairline pipe between clusters.
+       ======================================== */
+    /* Flat ticker — every token + pipe is a flat child. justify-content:
+       space-between distributes tokens evenly across the full strip width;
+       no ml-auto exceptions. Each field gets the same visual weight. */
+    /* Ladder distribution table (multinomial strike events) */
+    .cm-ladder { margin: 0 0 22px; }
+    .cm-ladder-h {
+      font-family: var(--cm-font-mono); font-size: 10.5px; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--cm-fg-muted); margin-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-hairline); padding-bottom: 5px;
+    }
+    .cm-ladder-band { color: var(--cm-fg-link); }
+    .cm-ladder-table { width: 100%; border-collapse: collapse; font-family: var(--cm-font-mono); font-size: 12px; }
+    .cm-ladder-row td { padding: 2px 0; vertical-align: middle; border-radius: 0; }
+    .cm-ladder-strike { color: var(--cm-fg-secondary); white-space: nowrap; width: 150px; }
+    .cm-ladder-barcell { width: 100%; padding: 2px 12px !important; }
+    .cm-ladder-bar { display: inline-block; height: 8px; background: var(--cm-fg-link); min-width: 2px; vertical-align: middle; }
+    .cm-ladder-prob { color: var(--cm-fg-primary); text-align: right; width: 50px; font-variant-numeric: tabular-nums; }
+
+    .cm-horizon {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      min-height: 28px;
+      margin-top: 14px;
+      margin-bottom: 22px;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      padding: 4px 2px;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .cm-horizon-token {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cm-horizon-pipe {
+      color: var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 400;
+      user-select: none;
+    }
+    .cm-horizon-trailing { /* legacy — no longer applied */ margin-left: 0; }
+    .cm-horizon-warn {
+      gap: 6px;
+    }
+    .cm-horizon-warn-value {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      border: 1px solid var(--cm-divergence);
+      padding: 1px 5px;
+      line-height: 1;
+    }
+
+    /* Legacy cluster classes — preserved for safety */
+    .cm-horizon-cluster, .cm-horizon-left, .cm-horizon-right, .cm-horizon-center, .cm-horizon-dot { display: inline-flex; }
+    .cm-horizon-label {
+      font-family: var(--cm-font-sans);
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--cm-fg-muted);
+      text-transform: lowercase;
+      letter-spacing: 0;
+    }
+    .cm-horizon-value {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-link);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-horizon-tail {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0;
+      text-transform: none;
+      margin-left: 2px;
+    }
+    .cm-horizon-dot {
+      color: var(--cm-border-rule);
+      font-size: 9px;
+      margin: 0 4px;
+    }
+    @media (max-width: 900px) {
+      .cm-horizon { height: auto; padding: 6px 0; gap: 4px; }
+      .cm-horizon-cluster { padding: 4px 10px; border-right: 0; border-bottom: 1px solid var(--cm-border-hairline); width: 100%; }
+      .cm-horizon-cluster:last-child { border-bottom: 0; }
+    }
+
+    /* Number tabular-nums helper retained for value spans on the strip and elsewhere */
+    .cm-num { font-variant-numeric: tabular-nums; }
+    .cm-meta-l {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-meta-tail { color: var(--cm-fg-faint); margin-left: 2px; font-size: 10.5px; }
+
+    /* ========================================
+       EDITORIAL CALLOUT — full-width Marconi-shape bullets
+       Restored as a standalone callout (was nested inside cm-hero-pair previously).
+       ======================================== */
+    .cm-editorial-callout {
+      display: block;
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-fg-link);
+      padding: 12px 16px 14px;
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    /* Outcome strip — green-border emphasis, sits between meta and Editorial Brief
+       on resolved events. Plain-language answer to the event question. */
+    .cm-outcome-strip {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 10px 14px;
+      margin: 14px 0 18px;
+      background: rgba(57, 195, 121, 0.06);
+      border-left: 2px solid var(--cm-positive);
+    }
+    .cm-outcome-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-positive);
+      flex-shrink: 0;
+    }
+    .cm-outcome-arrow {
+      font-family: var(--cm-font-mono);
+      color: var(--cm-fg-muted);
+      flex-shrink: 0;
+    }
+    .cm-outcome-text {
+      font-family: var(--cm-font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--cm-fg-primary);
+    }
+    .cm-callout-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--cm-fg-muted);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cm-callout-tag {
+      font-weight: 400;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.1em;
+    }
+    .cm-editorial-bullets {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .cm-editorial-bullets li {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--cm-fg-primary);
+      padding-left: 14px;
+      position: relative;
+    }
+    .cm-editorial-bullets li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 9px;
+      width: 6px;
+      height: 1px;
+      background: var(--cm-fg-link);
+    }
+
+    /* ========================================
+       SECTIONS — general
+       ======================================== */
+    .cm-section {
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    /* Scroll-anchor offset so #resolution anchor links account for sticky chrome height
+       (~80px main header + ~36px sub-nav ≈ 116px). 120px gives a small buffer. */
+    #resolution { scroll-margin-top: 120px; }
+    #catalysts { scroll-margin-top: 120px; }
+    #signal { scroll-margin-top: 120px; }
+    #api { scroll-margin-top: 120px; }
+    #markets { scroll-margin-top: 120px; }
+    .cm-section-h {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--cm-fg-primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+    }
+    .cm-section-h::before {
+      content: "";
+      display: inline-block;
+      width: 2px;
+      height: 12px;
+      background: var(--cm-positive);
+      margin-right: 10px;
+    }
+    .cm-section-summary {
+      font-family: var(--cm-font-sans);
+      font-size: 13.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      margin: 0 0 16px;
+    }
+    .cm-empty-note {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-muted);
+      font-style: italic;
+      margin: 0;
+    }
+
+    /* ========================================
+       CM SIGNAL STATE 3 — threshold explainer
+       Terminal-monitor aesthetic: hairline tracks, bracketed bucket tokens, factual cycle footer
+       ======================================== */
+    .cm-signal-state3 {
+      margin: 0 0 16px 0;
+    }
+    .cm-signal-state3-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+    .cm-signal-state3-status {
+      color: var(--cm-fg-secondary);
+    }
+    .cm-signal-state3-status::before {
+      content: '● ';
+      color: var(--cm-fg-faint);
+    }
+    .cm-signal-state3-tag {
+      color: var(--cm-fg-faint);
+      font-size: 9.5px;
+      letter-spacing: 0.10em;
+      padding: 2px 7px;
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-signal-state3-body {
+      padding: 16px 0 12px 0;
+      max-width: 820px;
+    }
+    .cm-signal-state3-lede {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+    .cm-signal-state3-rules {
+      margin: 0 0 16px 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cm-signal-state3-rule {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px dashed var(--cm-border-hairline);
+    }
+    .cm-signal-state3-rule:last-child {
+      border-bottom: 0;
+    }
+    .cm-signal-state3-rule dt {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin: 0;
+    }
+    .cm-signal-state3-bucket {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--cm-fg-link);
+    }
+    .cm-signal-state3-token {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-signal-state3-rule dd {
+      margin: 0;
+      font-family: var(--cm-font-sans);
+      font-size: 12px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.45;
+    }
+    .cm-signal-state3-foot {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-faint);
+      letter-spacing: 0.02em;
+      padding-top: 12px;
+      border-top: 1px solid var(--cm-border-hairline);
+    }
+
+    /* ========================================
+       PRIMARY MARKETS — compact 2-row summary table
+       Shares typography with .cm-mkt-table; differs in P(YES) emphasis
+       and the top-contract column carrying a semantic-tag chip + prose.
+       ======================================== */
+    .cm-primary-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 13px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-primary-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    /* Numeric column headers right-aligned to match their values below */
+    .cm-primary-table th.cm-th-num { text-align: right; }
+    .cm-primary-table th.cm-th-rcg { text-align: center; }
+    .cm-primary-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-primary);
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* Venue ID cell: don't truncate — the inner truncateVenueId() already
+       handles the display length, and we need room for the copy glyph. */
+    .cm-primary-table td.cm-td-id {
+      overflow: visible;
+    }
+    .cm-primary-table th:not(:last-child),
+    .cm-primary-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-primary-table tr:last-child td { border-bottom: 0; }
+    .cm-primary-table tr:hover { background: var(--cm-bg-callout); }
+    .cm-td-venue {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cm-td-p-emphasis {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--cm-fg-primary);
+    }
+    .cm-td-top-contract {
+      white-space: normal !important;
+      overflow: visible !important;
+      line-height: 1.4;
+    }
+    .cm-semantic-tag {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 6px;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+    .cm-q-text {
+      font-family: var(--cm-font-sans);
+      font-size: 12.5px;
+      color: var(--cm-fg-secondary);
+    }
+
+    /* ========================================
+       MARKET TABLES — Bloomberg-grade
+       ======================================== */
+    .cm-venue-block {
+      margin-bottom: 20px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-venue-block-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-venue-block-name {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-primary);
+    }
+    .cm-venue-block-count {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    /* Event-axis context line — sits between venue-block-head and the table.
+       Echoes the event question so the reader keeps context when scrolling down a long ladder. */
+    .cm-venue-block-axis {
+      padding: 6px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+    }
+    .cm-venue-block-axis-q {
+      color: var(--cm-fg-primary);
+    }
+    .cm-venue-block-axis-sep {
+      color: var(--cm-fg-faint);
+      margin: 0 6px;
+    }
+    .cm-venue-block-axis-date {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    .cm-table-wrap {
+      /* desktop: visible so RCG tooltips can escape the cell. mobile: scroll horizontally
+         so the dense table doesn't blow out the viewport. */
+      overflow: visible;
+    }
+    /* Mobile-only split-ledger micro-header (see MarketsTable.astro). Desktop keeps its real
+       <thead>, so this legend is hidden until the 640px reflow turns it on. */
+    .cm-mkt-legend { display: none; }
+    @media (max-width: 820px) {
+      .cm-table-wrap { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+      .cm-table-wrap .cm-mkt-table { min-width: 720px; }
+      /* Resolution Architecture table (7 cols) — scroll inside its wrap rather than clip */
+      .cm-table-wrap .cm-res-table { min-width: 760px; }
+    }
+    .cm-mkt-table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+    }
+    .cm-mkt-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
+      white-space: nowrap;
+    }
+    /* Numeric column headers right-aligned to match their values below */
+    .cm-mkt-table th.cm-th-num { text-align: right; }
+    .cm-mkt-table th.cm-th-rcg { text-align: center; }
+    .cm-mkt-table td {
+      padding: 0 12px;
+      height: var(--cm-space-row-tight);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cm-mkt-table th:not(:last-child),
+    .cm-mkt-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-mkt-table tbody tr:nth-child(2n) { background: var(--cm-bg-surface-alt); }
+    .cm-mkt-table tbody tr:hover { background: var(--cm-bg-callout); }
+    .cm-mkt-table tbody tr:last-child td { border-bottom: 0; }
+    .cm-th-num, .cm-td-num { text-align: right; }
+    .cm-th-rcg, .cm-td-rcg { text-align: center; width: 56px; }
+    /* RCG cell must allow overflow so the tooltip pseudo-element can escape the td bounds */
+    .cm-mkt-table td.cm-td-rcg { overflow: visible; }
+
+    /* Sortable column headers — click to sort, click again to reverse.
+       Nansen-shape stacked-arrow icon: ▲ above ▼, both faint when idle.
+       When asc-active, top arrow brightens blue. When desc-active, bottom arrow brightens blue. */
+    .cm-mkt-table th.cm-th-sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.12s ease;
+    }
+    .cm-mkt-table th.cm-th-sortable:hover {
+      color: var(--cm-fg-primary);
+    }
+    /* Single up-down arrow — unambiguous sort affordance (stacked triangles read as a
+       diamond at this size). Brightens on hover; becomes a directional ↑/↓ when active. */
+    .cm-sort-icon {
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 6px;
+      font-size: 15px;
+      line-height: 1;
+      font-family: var(--cm-font-mono);
+      position: relative;
+      top: 0;
+    }
+    .cm-sort-icon::before {
+      content: '↕';
+      color: var(--cm-fg-link);
+      opacity: 0.9;
+      transition: color 0.12s ease, opacity 0.12s ease;
+    }
+    .cm-mkt-table th.cm-th-sortable:hover .cm-sort-icon::before {
+      opacity: 1;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active="asc"] .cm-sort-icon::before {
+      content: '↑';
+      opacity: 1;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active="desc"] .cm-sort-icon::before {
+      content: '↓';
+      opacity: 1;
+    }
+    .cm-mkt-table th.cm-th-sortable[data-sort-active] {
+      color: var(--cm-fg-primary);
+    }
+    /* MARKET column reset affordance — subtle, only on hover */
+    .cm-mkt-table th.cm-th-reset {
+      cursor: pointer;
+      user-select: none;
+    }
+    .cm-mkt-table th.cm-th-reset:hover {
+      color: var(--cm-fg-primary);
+    }
+    .cm-th-id, .cm-td-id { text-align: left; }
+    .cm-td-strike { color: var(--cm-fg-primary); font-weight: 500; }
+    .cm-td-q {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-primary);
+      white-space: normal;
+      line-height: 1.4;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      text-overflow: ellipsis;
+    }
+    .cm-td-p { color: var(--cm-fg-primary); font-weight: 500; }
+    /* basket row label: verbatim outcome (primary) + verbatim basket question (muted, one line) */
+    .cm-lbl-primary { color: var(--cm-fg-primary); }
+    .cm-lbl-context { color: var(--cm-fg-faint); font-size: 11.5px; }
+
+    /* Range/threshold label styling — Bloomberg-shape mono tabular for mathematical scan alignment */
+    .cm-td-q-range {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 500;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      line-height: 1.4;
+      -webkit-line-clamp: unset;
+      display: table-cell;
+    }
+
+    /* Sparkbar columns — dedicated narrow columns for distribution visualization.
+       P(YES) bar = blue (probability mass). VOL CUM bar = green (liquidity/conviction).
+       Tightly paired with their preceding numeric cell (reduced inter-cell padding)
+       so the number + bar read as a single visual unit. */
+    .cm-th-bar, .cm-td-bar {
+      padding: 0 2px;
+      vertical-align: middle;
+    }
+    /* Tighten padding on the numeric cell immediately preceding a bar cell */
+    .cm-mkt-table .cm-td-num:has(+ .cm-td-bar) { padding-right: 4px; }
+    .cm-mkt-table .cm-th-num:has(+ .cm-th-bar) { padding-right: 4px; }
+    .cm-bar-track {
+      position: relative;
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    .cm-bar-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      min-width: 1px;
+      max-width: 100%;
+      border-radius: 1px;
+    }
+    .cm-bar-prob { background: var(--cm-fg-link); }   /* #5c9dff — blue, P(YES) */
+    .cm-bar-vol  { background: var(--cm-positive); }   /* #10d894 — green, volume */
+
+    .cm-mono-id {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-faint);
+      background: rgba(255, 255, 255, 0.02);
+      padding: 1px 5px;
+    }
+    .cm-copy {
+      cursor: pointer;
+      user-select: all;
+      transition: background 0.15s, color 0.15s;
+    }
+    .cm-copy::after {
+      content: " ⧉";
+      color: var(--cm-fg-muted);
+      font-weight: 400;
+      margin-left: 2px;
+      opacity: 0.7;
+      transition: opacity 0.15s;
+    }
+    .cm-copy:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--cm-fg-secondary);
+    }
+    .cm-copy:hover::after {
+      opacity: 1;
+      color: var(--cm-fg-primary);
+    }
+    .cm-copy.cm-copied {
+      background: rgba(16, 216, 148, 0.18);
+      color: var(--cm-positive);
+    }
+    .cm-copy.cm-copied::after {
+      content: " ✓";
+      color: var(--cm-positive);
+      opacity: 1;
+      font-weight: 600;
+    }
+
+    /* RCG chips — A vs C visual asymmetry */
+    /* Resolution Clarity Grade chips — per-contract grade with outline weight per grade
+       so column variance is scannable even when colors are similar (bond-rating analogy).
+       Hover triggers custom CSS tooltip (.cm-tt). Click anchors to #resolution. A=solid, B=dashed, C=dotted. */
+    .cm-rcg-chip {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 6px;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.1s ease;
+    }
+    .cm-rcg-chip:hover { transform: scale(1.06); }
+
+    /* ========================================
+       TOOLTIP — CSS-only, terminal-styled
+       ========================================
+       Reusable. Apply class="cm-tt" + data-tt="..." to any element.
+       Tooltip renders above the trigger, centered. Fast trigger (no 700ms native delay).
+       Accessible via paired aria-label. Works on hover + keyboard focus. */
+    .cm-tt {
+      position: relative;
+    }
+    .cm-tt::after {
+      content: attr(data-tt);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: 280px;
+      padding: 8px 10px;
+      background: var(--cm-bg-callout);
+      border: 1px solid var(--cm-border-emphasis);
+      color: var(--cm-fg-primary);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      font-weight: 400;
+      line-height: 1.45;
+      letter-spacing: 0;
+      text-align: left;
+      text-transform: none;
+      white-space: normal;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 200;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    }
+    .cm-tt::before {
+      content: '';
+      position: absolute;
+      bottom: calc(100% + 2px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--cm-border-emphasis);
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      z-index: 201;
+      transition: opacity 0.12s ease, visibility 0.12s ease;
+    }
+    .cm-tt:hover::after,
+    .cm-tt:hover::before,
+    .cm-tt:focus-visible::after,
+    .cm-tt:focus-visible::before {
+      opacity: 1;
+      visibility: visible;
+    }
+    /* Right-edge variant: tooltip anchored to right of trigger (use for rightmost columns to avoid viewport clip) */
+    .cm-tt[data-tt-pos="left"]::after {
+      left: auto;
+      right: 50%;
+      transform: translateX(50%);
+    }
+    .cm-rcg-a {
+      border: 1.5px solid var(--cm-positive);
+      color: var(--cm-positive);
+      background: transparent;
+    }
+    .cm-rcg-b {
+      border: 1.5px solid var(--cm-caution);
+      color: var(--cm-caution);
+      background: rgba(244, 214, 58, 0.09);
+    }
+    .cm-rcg-c {
+      border: 1.5px solid var(--cm-divergence);
+      color: var(--cm-divergence);
+      background: rgba(240, 168, 48, 0.10);
+      font-weight: 700;
+    }
+
+    /* ========================================
+       SPLIT LAYOUT — Resolution + Catalyst
+       ======================================== */
+    .cm-split {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: var(--cm-space-section-rule);
+    }
+    .cm-split-left, .cm-split-right {
+      margin-bottom: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .cm-split-left .cm-res-table,
+    .cm-split-right .cm-catalyst-timeline { flex: 1 0 auto; }
+    @media (max-width: 900px) {
+      .cm-split { grid-template-columns: 1fr; }
+    }
+
+    /* cross-venue column cell (in the markets table) */
+    .cm-th-xv { text-align: left; }
+    .cm-td-xv { font-family: var(--cm-font-mono); font-size: 12px; white-space: nowrap; }
+    .cm-xv-cell { color: var(--cm-fg-secondary); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+    .cm-xv-cell:hover { color: var(--cm-fg-link); }
+    .cm-xv-cell:hover::after { content: " \2192"; color: var(--cm-fg-link); }
+    .cm-xv-venue { color: var(--cm-fg-muted); }
+    .cm-rcg-mini { font-weight: 700; font-size: 11px; }
+    .cm-rcg-mini.cm-rcg-a { color: var(--cm-positive); }
+    .cm-rcg-mini.cm-rcg-b { color: var(--cm-caution); }
+    .cm-rcg-mini.cm-rcg-c { color: var(--cm-divergence); }
+    .cm-rcg-mini.cm-rcg-na { color: var(--cm-fg-faint); }
+    .cm-xv-more { color: var(--cm-fg-faint); font-size: 10px; }
+    .cm-xv-none { color: var(--cm-fg-faint); }
+
+    .cm-res-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12.5px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-table th {
+      background: var(--cm-bg-surface);
+      color: var(--cm-fg-muted);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-res-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      color: var(--cm-fg-primary);
+      vertical-align: top;
+    }
+    .cm-res-table th:not(:last-child),
+    .cm-res-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-table tbody tr:last-child td { border-bottom: 0; }
+    .cm-res-td-venue { font-weight: 600; }
+    .cm-res-td-src {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+      white-space: normal;
+    }
+    .cm-th-rcg-dist, .cm-td-rcg-dist { text-align: center; }
+    .cm-code-pill {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--cm-fg-primary);
+      background: var(--cm-bg-deep);
+      border: 1px solid var(--cm-border-hairline);
+      padding: 2px 6px;
+    }
+    .cm-clarity-dist {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.06em;
+    }
+    .cm-dd-empty { color: var(--cm-fg-faint); font-style: italic; font-size: 11.5px; }
+    /* uncommitted source: the venue gave only illustrative/placeholder language — amber, not absent */
+    .cm-dd-uncommitted {
+      color: var(--cm-divergence);
+      font-size: 11.5px;
+      letter-spacing: 0.02em;
+      cursor: help;
+      border-bottom: 1px dotted var(--cm-divergence);
+    }
+    /* citation deep-link — accent so it reads as clickable (was near-invisible) */
+    .cm-res-link {
+      color: var(--va-accent, #76b8ff);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    /* verbatim platform source field → raw value, co-located with the rules text. Rendered as a
+       Slack-style inline code excerpt: "this is the literal field and value the platform returned." */
+    .vr-src-line {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+      margin-top: 14px; padding-left: 12px;
+    }
+    .cm-v2 .vr-src-code {
+      display: inline-block;
+      font-family: var(--cm-font-mono); font-size: 11.5px; line-height: 1.45;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-deep); border: 1px solid var(--cm-border-hairline);
+      padding: 4px 9px; white-space: pre-wrap; word-break: break-word;
+    }
+    .cm-v2 .vr-src-code .vr-src-key { color: var(--cm-fg-primary); }
+    .cm-v2 .vr-src-code a { font-size: 11.5px; }
+    /* Header cells with help tooltips — cursor + faint underline-on-hover signals interactivity */
+    .cm-res-table th.cm-th-help {
+      cursor: help;
+      border-bottom: 1px dotted var(--cm-border-emphasis);
+    }
+    /* Verbatim platform source string — quoted to signal "this is exactly what the venue published" */
+    .cm-verbatim {
+      font-family: var(--cm-font-sans);
+      color: var(--cm-fg-primary);
+    }
+    /* Class chip — DCM (regulated) green, DeFi (unregulated) amber, Other (unknown) muted gray.
+       text-transform NOT set — chip preserves the source casing (DCM all-caps as acronym; DeFi mixed-case as conventional). */
+    .cm-class-chip {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border: 1.5px solid;
+      background: transparent;
+    }
+    .cm-class-dcm { color: var(--cm-positive); border-color: var(--cm-positive); }
+    .cm-class-defi { color: var(--cm-divergence); border-color: var(--cm-divergence); }
+    .cm-class-other { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+    /* Analyst notes cell — sans, slightly muted, wraps to fit operational sentence */
+    .cm-res-td-notes {
+      font-family: var(--cm-font-sans);
+      font-size: 12px;
+      color: var(--cm-fg-secondary);
+      line-height: 1.4;
+      white-space: normal;
+      max-width: 240px;
+    }
+
+    /* Resolution rules verbatim block — two-column layout per venue.
+       LEFT: verbatim prose (constrained reading measure).
+       RIGHT: real settlement-reference metadata (no invented values). */
+    .cm-res-rules {
+      margin-top: 20px;
+      padding: 20px 24px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-h {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      margin-bottom: 14px;
+    }
+    .cm-res-rules-block {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-block:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .cm-res-rules-venue {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .cm-res-rules-venue-name {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.10em;
+      color: var(--cm-fg-primary);
+    }
+    .cm-res-rules-venue-count {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.04em;
+    }
+    /* Verbatim rules text — collapsed by default behind <details>. When expanded,
+       Bloomberg/Refinitiv-shape fine-print treatment: small font, left block-quote border, tighter line-height. */
+    .cm-res-rules-text {
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      white-space: pre-wrap;
+      padding-left: 12px;
+      border-left: 2px solid var(--cm-border-rule);
+      max-width: 820px;
+      margin-top: 12px;
+    }
+    /* Details/summary disclosure for verbatim rules — high-density, low-contrast action bar */
+    .cm-res-rules-details {
+      margin-top: 4px;
+    }
+    .cm-res-rules-summary {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+      transition: color 0.15s ease;
+    }
+    .cm-res-rules-summary::-webkit-details-marker { display: none; }
+    .cm-res-rules-summary::marker { content: ''; }
+    .cm-res-rules-summary:hover { color: var(--cm-fg-secondary); }
+    .cm-res-rules-arrow {
+      display: inline-block;
+      font-size: 9px;
+      color: var(--cm-fg-faint);
+      transition: transform 0.2s ease;
+    }
+    .cm-res-rules-details[open] .cm-res-rules-arrow { transform: rotate(90deg); }
+    .cm-res-rules-details[open] .cm-res-rules-summary { color: var(--cm-fg-secondary); }
+    /* Metadata ribbon — flat full-width track. Hairline top/bottom borders, no fill.
+       Matches the flat terminal grid architecture of the tables above. */
+    .cm-res-rules-ribbon {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0;
+      padding: 8px 0;
+      margin: 8px 0 0 0;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+    }
+    .cm-res-rules-ribbon-cell {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 0 16px;
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-res-rules-ribbon-cell:first-child { padding-left: 0; }
+    .cm-res-rules-ribbon-cell:last-child { border-right: 0; }
+    .cm-res-rules-ribbon-k {
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 9.5px;
+    }
+    .cm-res-rules-ribbon-v {
+      color: var(--cm-fg-primary);
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    .cm-res-rules-ribbon-link {
+      color: var(--cm-fg-link);
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
+      font-weight: 500;
+    }
+    .cm-res-rules-ribbon-link:hover { text-decoration-color: var(--cm-fg-link); }
+    /* Underlying reference — sits directly under the ribbon, secondary inline block */
+    .cm-res-rules-underlying {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 6px 0;
+      margin: 0 0 12px 0;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-secondary);
+    }
+    .cm-res-rules-underlying-k {
+      color: var(--cm-fg-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 9.5px;
+      flex-shrink: 0;
+    }
+    .cm-res-rules-underlying-v {
+      color: var(--cm-fg-primary);
+      font-family: var(--cm-font-sans);
+      font-size: 11.5px;
+    }
+    .cm-res-rules-empty {
+      color: var(--cm-fg-faint);
+      font-style: italic;
+    }
+
+    /* Catalyst timeline — vertical line + dots + days-from-now indicator
+       Visually differentiates from the grid-shape Resolution Architecture beside it. */
+    .cm-catalyst-timeline {
+      list-style: none;
+      margin: 0;
+      padding: 16px 18px 16px 12px;
+      background: linear-gradient(180deg, rgba(16, 216, 148, 0.025) 0%, transparent 100%), var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      border-left: 2px solid var(--cm-positive);
+      position: relative;
+    }
+    /* Gemini-spec rigid grid layout — 5 fixed columns */
+    .cm-catalyst-grid {
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-catalyst-head {
+      display: grid;
+      grid-template-columns: 70px 110px 1fr 220px 110px;
+      gap: 16px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+      text-transform: uppercase;
+    }
+    .cm-catalyst-grid-row {
+      display: grid;
+      grid-template-columns: 70px 110px 1fr 220px 110px;
+      gap: 16px;
+      padding: 12px 16px;
+      align-items: center;
+      border-bottom: 1px solid var(--cm-border-hairline);
+    }
+    .cm-catalyst-grid-row:last-child { border-bottom: 0; }
+    .cm-catalyst-dte {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--cm-positive);
+      letter-spacing: 0.04em;
+    }
+    .cm-catalyst-grid-row .cm-catalyst-date {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      color: var(--cm-fg-primary);
+      letter-spacing: 0.02em;
+    }
+    .cm-catalyst-event-col {
+      min-width: 0;
+    }
+    .cm-catalyst-event-title {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--cm-fg-primary);
+      line-height: 1.35;
+    }
+    .cm-catalyst-meta-col {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      color: var(--cm-fg-muted);
+      line-height: 1.5;
+    }
+    .cm-catalyst-meta-col .cm-catalyst-source {
+      display: block;
+      color: var(--cm-fg-link);
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
+      text-underline-offset: 2px;
+    }
+    .cm-catalyst-meta-col .cm-catalyst-source:hover {
+      text-decoration-color: var(--cm-fg-link);
+    }
+    .cm-catalyst-meta-col .cm-catalyst-verified {
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-type-col {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+    }
+    /* Plain text — no box, no background. Mono uppercase, muted color. */
+    .cm-catalyst-grid .cm-catalyst-type-chip {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+      white-space: nowrap;
+    }
+    /* Tightened timeline aesthetic — small dots, hairline connector, dense rows.
+       Metadata sits BENEATH the event description, not in a far-right column (no center void). */
+    .cm-catalyst-row {
+      display: grid;
+      grid-template-columns: 10px 1fr;
+      gap: 12px;
+      padding: 6px 0;
+      position: relative;
+      align-items: start;
+    }
+    .cm-catalyst-row:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 18px;
+      bottom: -6px;
+      width: 1px;
+      background: var(--cm-border-hairline);
+    }
+    .cm-catalyst-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--cm-bg-deep);
+      border: 1.5px solid var(--cm-positive);
+      margin-top: 6px;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .cm-catalyst-near .cm-catalyst-dot {
+      background: var(--cm-positive);
+    }
+    .cm-catalyst-past .cm-catalyst-dot {
+      border-color: var(--cm-fg-faint);
+    }
+    /* Catalyst type chip — uppercased + canonical display label */
+    .cm-catalyst-type {
+      font-family: var(--cm-font-mono);
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-deep);
+      border: 1px solid var(--cm-border-hairline);
+      padding: 1px 5px;
+    }
+    /* Inline metadata row — sits BENEATH the event description.
+       Source URL + verified timestamp, separated by · dot. No far-right canyon. */
+    .cm-catalyst-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: 4px;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-source {
+      text-decoration: none;
+      color: var(--cm-fg-link);
+    }
+    .cm-catalyst-source-host {
+      text-decoration: underline;
+      text-decoration-color: rgba(92, 157, 255, 0.4);
+      text-underline-offset: 3px;
+    }
+    .cm-catalyst-source:hover .cm-catalyst-source-host {
+      text-decoration-color: var(--cm-fg-link);
+    }
+    .cm-catalyst-meta-sep {
+      color: var(--cm-fg-faint);
+    }
+    .cm-catalyst-verified {
+      color: var(--cm-fg-muted);
+    }
+    .cm-catalyst-date-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+    .cm-catalyst-date {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--cm-positive);
+      letter-spacing: 0.04em;
+    }
+    .cm-catalyst-past .cm-catalyst-date {
+      color: var(--cm-fg-faint);
+    }
+    .cm-catalyst-delta {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--cm-fg-muted);
+      padding: 1px 5px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .cm-catalyst-near .cm-catalyst-delta {
+      color: var(--cm-positive);
+      background: rgba(16, 216, 148, 0.10);
+    }
+    .cm-catalyst-event {
+      font-family: var(--cm-font-sans);
+      font-size: 13.5px;
+      color: var(--cm-fg-primary);
+      line-height: 1.4;
+    }
+    .cm-catalyst-past .cm-catalyst-event {
+      color: var(--cm-fg-muted);
+    }
+
+    /* Legacy catalyst list class — preserved for safety */
+    .cm-catalyst-list { display: none; }
+
+    /* ========================================
+       WIRE ITEMS
+       ======================================== */
+    .cm-mark-inline {
+      font-family: var(--cm-font-mono);
+      background: var(--cm-fg-primary);
+      color: var(--cm-bg-deep);
+      padding: 0 4px;
+      letter-spacing: 0.06em;
+    }
+    .cm-wire-list { list-style: none; margin: 0; padding: 0; }
+    .cm-wire {
+      padding: 14px 16px 14px 18px;
+      border: 1px solid var(--cm-border-hairline);
+      border-left: 3px solid var(--cm-border-rule);
+      background: var(--cm-bg-surface);
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    /* Bucket accents — A: cross-venue (link blue), B: benchmark (divergence amber),
+       C: news-cycle (muted, coverage not editorial) */
+    .cm-wire[data-cm-bucket="A"] {
+      border-left-color: var(--cm-fg-link);
+      background: linear-gradient(90deg, rgba(92, 157, 255, 0.04) 0%, var(--cm-bg-surface) 60%);
+    }
+    .cm-wire[data-cm-bucket="B"] {
+      border-left-color: var(--cm-divergence);
+      background: linear-gradient(90deg, rgba(240, 168, 48, 0.04) 0%, var(--cm-bg-surface) 60%);
+    }
+    .cm-wire[data-cm-bucket="C"] {
+      border-left-color: var(--cm-fg-muted);
+    }
+    .cm-wire:hover {
+      border-color: var(--cm-border-emphasis);
+    }
+    /* Legacy bucket-mark class — preserved for safety, no longer rendered */
+    .cm-wire-bucket-mark { display: none; }
+    .cm-wire-meta {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      color: var(--cm-fg-muted);
+      margin-bottom: 8px;
+    }
+    .cm-wire-tag { color: var(--cm-positive); }
+    .cm-wire[data-cm-bucket="A"] .cm-wire-tag { color: var(--cm-fg-link); }
+    .cm-wire[data-cm-bucket="B"] .cm-wire-tag { color: var(--cm-divergence); }
+    .cm-wire[data-cm-bucket="C"] .cm-wire-tag { color: var(--cm-fg-muted); }
+    .cm-wire-head {
+      display: block;
+      font-family: var(--cm-font-mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cm-fg-primary);
+      text-decoration: none;
+      margin-bottom: 8px;
+      line-height: 1.35;
+    }
+    .cm-wire-bullet-0 {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      margin: 0;
+    }
+    .cm-wire-bullets {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .cm-wire-bullets li {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--cm-fg-secondary);
+      padding-left: 14px;
+      position: relative;
+      margin-bottom: 4px;
+    }
+    .cm-wire-bullets li:before {
+      content: "•";
+      position: absolute;
+      left: 2px;
+      color: var(--cm-fg-faint);
+    }
+    .cm-wire-bullets li:last-child { margin-bottom: 0; }
+    .cm-wire-bullets li code {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0 4px;
+    }
+    .cm-wire-tag-2 {
+      color: var(--cm-fg-muted);
+      font-size: 10.5px;
+    }
+    .cm-placeholder-note {
+      font-style: normal;
+      color: var(--cm-fg-muted);
+      font-size: 12.5px;
+      line-height: 1.55;
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-divergence);
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+    .cm-wire-list-placeholder .cm-wire {
+      opacity: 0.85;
+    }
+    .cm-wire-placeholder-lbl {
+      margin-left: auto;
+      color: var(--cm-divergence);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+    .cm-wire-meta { width: 100%; align-items: center; }
+
+    /* ========================================
+       PROGRAMMATIC ACCESS
+       ======================================== */
+    .cm-section-machine .cm-section-summary { max-width: 720px; }
+    .cm-endpoints-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      margin-bottom: 16px;
+    }
+    .cm-endpoints-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--cm-border-hairline);
+      vertical-align: middle;
+    }
+    .cm-endpoints-table tr:last-child td { border-bottom: 0; }
+    .cm-endpoints-table td:not(:last-child) {
+      border-right: 1px solid var(--cm-border-hairline);
+    }
+    .cm-fmt {
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.03);
+      width: 80px;
+    }
+    .cm-endpoint-url {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-secondary);
+    }
+    .cm-endpoints-table a { color: var(--cm-fg-link); text-decoration: none; }
+    .cm-endpoints-table a:hover { text-decoration: underline; }
+    .cm-inline-code {
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1px 5px;
+      color: var(--cm-fg-primary);
+    }
+    .cm-provenance-note {
+      font-family: var(--cm-font-sans);
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      background: var(--cm-bg-callout);
+      border-left: 2px solid var(--cm-fg-link);
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .cm-provenance-note code {
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      color: var(--cm-fg-primary);
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0 4px;
+    }
+    .cm-json-block {
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+    }
+    .cm-json-block-head {
+      padding: 8px var(--cm-space-card-pad);
+      border-bottom: 1px solid var(--cm-border-rule);
+    }
+    .cm-json-block-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--cm-fg-muted);
+    }
+    .cm-machine-json {
+      margin: 0;
+      padding: 14px var(--cm-space-card-pad);
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      line-height: 1.55;
+      color: var(--cm-fg-secondary);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .cm-machine-json .t-key  { color: #7faedb; }
+    .cm-machine-json .t-str  { color: var(--cm-fg-secondary); }
+    .cm-machine-json .t-num  { color: #d4b850; }
+
+    /* ========================================
+       FOOTER
+       ======================================== */
+    .cm-event-foot {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding: 20px 0 8px;
+      border-top: 1px solid var(--cm-border-hairline);
+      margin-top: 32px;
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      color: var(--cm-fg-faint);
+    }
+    .cm-event-foot a {
+      color: var(--cm-fg-link);
+      text-decoration: none;
+    }
+    .cm-event-foot a:hover { text-decoration: underline; }
+    .cm-event-foot code {
+      color: var(--cm-fg-secondary);
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1px 5px;
+    }
+
+    /* ========================================
+       UNDERLYING-PAGE ADDITIONS (claim-grouped single table)
+       New elements not on the venue-grouped event page. Built from the same tokens.
+       ======================================== */
+    /* The claim, stated once above the venues-as-rows table */
+    .cm-claim-banner {
+      padding: 10px var(--cm-space-card-pad);
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      border-bottom: 0;
+      font-family: var(--cm-font-sans);
+      font-size: 13.5px;
+      line-height: 1.4;
+      color: var(--cm-fg-primary);
+    }
+    .cm-claim-banner-label {
+      font-family: var(--cm-font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--cm-fg-muted);
+      margin-right: 10px;
+    }
+    /* plain-language "what's measured" line under the H1 — gives strike-ladder pages
+       (rows are bare rungs like "< 4.0%") the actual question they'd otherwise lack */
+    .cm-question-line {
+      font-family: var(--cm-font-sans);
+      font-size: 13px;
+      line-height: 1.4;
+      color: var(--cm-fg-secondary);
+      margin: 2px 0 14px;
+    }
+    /* venue cell in the claim table reuses cm-td-venue weight; just left-align id col already set */
+    /* Cross-venue gap — derived footer line under the two venue rows (NOT a column) */
+    .cm-xv-gap {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      border-top: 1px solid var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+    }
+    .cm-xv-gap-label {
+      color: var(--cm-fg-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-size: 10px;
+    }
+    .cm-xv-gap-val {
+      color: var(--cm-divergence);
+      font-weight: 700;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    .cm-xv-gap-note { color: var(--cm-fg-faint); margin-left: auto; letter-spacing: 0.02em; }
+    /* Sparkline column placeholder — history accrues from marks_daily (began 2026-05-30) */
+    .cm-spark-pending {
+      height: 14px;
+      width: 100%;
+      background: repeating-linear-gradient(90deg, var(--cm-border-hairline) 0 5px, transparent 5px 9px);
+      opacity: 0.55;
+    }
+    .cm-th-pending-tag {
+      font-size: 8.5px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      color: var(--cm-fg-faint);
+      margin-left: 5px;
+    }
+
+    /* underlying page: claim section anchor offset + benign-gap variant */
+    #claim { scroll-margin-top: 120px; }
+    .cm-xv-gap.cm-xv-gap-benign { border-top-color: var(--cm-border-hairline); }
+    .cm-xv-gap.cm-xv-gap-benign .cm-xv-gap-val { color: var(--cm-fg-secondary); }
+    .cm-xv-gap.cm-xv-gap-benign .cm-xv-gap-label { color: var(--cm-fg-faint); }
+
+    /* ========================================
+       UNDERLYING-PAGE: LADDER ARCHETYPE
+       Single-venue distribution (rows = strikes) + cross-venue implied-level line.
+       ======================================== */
+    /* Implied-band rows get a subtle highlight + left marker (the market-implied level) */
+    .cm-mkt-table tbody tr.cm-ladder-band-row { background: rgba(92,157,255,0.07); }
+    .cm-mkt-table tbody tr.cm-ladder-band-row:nth-child(2n) { background: rgba(92,157,255,0.10); }
+    .cm-ladder-band-mark {
+      display: inline-block;
+      font-family: var(--cm-font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--cm-fg-link);
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    /* Cross-venue implied-level strip — the ladder analog of the binary gap footer.
+       Two venue cells side by side (level + grade), then the non-alignment note. */
+    .cm-xv-level {
+      display: flex;
+      align-items: stretch;
+      flex-wrap: wrap;
+      gap: 0;
+      border: 1px solid var(--cm-border-hairline);
+      border-top: 1px solid var(--cm-border-rule);
+      background: var(--cm-bg-surface);
+      font-family: var(--cm-font-mono);
+    }
+    .cm-xv-level-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 10px 16px;
+      border-right: 1px solid var(--cm-border-hairline);
+      min-width: 190px;
+    }
+    .cm-xv-level-cell.cm-xv-level-shown { background: rgba(92,157,255,0.05); }
+    .cm-xv-level-venue {
+      font-size: 9.5px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cm-xv-level-shown-tag { color: var(--cm-fg-link); font-size: 8.5px; }
+    .cm-xv-level-val { font-size: 14px; font-weight: 700; color: var(--cm-fg-primary); font-variant-numeric: tabular-nums; }
+    .cm-xv-level-sub { font-size: 10px; color: var(--cm-fg-faint); }
+    .cm-xv-level-note {
+      flex: 1 1 280px;
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--cm-fg-faint);
+    }
+
+    /* ========================================
+       GEMINI PASS: venue toggle (ladders) + bracketed cross-venue gap (binaries)
+       ======================================== */
+    /* Venue toggle — prominent tabs above a single-venue distribution grid.
+       Clicking the inactive venue swaps the native strike ladder shown. */
+    .cm-venue-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+      border: 1px solid var(--cm-border-hairline);
+      border-bottom: 0;
+      background: var(--cm-bg-deep);
+    }
+    .cm-venue-tab {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 10px 18px;
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--cm-fg-muted);
+      background: transparent;
+      border: 0;
+      border-right: 1px solid var(--cm-border-hairline);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+    }
+    .cm-venue-tab:hover { color: var(--cm-fg-secondary); background: var(--cm-bg-surface); }
+    .cm-venue-tab[data-active="true"] {
+      color: var(--cm-fg-primary);
+      background: var(--cm-bg-surface);
+      border-bottom-color: var(--cm-positive);
+    }
+    .cm-venue-tab-vol { font-size: 11px; font-weight: 500; color: var(--cm-fg-faint); letter-spacing: 0.02em; }
+    .cm-venue-tab[data-active="true"] .cm-venue-tab-vol { color: var(--cm-fg-muted); }
+    .cm-venue-panel[data-hidden="true"] { display: none; }
+    /* the toggle sits directly on top of the venue-block; drop the block's own top border so they read as one unit */
+    .cm-venue-toggle + .cm-venue-panel .cm-venue-block { border-top: 0; }
+
+    /* Bracketed cross-venue gap — clean derived footer line beneath a matched binary pair.
+       Form: └ cross-venue gap: 14.0 pts ┘  (no third column). */
+    .cm-xv-gap {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 9px 12px;
+      background: var(--cm-bg-surface);
+      border: 1px solid var(--cm-border-hairline);
+      border-top: 1px solid var(--cm-border-rule);
+      font-family: var(--cm-font-mono);
+      font-size: 12px;
+    }
+    .cm-xv-gap-brk { color: var(--cm-border-emphasis); font-weight: 400; }
+    .cm-xv-gap-label { color: var(--cm-fg-muted); text-transform: uppercase; letter-spacing: 0.10em; font-size: 10.5px; }
+    .cm-xv-gap-val { color: var(--cm-divergence); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .cm-xv-gap.cm-xv-gap-benign .cm-xv-gap-val { color: var(--cm-fg-secondary); }
+    .cm-xv-gap-note { color: var(--cm-fg-faint); margin-left: 6px; font-size: 11px; }
+
+    /* Top-line market glance ribbon — immediate price context under the H1, above the
+       resolution anchor. Basket: top outcomes inline. Sequential: milestone spark row. */
+    .cm-glance {
+      display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 14px;
+      padding: 8px 0; margin: 0 0 20px;
+      border-top: 1px solid var(--cm-border-hairline);
+      border-bottom: 1px solid var(--cm-border-hairline);
+      font-family: var(--cm-font-mono); font-size: 12.5px;
+    }
+    .cm-glance-k { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--cm-fg-faint); margin-right: 6px; }
+    .cm-glance-item { color: var(--cm-fg-secondary); white-space: nowrap; }
+    .cm-glance-name { color: var(--cm-fg-primary); }
+    .cm-glance-p { color: var(--cm-fg-link); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .cm-glance-sep { color: var(--cm-border-rule); }
+    .cm-glance-more { color: var(--cm-fg-faint); }
+
+    /* Resolution verdict card (shared by /priced verdict + /compare banner) */
+    .rv { display: flex; align-items: center; gap: 14px; padding: 12px 14px; margin: 0 0 20px;
+      border: 1px solid var(--cm-border-rule); border-left-width: 3px; background: var(--cm-bg-surface);
+      text-decoration: none; color: var(--cm-fg-secondary); font-family: var(--cm-font-sans); }
+    .rv:hover { background: var(--cm-bg-callout); }
+    .rv-a { border-left-color: var(--cm-positive); }
+    .rv-b { border-left-color: var(--cm-border-emphasis); }
+    .rv-c { border-left-color: var(--cm-divergence); }
+    .rv-grade { font-family: var(--cm-font-mono); font-size: 28px; font-weight: 700; line-height: 1;
+      width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid; }
+    .rv-grade-a { color: var(--cm-positive); border-color: var(--cm-positive); }
+    .rv-grade-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+    .rv-grade-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
+    .rv-grade-split { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); font-size: 18px; }
+    .rv-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .rv-label { font-family: var(--cm-font-mono); font-size: 9px; font-weight: 600; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--cm-fg-faint); margin-bottom: 2px; }
+    .rv-line { display: flex; align-items: baseline; gap: 10px; }
+    .rv-word { font-family: var(--cm-font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--cm-fg-primary); }
+    .rv-flag { font-family: var(--cm-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--cm-divergence); }
+    .rv-verdict { font-size: 13px; line-height: 1.45; color: var(--cm-fg-secondary); }
+    .rv-score { font-family: var(--cm-font-mono); font-size: 10px; color: var(--cm-fg-faint); letter-spacing: 0.04em; margin-top: 4px; }
+    .rv-method { color: var(--cm-fg-link); text-decoration: none; }
+    .rv-method:hover { text-decoration: underline; }
+    .rv-more { margin-left: auto; flex-shrink: 0; align-self: center; font-family: var(--cm-font-mono);
+      font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-link); }
+    @media (max-width: 640px) { .rv-more { display: none; } }
+
+    /* cum-vol tag on the H1 line (shared by /priced + /compare) */
+    .cm-h1-vol { float: right; font-family: var(--cm-font-mono); font-size: 12px; font-weight: 400;
+      color: var(--cm-fg-muted); letter-spacing: 0.04em; padding-top: 6px; }
+
+    .cm-src-editorial { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-fg-faint); }
+
+    /* ========================================
+       MOBILE (~390px) — additive guards only. Desktop layout untouched.
+       ======================================== */
+    @media (max-width: 640px) {
+      /* Bug 3/3b: SUB-NAV — wrap links, push SNAPSHOT to its own line (was margin-left:auto
+         overlap). Reduce side padding to match the rest of the mobile chrome (18px). */
+      /* Sub-nav is the ONLY pinned chrome on mobile (the global header scrolls away — see
+         Site.astro). Give it an opaque bg + z-index so content scrolls cleanly beneath it. */
+      .cm-subnav {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        /* honor the iPhone notch / dynamic-island safe area so the pinned sub-nav never tucks
+           the first line of content under the system chrome */
+        padding: max(9px, env(safe-area-inset-top)) 18px 9px;
+        max-width: 100%;
+        background: rgba(14,16,20,0.97);
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid var(--cm-border-hairline);
+      }
+      /* Cull SNAPSHOT on phones — low-value, and the chrome was crowding the title. */
+      .cm-subnav-snapshot { display: none; }
+
+      /* Bug 4: RCG tooltip — bound width to viewport so it can't push the page wide.
+         Keep it within the visible area regardless of which cell triggers it. */
+      .cm-tt::after {
+        max-width: min(90vw, 280px);
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      /* Bug 1: API-section raw JSON record scrolls inside its block, not the page. */
+      .cm-machine-json { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+      /* Bug 5: ensure both data tables and the resolution table scroll inside their wrap
+         at phone widths too (820px wrap rule already covers this; reassert max-width). */
+      .cm-table-wrap { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+
+      /* Catalyst grid (5 fixed cols) would otherwise blow out the viewport — let it scroll. */
+      .cm-catalyst-head,
+      .cm-catalyst-grid-row { min-width: 560px; }
+      .cm-catalyst-grid { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+
+      /* Threshold-explainer rule grid (220px + 1fr) collapses to a single column on phones */
+      .cm-signal-state3-rule { grid-template-columns: 1fr; gap: 6px; }
+
+      /* Cross-venue level strip cells shouldn't force a 190px min on narrow screens */
+      .cm-xv-level-cell { min-width: 0; flex: 1 1 100%; }
+
+      /* PROGRAMMATIC-ACCESS table (HTML/JSON/MCP/AGENT × desc × URL): the URL column
+         clipped on phones. Reflow each row to a stacked block — surface label, then
+         description, then the URL on its own line wrapping via overflow-wrap:anywhere
+         so URLs are fully readable (no horizontal scroll, nothing hidden). */
+      .cm-endpoints-table,
+      .cm-endpoints-table tbody,
+      .cm-endpoints-table tr,
+      .cm-endpoints-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .cm-endpoints-table tr {
+        border-bottom: 1px solid var(--cm-border-hairline);
+        padding: 8px 0;
+      }
+      .cm-endpoints-table tr:last-child { border-bottom: 0; }
+      .cm-endpoints-table td {
+        border: none !important;
+        padding: 2px 12px;
+      }
+      .cm-endpoints-table td.cm-fmt {
+        width: auto;
+        display: inline-block;
+        margin-bottom: 2px;
+      }
+      .cm-endpoint-url { overflow-wrap: anywhere; word-break: break-word; }
+
+      /* MARKETS-TABLE sort icon overlapped the volume-column text on phones. Drop the
+         sort affordance on mobile — a horizontally-scrolling table doesn't need it. */
+      .cm-sort-icon { display: none; }
+
+      /* Event H1: push the green [ RESOLVES … ] badge to its own line so the title wraps
+         cleanly (inline it crammed and produced a ragged break). */
+      .cm-h1-resolves { display: block; margin-left: 0; margin-top: 6px; }
+
+      /* MARKETS TABLE → 2-line split-ledger block per row (Gemini direction). No horizontal
+         scroll. Line 1: [distinguisher] ........ P(YES)  [grade]. Line 2 (muted): 24H · CUM · id.
+         Distinguisher = strike (ladder, data-date-axis=false) or resolve-date (multi-date
+         binary, data-date-axis=true); the redundant column + decorative bars are dropped. */
+      /* Markets table now uses fixed columns + ellipsis, so it fits 100% with no pan — let its
+         wrap be fully visible so the RCG tooltip can escape upward (overflow-x:hidden silently
+         forces overflow-y:auto, which was clipping the tooltip). Page pan is still backstopped by
+         .cm-v2 { overflow-x: clip }. */
+      .cm-table-wrap:has(.cm-mkt-table) { overflow: visible; }
+      .cm-table-wrap .cm-mkt-table { min-width: 0; }   /* override the 720px tablet min-width that clipped the right cells */
+      /* Micro-header legend: a static column guide above the first ledger row, since the
+         reflow drops the <thead>. Left = distinguisher (strike/date); right = P(YES) + RCG,
+         flush right so RCG sits over the grade chips. */
+      .cm-mkt-legend {
+        display: grid; grid-template-columns: 1fr 54px 30px; column-gap: 10px;
+        align-items: baseline; padding: 8px 2px 6px;
+        border-bottom: 1px solid var(--cm-border-rule);
+        font-family: var(--cm-font-mono); font-size: 9px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.13em;
+        color: var(--cm-fg-faint); user-select: none;
+      }
+      .cm-mkt-legend-axis { justify-self: start; }
+      .cm-mkt-legend-p { justify-self: end; }
+      .cm-mkt-legend-rcg { justify-self: center; }
+      /* Drop the venue-head divider on mobile so the legend's border is the SINGLE header/data
+         separator — otherwise the head-bottom + legend-bottom rules sit ~24px apart and read as
+         one double-thick line bracketing the micro-header (Gemini). */
+      .cm-venue-block-head { border-bottom: 0; }
+      /* The Resolution Architecture table keeps all its columns — scroll it inside its own box
+         (NOT clip) so the rightmost citation cell stays reachable and the page never pans. The
+         blanket overflow-x:hidden above was only ever meant for the reflowed markets table. */
+      .cm-table-wrap:has(.cm-res-table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .cm-mkt-table, .cm-mkt-table tbody { display: block; width: 100%; }
+      .cm-mkt-table thead, .cm-mkt-table colgroup { display: none; }
+      .cm-mkt-table .cm-td-bar { display: none; }
+      .cm-mkt-table[data-date-axis="true"]  .cm-td-q    { display: none; }
+      .cm-mkt-table[data-date-axis="false"] .cm-td-date { display: none; }
+      .cm-mkt-table tr {
+        display: grid;
+        grid-template-columns: 1fr 54px 30px;   /* fixed metric cols → legend headers sit dead-on */
+        align-items: baseline;
+        column-gap: 10px;
+        row-gap: 3px;
+        padding: 10px 2px;
+        border-bottom: 1px solid var(--cm-border-hairline);
+      }
+      .cm-mkt-table tr:last-child { border-bottom: 0; }
+      /* height:auto is critical — the desktop rule pins every td to a fixed 24px row height,
+         which on the 2-line grid padded each line to 24px (the airy gap between lines + the
+         empty space below a short single-row table). Collapse to content height. */
+      .cm-mkt-table td { padding: 0; border: none; white-space: nowrap; height: auto; line-height: 1.3; }
+      /* Line 1 — the clear core state */
+      .cm-mkt-table .cm-td-q,
+      .cm-mkt-table .cm-td-date {
+        grid-row: 1; grid-column: 1; justify-self: start;
+        min-width: 0; max-width: 100%; overflow: hidden;   /* allow the 1fr cell to shrink so the label can ellipsize */
+        font-weight: 700; color: var(--cm-fg-link); font-size: 12.5px;
+      }
+      /* strike rungs (≤1%) stay short; a lone binary's full question ellipsizes instead of
+         overflowing the grid column. width:auto defeats the desktop fixed 96px label width. */
+      .cm-mkt-table .cm-td-q .cm-td-label-text {
+        display: block; width: auto; max-width: 100%;
+        overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+      }
+      .cm-mkt-table .cm-td-p {
+        grid-row: 1; grid-column: 2; justify-self: end;
+        font-weight: 700; color: var(--cm-fg-primary); font-size: 12.5px;
+        font-variant-numeric: tabular-nums;   /* percent signs stack (Gemini: right-align price vault) */
+      }
+      .cm-mkt-table .cm-td-rcg { grid-row: 1; grid-column: 3; justify-self: center; }
+      /* Line 2 — muted telemetry: 24H at left, CUM aligned under the P(YES) column. The contract id
+         is dropped on phones (lowest value; it bloated col 3 and broke header alignment) — it stays
+         in the JSON / API / MCP / desktop surfaces. */
+      .cm-mkt-table .cm-td-num[data-sort-key="v24"]  { grid-row: 2; grid-column: 1; justify-self: start; }
+      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] { grid-row: 2; grid-column: 2 / 4; justify-self: end; }
+      .cm-mkt-table .cm-td-id { display: none; }
+      .cm-mkt-table .cm-td-num[data-sort-key="v24"],
+      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] { font-size: 10px; color: var(--cm-fg-faint); font-variant-numeric: tabular-nums; }
+      .cm-mkt-table .cm-td-num[data-sort-key="v24"] .cm-num::before  { content: "24H "; color: var(--cm-fg-faint); }
+      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] .cm-num::before { content: "CUM "; color: var(--cm-fg-faint); }
+    }

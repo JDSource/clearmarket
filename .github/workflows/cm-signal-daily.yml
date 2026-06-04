@@ -1,0 +1,103 @@
+# CM Signal — daily wire generation.
+#
+# Runs all four wire generators once a day, commits the new wire files, and lets Cloudflare Pages
+# rebuild from the push. This is the "15-30 wires/day, no human in the loop" mechanism. Cost is a
+# handful of Exa/FRED/Finnhub/CoinGecko lookups + a few Claude calls per day (~$15-60/mo).
+#
+# DOES NOT RUN until this file is on the GitHub default branch (i.e. after the deploy / hold-the-push
+# lift). Until then it's inert. Use the manual "Run workflow" button (workflow_dispatch) for a first
+# supervised test run before relying on the schedule.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   ANTHROPIC_API_KEY, EXA_API_KEY, FRED_API_KEY, FINNHUB_API_KEY  — the generator keys
+#   CM_DATA_BASE_URL — public base URL of the R2-hosted data dir holding universe-enriched-linked.json
+#                      + canon-pairs.json (the 50MB bundle is gitignored; re-uploaded on each monthly
+#                      re-enrich). The generators read these files; live prices come from the API.
+#   CLOUDFLARE_API_TOKEN + CLOUDFLARE_ACCOUNT_ID — for `wrangler pages deploy` (the Pages project is
+#                      direct-upload, not Git-connected, so this workflow rebuilds + deploys it).
+
+name: CM Signal — daily wires
+
+on:
+  schedule:
+    - cron: '0 8 * * *'      # 08:00 UTC ≈ 04:00 ET (PRD signal-generation cycle)
+  workflow_dispatch: {}        # manual trigger for supervised test runs
+
+permissions:
+  contents: write              # to commit the generated wire files
+
+concurrency:
+  group: cm-signal-daily
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --quiet requests python-dotenv anthropic
+
+      - name: Fetch the current data (bundle + canon pairs; prices kept fresh by the marks cron)
+        env:
+          BASE: ${{ secrets.CM_DATA_BASE_URL }}
+        run: |
+          mkdir -p web/data
+          curl -fsSL "$BASE/universe-enriched-linked.json" -o web/data/universe-enriched-linked.json
+          echo "bundle: $(du -h web/data/universe-enriched-linked.json | cut -f1)"
+          # canon-pairs.json drives cross_venue_divergence; if absent, that one generator skips gracefully
+          curl -fsSL "$BASE/canon-pairs.json" -o web/data/canon-pairs.json || echo "canon-pairs.json unavailable — divergence will skip"
+
+      - name: Generate wires (all four types; one failing never blocks the rest)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+        run: |
+          python3 gen_news_cycle.py --max 8 || echo "news_cycle skipped"
+          python3 gen_volume_spike.py --max 8 || echo "volume_spike skipped"
+          python3 gen_cross_venue_divergence.py --max 6 || echo "cross_venue_divergence skipped"
+          python3 gen_benchmark_drift.py --max 8 || echo "benchmark_drift skipped"
+
+      - name: Commit new wires (source history; exit early if none)
+        id: wires
+        run: |
+          git config user.name "cm-signal-bot"
+          git config user.email "bot@clearmarket.fyi"
+          git add web/src/content/signals/*.md
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "no new wires this run — skipping rebuild/deploy"
+          else
+            git commit -m "CM Signal: daily wires $(date -u +%F)"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The Pages project is DIRECT-UPLOAD (not Git-connected), so this workflow rebuilds the
+      # static site from the freshly-committed wires + the R2 bundle, then deploys it itself.
+      - name: Setup Node
+        if: steps.wires.outputs.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build the static site
+        if: steps.wires.outputs.changed == 'true'
+        working-directory: web
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.wires.outputs.changed == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy web/dist --project-name=clearmarket --branch=main --commit-dirty=true

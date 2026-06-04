@@ -1,0 +1,219 @@
+---
+/* MarketsTable — THE single metrics-table template, shared by every event page (priced,
+ * compare, ladder, …). Structure is FIXED here so it can never drift page to page; only the
+ * content (the venue groups + their rows) varies. Eight columns, always:
+ *   market · P(YES) · prob-bar · vol(24h) · vol(cum) · vol-bar · RCG · venue id
+ * Source / arbiter / resolution provenance live in the Resolution Architecture table, never here.
+ * One venue-block per venue: single-venue ladder → one block of N strikes; cross-venue → one
+ * block per venue. Bars scale against the max across ALL rows shown, so they compare across venues.
+ */
+import { RCG_TOOLTIP } from '../lib/labels';
+import type { Market } from '../lib/universe';
+
+type Item = { m: Market; mark: any };
+type Group = { venue: string; items: Item[] };
+const { groups, sectionLabel } = Astro.props as { groups: Group[]; sectionLabel?: string };
+
+const allItems = groups.flatMap((g) => g.items);
+const maxProb = Math.max(0.0001, ...allItems.map((it) => it.mark?.implied_probability ?? it.m.last_price ?? 0));
+const maxVol = Math.max(1, ...allItems.map((it) => it.mark?.volume_total_usd ?? it.m.volume_total_usd ?? 0));
+const label = sectionLabel ?? (allItems.length > 3 ? 'distribution · by resolution date' : 'markets · by resolution date');
+
+function fmtPct(p: number | null | undefined): string { return (p === null || p === undefined) ? '—' : `${(p * 100).toFixed(1)}%`; }
+function fmtVol(v: number | null | undefined): string {
+  if (v === null || v === undefined || v === 0) return '—';
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e4) return `$${(v / 1e3).toFixed(0)}K`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+const LIMIT = 80;
+function clip(s: string): string {
+  return s.length <= LIMIT ? s : s.slice(0, LIMIT).replace(/\s+\S*$/, '') + '…';
+}
+// Returns the row label as { primary, context }. For a basket market, primary = the venue's verbatim
+// OUTCOME (Kalshi yes_sub_title, in description_raw) and context = the venue's verbatim BASKET QUESTION,
+// rendered muted alongside. Nothing synthesized — both values are exactly what the platform returned.
+function rowParts(m: Market): { primary: string; context: string | null; fallback?: boolean } {
+  const q = (m.question_raw ?? '').trim();
+  const d = (m.description_raw ?? '').trim();
+  // Strike-ladder rung via the STRUCTURED threshold field — the reliable distinguisher.
+  // Point-bucket rungs phrase as "be 3.75%" with no above/below keyword, so parsing text
+  // alone collapses every rung to the same clipped question (the bug). Unit is inferred from
+  // the verbatim text ($ / %); ≥/≤ added only when direction or text implies a bound.
+  const thr = (m as any).threshold;
+  if (thr !== null && thr !== undefined && thr !== '' && !Number.isNaN(Number(thr))) {
+    const hay = `${q} ${d} ${String((m as any).direction ?? '')}`.toLowerCase();
+    const op = /(above|over|greater|more than|at least|>=)/.test(hay) ? '≥ '
+             : /(below|under|less than|fewer|at most|<=)/.test(hay) ? '≤ '
+             : '';
+    const n = Number(thr);
+    const utxt = `${q} ${d}`;
+    const unit = /%/.test(utxt) ? '%' : (/\$/.test(utxt) ? '$' : '');
+    // A threshold is only a meaningful STRIKE if a unit can be inferred (≥ 2.75%, ≤ $1,600).
+    // bps-denominated Fed-decision rungs carry a numeric threshold (-0.25, 0, 0.25) with no
+    // %/$ unit → a bare "-0.25" is cryptic. Fall through to the verbatim question distinguisher
+    // ("Cut 25bps", "Hike 0bps"), which reads clearly.
+    if (unit !== '') {
+      const val = unit === '$' ? `$${n.toLocaleString()}` : `${n.toLocaleString()}${unit}`;
+      return { primary: `${op}${val}`, context: null };
+    }
+  }
+  // text-phrased strike-ladder rung → "< 4.0%"
+  const range = q.match(/(below|above|less than|under|over|more than|greater than)\s+\$?([\d,.]+%?)/i);
+  if (range) { const op = /below|less than|under/i.test(range[1]) ? '<' : '>'; return { primary: `${op} ${range[2]}`, context: null }; }
+  // umbrella basket ("Who will IPO before 2027?") → verbatim outcome primary, verbatim question as context
+  const umbrella = /\bwho will\b|\bwhich (company|team|country)\b/i.test(q);
+  const cleanDesc = d && d.split(/\s+/).length <= 3 && !/before|after|starts?|ends?|\b20\d\d\b/i.test(d);
+  if (umbrella && cleanDesc) return { primary: d, context: q };
+  if (!q && !d) return { primary: '—', context: null };
+  return { primary: clip((q || d).replace(/\?$/, '')), context: null, fallback: true };
+}
+// Multi-outcome events (e.g. "Fed Hike 0bps / Cut 25bps / Cut >25bps", all one resolve date) carry
+// rows whose questions share a long prefix + suffix and differ only in the middle. Right-truncation
+// hides that middle — so strip the shared affixes across the group and surface the distinguisher.
+function tokenize(s: string): string[] { return s.trim().split(/\s+/).filter(Boolean); }
+function commonAffix(qs: string[]): { pre: number; suf: number } {
+  if (qs.length < 2) return { pre: 0, suf: 0 };
+  const toks = qs.map(tokenize);
+  const minLen = Math.min(...toks.map((t) => t.length));
+  let pre = 0; while (pre < minLen && toks.every((t) => t[pre] === toks[0][pre])) pre++;
+  let suf = 0; while (suf < minLen - pre && toks.every((t) => t[t.length - 1 - suf] === toks[0][toks[0].length - 1 - suf])) suf++;
+  return { pre, suf };
+}
+function stripAffix(q: string, pre: number, suf: number): string {
+  const t = tokenize(q);
+  const mid = t.slice(pre, t.length - suf).join(' ').replace(/\?$/, '').trim();
+  return mid.charAt(0).toUpperCase() + mid.slice(1);
+}
+function truncId(id: string | null | undefined): string {
+  if (!id) return '—';
+  if (id.length <= 18) return id;
+  if (id.startsWith('0x')) return `${id.slice(0, 8)}…${id.slice(-4)}`;
+  return `${id.slice(0, 12)}…${id.slice(-3)}`;
+}
+function fmtResolve(d: string | null | undefined): string { return d ? d.slice(0, 10) : '—'; }
+function epochOf(d: string | null | undefined): number { return d ? new Date(d).getTime() : 0; }
+// dimmed when every row shares one resolution date (grounding); full-weight when it's the axis
+const resolveSet = new Set(allItems.map((it) => fmtResolve(it.m.resolve_at ?? (it.m as any).close_at)).filter((s) => s !== '—'));
+// date is the row axis when resolution dates vary (multi-date binary) OR when there is a single
+// non-ladder market whose verbatim question just repeats the H1 — show the (short) date instead
+// of the redundant, overflow-prone question label on mobile.
+const anyThreshold = allItems.some((it) => (it.m as any).threshold != null);
+const dateIsAxis = resolveSet.size > 1 || (allItems.length === 1 && !anyThreshold && resolveSet.size === 1);
+// A threshold only reads as a STRIKE when its market text carries a unit (%/$). Unitless
+// thresholds (bps-denominated Fed rungs) are really an outcome set — label them accordingly.
+const ladderUnitful = allItems.some((it) => /[%$]/.test(`${it.m.question_raw ?? ''} ${it.m.description_raw ?? ''}`));
+// What the rows are distinguished by — drives the mobile legend's left label.
+const axisLabel = dateIsAxis ? 'Resolution Date' : ((anyThreshold && ladderUnitful) ? 'Target Strike' : 'Outcome');
+---
+<section id="markets" class="cm-section">
+  <div class="cm-section-h">{label}</div>
+  {groups.map((g) => {
+    const grpAffix = commonAffix(g.items.map((it) => (it.m.question_raw ?? '').trim()));
+    return (
+    <div class="cm-venue-block">
+      <div class="cm-venue-block-head">
+        <span class="cm-venue-block-name">{g.venue}</span>
+        <span class="cm-venue-block-count">{g.items.length} {g.items.length === 1 ? 'market' : 'markets'}</span>
+      </div>
+      <div class="cm-table-wrap">
+        {/* Mobile-only micro-header: the split-ledger rows drop the <thead>, so this static
+            legend anchors the vertical columns (distinguisher · P(YES) · RCG). Desktop hides it. */}
+        <div class="cm-mkt-legend" aria-hidden="true">
+          <span class="cm-mkt-legend-axis">{axisLabel}</span>
+          <span class="cm-mkt-legend-p">P(YES)</span>
+          <span class="cm-mkt-legend-rcg">RCG</span>
+        </div>
+        <table class="cm-mkt-table cm-mkt-table-discrete" data-date-axis={String(dateIsAxis)}>
+          <colgroup>{[25, 11, 11, 7, 10, 10, 7, 6, 13].map((w) => <col style={`width:${w}%`} />)}</colgroup>
+          <thead>
+            <tr>
+              <th scope="col" class="cm-th-q cm-th-reset" data-sort-reset title="Reset to default order">market</th>
+              <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="date">resolves<span class="cm-sort-icon" aria-hidden="true"></span></th>
+              <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="p">P(YES)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+              <th scope="col" class="cm-th-bar"></th>
+              <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="v24">vol (24h)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+              <th scope="col" class="cm-th-num cm-th-sortable" data-sort-key="vcum">vol (cum)<span class="cm-sort-icon" aria-hidden="true"></span></th>
+              <th scope="col" class="cm-th-bar"></th>
+              <th scope="col" class="cm-th-rcg">RCG</th>
+              <th scope="col" class="cm-th-id">venue id</th>
+            </tr>
+          </thead>
+          <tbody>
+            {g.items.map(({ m, mark }, rowIdx) => {
+              const p = mark?.implied_probability ?? m.last_price ?? null;
+              const vol = mark?.volume_total_usd ?? m.volume_total_usd ?? null;
+              const v24 = mark?.volume_24h_usd ?? m.volume_24h_usd ?? null;
+              const probPct = p !== null ? Math.min(100, (p / maxProb) * 100) : 0;
+              const volPct = vol ? Math.min(100, Math.sqrt(vol / maxVol) * 100) : 0;
+              const gl = ((m.resolution_clarity_grade ?? 'C') as string).toLowerCase();
+              const rd = m.resolve_at ?? (m as any).close_at ?? null;
+              const rl = rowParts(m);
+              // For generic-fallback rows in a multi-row group, replace the shared-prefix question
+              // with just the differing middle (e.g. "Hike rates by 0bps") so the distinguisher
+              // isn't the part that gets truncated.
+              let primary = rl.primary;
+              if (rl.fallback && (grpAffix.pre + grpAffix.suf) >= 2) {
+                const mid = stripAffix((m.question_raw ?? '').trim(), grpAffix.pre, grpAffix.suf);
+                if (mid && mid.length >= 2) primary = mid;
+              }
+              return (
+                <tr data-original-index={rowIdx}>
+                  <td class="cm-td-q" title={m.question_raw ?? ''}><span class="cm-td-label-text">{rl.context
+                    ? <Fragment><span class="cm-lbl-primary">{primary}</span><span class="cm-lbl-context"> · {rl.context}</span></Fragment>
+                    : primary}</span></td>
+                  <td class={`cm-td-num cm-td-date${dateIsAxis ? '' : ' cm-td-date-uniform'}`} data-sort-key="date" data-sort-value={epochOf(rd)}><span class="cm-num">{fmtResolve(rd)}</span></td>
+                  <td class="cm-td-num cm-td-p" data-sort-key="p" data-sort-value={p ?? ''}><span class="cm-num">{fmtPct(p)}</span></td>
+                  <td class="cm-td-bar">{p !== null && <div class="cm-bar-track"><div class="cm-bar-fill cm-bar-prob" style={`width:${probPct}%`}></div></div>}</td>
+                  <td class="cm-td-num" data-sort-key="v24" data-sort-value={v24 ?? ''}><span class="cm-num">{fmtVol(v24)}</span></td>
+                  <td class="cm-td-num" data-sort-key="vcum" data-sort-value={vol ?? ''}><span class="cm-num">{fmtVol(vol)}</span></td>
+                  <td class="cm-td-bar">{vol ? <div class="cm-bar-track"><div class="cm-bar-fill cm-bar-vol" style={`width:${volPct}%`}></div></div> : null}</td>
+                  <td class="cm-td-rcg"><a href="#resolution" class={`cm-rcg-chip cm-rcg-${gl} cm-tt`} data-tt={RCG_TOOLTIP[(m.resolution_clarity_grade ?? 'C') as 'A'|'B'|'C']} aria-label={RCG_TOOLTIP[(m.resolution_clarity_grade ?? 'C') as 'A'|'B'|'C']}>{(m.resolution_clarity_grade ?? 'C')}</a></td>
+                  <td class="cm-td-id"><code class="cm-mono-id cm-copy" data-copy={m.platform_market_id ?? ''} aria-label={`${m.platform_market_id} — click to copy`}>{truncId(m.platform_market_id)}</code></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    );
+  })}
+</section>
+
+<script is:inline>
+  // column sort (P(YES) / vol) — per table; the "market" header resets to default order.
+  // Lives with the table so every page that renders MarketsTable gets sorting for free.
+  document.querySelectorAll('.cm-mkt-table').forEach((table) => {
+    const tbody = table.querySelector('tbody'); if (!tbody) return;
+    const ths = table.querySelectorAll('th.cm-th-sortable');
+    const sortBy = (key, dir) => {
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const av = a.querySelector('td[data-sort-key="' + key + '"]')?.getAttribute('data-sort-value');
+        const bv = b.querySelector('td[data-sort-key="' + key + '"]')?.getAttribute('data-sort-value');
+        const an = av === '' || av == null ? NaN : parseFloat(av);
+        const bn = bv === '' || bv == null ? NaN : parseFloat(bv);
+        if (isNaN(an) && isNaN(bn)) return 0; if (isNaN(an)) return 1; if (isNaN(bn)) return -1;
+        return dir === 'asc' ? an - bn : bn - an;
+      });
+      rows.forEach((r) => tbody.appendChild(r));
+    };
+    ths.forEach((th) => th.addEventListener('click', () => {
+      const key = th.getAttribute('data-sort-key');
+      const next = th.getAttribute('data-sort-active') === 'desc' ? 'asc' : 'desc';
+      ths.forEach((t) => t.removeAttribute('data-sort-active'));
+      th.setAttribute('data-sort-active', next);
+      sortBy(key, next);
+    }));
+    const reset = table.querySelector('th[data-sort-reset]');
+    if (reset) reset.addEventListener('click', () => {
+      ths.forEach((t) => t.removeAttribute('data-sort-active'));
+      Array.from(tbody.querySelectorAll('tr'))
+        .sort((a, b) => (+a.getAttribute('data-original-index')) - (+b.getAttribute('data-original-index')))
+        .forEach((r) => tbody.appendChild(r));
+    });
+  });
+</script>

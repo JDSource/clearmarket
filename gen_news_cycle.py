@@ -182,7 +182,16 @@ def main():
         sys.exit("Missing EXA_API_KEY or ANTHROPIC_API_KEY in .env")
 
     bundle = json.loads(BUNDLE.read_text())
-    events = [e for e in bundle["events"] if e.get("published") is not False]
+    # freshness: drop fully-expired events (latest market resolve date already past) so a stale
+    # snapshot never yields a wire about a dead market.
+    _today = now_utc().date().isoformat()
+    _ev_latest = {}
+    for _m in bundle["markets"]:
+        _eid, _ra = _m.get("event_id"), (_m.get("resolve_at") or _m.get("close_at") or "")[:10]
+        if _eid and _ra:
+            _ev_latest[_eid] = max(_ev_latest.get(_eid, ""), _ra)
+    events = [e for e in bundle["events"] if e.get("published") is not False
+              and _ev_latest.get(e["event_id"], _today) >= _today]
     mkt_by_id = {m["market_id"]: m for m in bundle["markets"]}
     # event token index for mechanical prefilter
     ev_tokens = {e["event_id"]: tokens(e.get("question", "") + " " + " ".join(e.get("tags") or [])) for e in events}
@@ -293,8 +302,9 @@ def main():
         '"story_summary":"<one sentence: the news catalyst>",'
         '"classification":"pre_news|concurrent|lagging",'
         '"event_label":"<for LADDER events ONLY: a clean metric name, e.g. \'June 2026 Fed funds upper bound\'; omit for binary events>",'
-        '"bullets":["3-5 sentences; bullet 1 = the market read (venue + probability/implied range), '
-        'bullets 2-3 = the news catalyst, bullets 4-5 = implication/venue/resolution"],'
+        '"bullets":["3-4 SHORT wire bullets, each ONE tight line (<=20 words), fragments OK; '
+        'bullet 1 = the market read (venue + probability/implied range), bullet 2 = the news catalyst, '
+        'bullet 3 = implication or cross-market read, bullet 4 (optional) = resolution mechanic"],'
         '"pm_note":"<one sentence: venue coverage / market response>"}]}'
     )
     user = (
@@ -323,6 +333,8 @@ def main():
         "using the strike probabilities provided. Set event_label to a clean metric name. GOOD headline: "
         "'June Fed funds upper bound seen at 3.50-3.75%: Kalshi'. GOOD bullet 1: 'Kalshi pins the June 2026 "
         "Fed funds upper bound in the 3.50-3.75% range, pricing 96% above 3.50% but only 2% above 3.75%.'\n"
+        "- BREVITY (newswire, not research note): each bullet is ONE tight line, <=20 words, scannable. "
+        "No multi-clause analytical sentences, no semicolon-chained reasoning. Punchy. 3-4 bullets max.\n"
         "- BULLET 1 (binary events): the pricing lede (venue + probability as a percent, from the provided price).\n"
         "- BULLET 2: connect the news to the price in PLAIN language - state whether the market is consistent "
         "with the news or at odds with it. BANNED words: 'fade'/'fading' (jargon). BANNED claims: that the "

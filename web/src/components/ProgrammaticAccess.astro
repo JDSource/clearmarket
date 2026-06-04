@@ -1,0 +1,64 @@
+---
+/* ProgrammaticAccess — the four-surface access table + provenance note + raw JSON record.
+ * Shared across all event templates. The agent/developer surface from the original design.
+ * Reuses cm-event.css classes (cm-endpoints-table / cm-provenance-note / cm-json-block).
+ */
+import { SPECIMEN_GENERATED_AT, type Event, type Market } from '../lib/universe';
+const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+
+const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
+const jsonURL = `https://api.clearmarket.fyi/v1/events/${event.slug}`;
+
+const venues = Array.from(new Set(markets.map((m) => m.platform)));
+const primary = markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0];
+let cumVol = 0; for (const m of markets) cumVol += m.volume_total_usd ?? 0;
+
+function formatSnapshot(d: string): string { return d.slice(0, 10); }
+function colorizeJson(obj: unknown): string {
+  return JSON.stringify(obj, null, 2)
+    .replace(/("[^"]+")\s*:/g, '<span class="t-key">$1</span>:')
+    .replace(/: (".*?")/g, ': <span class="t-str">$1</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="t-num">$1</span>');
+}
+
+const machineRecord = {
+  event_id: event.event_id,
+  slug: event.slug,
+  question: event.question,
+  category: event.category,
+  tags: event.tags,
+  venues_covered: venues,
+  market_count: markets.length,
+  cumulative_volume_usd: Math.round(cumVol),
+  resolution_clarity_grade: (primary as any)?.resolution_clarity_grade ?? null,
+  rcg_score: (primary as any)?.rcg_score ?? null,
+  rcg_caps: (primary as any)?.rcg_caps ?? [],
+  resolution_source: primary?.resolution_source ?? null,
+  resolution_source_url: primary?.source_citation ?? null,
+  arbitration_model: primary?.arbitration_model ?? null,
+  proposer_model: primary?.resolution_proposer ?? null,
+  field_provenance: {
+    question: { source: 'clearmarket_editorial' },
+    tags: { source: 'clearmarket_editorial', ai_drafted: true },
+    resolution_clarity_grade: { source: 'derived', method: 'rcg_v2_7factor' },
+    venues_covered: { source: 'derived' },
+  },
+};
+---
+<section id="api" class="cm-section cm-section-machine">
+  <div class="cm-section-h">programmatic access · four surfaces, same payload</div>
+  <p class="cm-section-summary">AI grounded search reads embedded JSON-LD in HTML. Developers query REST. Agentic AI clients (Claude Desktop, Cursor) call MCP tools. AI crawlers index via <code class="cm-inline-code">/llms.txt</code>. Same canonical record at every surface.</p>
+  <table class="cm-endpoints-table">
+    <tbody>
+      <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
+      <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}.json`} rel="nofollow"><code class="cm-endpoint-url">{jsonURL}.json</code></a></td></tr>
+      <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.get_event("{event.slug}")</code></td></tr>
+      <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
+    </tbody>
+  </table>
+  <p class="cm-provenance-note">Snapshot {formatSnapshot(SPECIMEN_GENERATED_AT)}. Venue data via Kalshi + Polymarket APIs. Editorial fields (<code>tags</code>, <code>editorial_notes</code>) are ClearMarket-drafted with AI assistance under editorial review. Derived fields (<code>venues_covered</code>, <code>resolution_clarity_grade</code>, <code>rcg_score</code>) computed at serve time. Full per-field map in the JSON record under <code>field_provenance</code>.</p>
+  <div class="cm-json-block">
+    <div class="cm-json-block-head"><span class="cm-json-block-label">raw JSON record · same payload returned by REST endpoint</span></div>
+    <pre class="cm-machine-json"><code set:html={colorizeJson(machineRecord)}></code></pre>
+  </div>
+</section>

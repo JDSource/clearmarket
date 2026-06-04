@@ -1,0 +1,145 @@
+---
+/* Cross-venue COMPARE page — lean, unified single table.
+ * Per Gemini #1: ONE table, venue-per-row, with source/arbiter/grade merged inline
+ * (no stacked price-table + resolution-table). Per Gemini #2: jargon mapped via labels.ts.
+ * Keeps the lean prose summary banner (matching the single-venue verdict card style) —
+ * NOT a key-value grid. When venues resolve differently, the per-row GRADE column carries
+ * the divergence; the banner states it in one plain sentence.
+ */
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import '../../styles/cm-event.css';
+import WireItems from '../../components/WireItems.astro';
+import VerbatimRules from '../../components/VerbatimRules.astro';
+import ResolutionStrip from '../../components/ResolutionStrip.astro';
+import MarketsTable from '../../components/MarketsTable.astro';
+import ProgrammaticAccess from '../../components/ProgrammaticAccess.astro';
+import {
+  getMarketsBySig, getMarkByMarketId, getEventById, getCanonPairs,
+  SPECIMEN_GENERATED_AT, SCHEMA_VERSION, type Market, type CanonPair,
+} from '../../lib/universe';
+
+export async function getStaticPaths() {
+  // Data-driven off canon-pairs.json (merge_canon.py): clean binary cross-venue claims.
+  return getCanonPairs().map((u) => ({ params: { slug: u.slug }, props: { u } }));
+}
+const { u } = Astro.props as { u: CanonPair };
+
+// Group the claim's markets by venue → one venue-block per venue in the shared MarketsTable.
+// Single market per venue (NYC) → 1 row per block; a ladder on each venue → N rows per block.
+type Item = { m: Market; mark: any };
+const sigMarkets = getMarketsBySig(u.claim_sig);
+const ORDER: ('kalshi' | 'polymarket')[] = ['kalshi', 'polymarket'];
+const marketGroups = ORDER
+  .map((platform) => {
+    const items: Item[] = sigMarkets
+      .filter((m) => m.platform === platform)
+      .map((m) => ({ m, mark: getMarkByMarketId(m.market_id) }));
+    return items.length ? { venue: platform, items } : null;
+  })
+  .filter((g): g is { venue: 'kalshi' | 'polymarket'; items: Item[] } => g !== null);
+
+const allMarkets = marketGroups.flatMap((g) => g.items.map((it) => it.m));
+const resolveDates = [...new Set(allMarkets.map((m) => (m.resolve_at ?? m.close_at ?? '').slice(0, 10)).filter(Boolean))].sort();
+const earliest = resolveDates[0] ?? null;
+const latest = resolveDates[resolveDates.length - 1] ?? null;
+const multiDate = resolveDates.length > 1;
+const daysTo = earliest ? Math.ceil((new Date(earliest).getTime() - new Date(SPECIMEN_GENERATED_AT).getTime()) / 86400000) : null;
+const resolveTail = multiDate
+  ? ` · resolves ${earliest.slice(0, 7)} – ${latest!.slice(0, 7)}`
+  : (daysTo !== null && daysTo >= 0 ? ` · resolves ${fmtDate(earliest)} (${daysTo}D)` : '');
+const canonicalURL = `https://clearmarket.fyi/compare/${u.slug}/`;
+// shim event for the shared components (they expect an Event with markets)
+const ev0 = allMarkets[0]?.event_id ? getEventById(allMarkets[0].event_id) : undefined;
+function fmtDate(d: string | null): string { return d ? d.slice(0, 10) : '—'; }
+---
+<Site title={`${u.title} · Kalshi vs Polymarket · ClearMarket`} description={u.claim} canonical={canonicalURL}>
+  <nav class="cm-subnav" aria-label="Sections" slot="subnav">
+    <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
+    <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>
+    <a href="#signal" data-section="signal" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Signal</a>
+    <a href="#api" data-section="api" class="cm-subnav-link"><span class="cm-active-mark">▎</span>API</a>
+    <span class="cm-subnav-snapshot">snapshot <span class="cm-dot-positive">●</span> {fmtDate(SPECIMEN_GENERATED_AT)}</span>
+  </nav>
+
+  <article class="cm-v2" data-cm-claim-sig={u.claim_sig}>
+    <h1 class="cm-h1">{u.title}<span class="cm-h1-resolves">  [ {u.horizon}{resolveTail} ]</span></h1>
+
+    {/* BORDERLESS STATUS TICKER — flush under the title (meta strip removed; vol moved to H1) */}
+    <ResolutionStrip markets={allMarkets} />
+
+    {/* claim caption, then the one shared markets-table template (per-venue blocks) */}
+    <p class="cmp-claim">{u.claim}</p>
+    <MarketsTable groups={marketGroups} sectionLabel="markets · by venue" />
+
+    {ev0 && <VerbatimRules event={ev0} markets={allMarkets} />}
+    {ev0 && <WireItems event={ev0} />}
+    {ev0 && <ProgrammaticAccess event={ev0} markets={allMarkets} />}
+
+    <div class="cm-event-foot">
+      <span><span class="cm-meta-l">snapshot</span> <code>{SPECIMEN_GENERATED_AT}</code></span>
+      <span><span class="cm-meta-l">schema</span> <code>{SCHEMA_VERSION}</code></span>
+      <span><span class="cm-meta-l">claim_sig</span> <code>{u.claim_sig}</code></span>
+      <a href="/events/">all events →</a>
+    </div>
+
+    <script is:inline>
+      document.querySelectorAll('.cm-copy').forEach((el) => {
+        el.addEventListener('click', async (ev) => {
+          const t = ev.currentTarget;
+          try { await navigator.clipboard.writeText(t.dataset.copy || t.textContent || ''); t.classList.add('cm-copied'); setTimeout(() => t.classList.remove('cm-copied'), 1200); } catch (_) {}
+        });
+      });
+      (function () {
+        const links = Array.from(document.querySelectorAll('.cm-subnav-link'));
+        const map = {};
+        links.forEach((l) => { const s = document.getElementById(l.getAttribute('data-section')); if (s) map[l.getAttribute('data-section')] = { link: l, sec: s }; });
+        const obs = new IntersectionObserver((entries) => {
+          const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (!vis.length) return;
+          links.forEach((l) => l.classList.remove('cm-subnav-active'));
+          const id = vis[0].target.id;
+          if (map[id]) map[id].link.classList.add('cm-subnav-active');
+        }, { rootMargin: '-120px 0px -65% 0px', threshold: 0 });
+        Object.values(map).forEach(({ sec }) => obs.observe(sec));
+      })();
+    </script>
+  </article>
+</Site>
+
+<style>
+  .cmp-table td.cmp-src, .cmp-table td.cmp-arb {
+    font-family: var(--cm-font-sans); font-size: 12px; color: var(--cm-fg-secondary);
+    white-space: normal; line-height: 1.35;
+  }
+  /* a clean named source reads normally; a placeholder/absent source is visibly demoted
+     so "unnamed" / "subjective" can never be mistaken for a real source-of-record */
+  .cmp-src-named { color: var(--cm-fg-secondary); }
+  .cmp-src-placeholder, .cmp-src-subjective {
+    color: var(--cm-fg-faint); font-style: italic; font-family: var(--cm-font-mono); font-size: 11px;
+  }
+  .cm-section-flush { margin-top: 0; }
+  .cm-h1-vol {
+    float: right; font-family: var(--cm-font-mono); font-size: 12px; font-weight: 400;
+    color: var(--cm-fg-muted); letter-spacing: 0.04em; padding-top: 6px;
+  }
+  .cmp-claim {
+    font-family: var(--cm-font-sans); font-size: 13px; color: var(--cm-fg-secondary);
+    margin: 0 0 14px;
+  }
+  /* per-venue rationale row — sits under each venue's data row, no bottom border between them */
+  .cmp-table tr.cmp-row-main td { border-bottom: 0; }
+  .cmp-table tr.cmp-row-why td { padding-top: 2px; padding-bottom: 12px; }
+  .cmp-why {
+    font-family: var(--cm-font-sans); font-size: 12px; line-height: 1.45; color: var(--cm-fg-muted);
+  }
+  .cmp-why-grade {
+    font-family: var(--cm-font-mono); font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; margin-right: 8px;
+  }
+  .cmp-why-a { color: var(--cm-positive); }
+  .cmp-why-b { color: var(--cm-fg-secondary); }
+  .cmp-why-c { color: var(--cm-divergence); }
+  /* gap line is neutral now — a fact, not a flag */
+  .cmp-table + .cm-xv-gap .cm-xv-gap-val { color: var(--cm-fg-secondary); }
+</style>

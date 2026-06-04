@@ -1,0 +1,63 @@
+---
+/* RcgStrip — thin Resolution Clarity Grade strip(s). One line PER VENUE:
+ *   [A] KALSHI · NYC · Resolves against a named source, mechanical settlement · rules › · method ›
+ * Field-dense for quick scan, ~matches the most-traded strip width. Each line carries the
+ * grade badge, venue, abbreviated source name, the one-line rationale, and inline links to
+ * the verbatim rules (#rules) and /methodology. Multi-venue = stacked strips.
+ */
+import type { Event, Market } from '../lib/universe';
+import { rationaleFor, sourceLabel } from '../lib/labels';
+const { markets } = Astro.props as { event?: Event; markets: Market[] };
+
+const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
+const lines = VENUES.map((v) => {
+  const rep = markets.filter((m) => m.platform === v)[0];
+  const r = rationaleFor(rep as any);
+  const src = sourceLabel(rep?.resolution_source, rep?.source_citation);
+  // short source: drop "Undefined / Ambiguous" verbosity to "no source"
+  const srcShort = src === 'Undefined / Ambiguous' ? 'no source' : src;
+  const score = (rep as any)?.rcg_score ?? null;
+  return { venue: v, ...r, src: srcShort, score };
+});
+---
+<div class="rs-wrap">
+  {lines.map((l) => (
+    <div class={`rs rs-${l.grade.toLowerCase()}`}>
+      <span class="rs-k">resolution grade</span>
+      <span class={`rs-badge rs-badge-${l.grade.toLowerCase()}`}>{l.grade}</span>
+      {lines.length > 1 && <span class="rs-venue">{l.venue}</span>}
+      <span class="rs-src">{l.src}</span>
+      <span class="rs-why">{l.text}</span>
+      {l.score !== null && <span class="rs-score">{l.score}/100</span>}
+      <a class="rs-link" href="#rules">rules ›</a>
+      <a class="rs-link" href="/methodology">method ›</a>
+    </div>
+  ))}
+</div>
+
+<style>
+  .rs-wrap { margin: 0 0 20px; display: flex; flex-direction: column; gap: 4px; }
+  .rs {
+    display: flex; align-items: baseline; gap: 10px;
+    max-width: 860px; padding: 6px 12px;
+    border: 1px solid var(--cm-border-hairline); border-left-width: 3px; background: var(--cm-bg-surface);
+    font-family: var(--cm-font-mono); font-size: 12px; white-space: nowrap; overflow: hidden;
+  }
+  .rs-a { border-left-color: var(--cm-positive); }
+  .rs-b { border-left-color: var(--cm-border-emphasis); }
+  .rs-c { border-left-color: var(--cm-divergence); }
+  .rs-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--cm-fg-faint); flex-shrink: 0; }
+  .rs-badge {
+    font-weight: 700; font-size: 12px; width: 18px; height: 18px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid;
+  }
+  .rs-badge-a { color: var(--cm-positive); border-color: var(--cm-positive); }
+  .rs-badge-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+  .rs-badge-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
+  .rs-venue { text-transform: uppercase; letter-spacing: 0.04em; color: var(--cm-fg-primary); flex-shrink: 0; }
+  .rs-src { color: var(--cm-fg-secondary); flex-shrink: 0; }
+  .rs-why { font-family: var(--cm-font-sans); color: var(--cm-fg-muted); overflow: hidden; text-overflow: ellipsis; }
+  .rs-score { color: var(--cm-fg-faint); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .rs-link { color: var(--cm-fg-link); text-decoration: none; flex-shrink: 0; font-size: 11px; }
+  .rs-link:hover { text-decoration: underline; }
+</style>

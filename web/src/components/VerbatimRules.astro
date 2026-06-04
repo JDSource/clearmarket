@@ -1,0 +1,138 @@
+---
+/* VerbatimRules — the #resolution section. Two parts:
+ *   1. RESOLUTION ARCHITECTURE grid — one row per venue: proposer / source / citation /
+ *      source-type / arbitration / class / analyst notes (jargon mapped via labels.ts).
+ *   2. VERBATIM RULES — the platform's exact resolution-rules text per venue.
+ * The grid is the structured-governance differentiator; the verbatim text is the proof.
+ */
+import type { Event, Market } from '../lib/universe';
+import { arbiterLabel, proposerLabel, isPlaceholderCitation } from '../lib/labels';
+const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+
+const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
+const blocks = VENUES.map((v) => {
+  const vm = markets.filter((m) => m.platform === v);
+  const rep = vm[0];
+  return {
+    venue: v,
+    count: vm.length,
+    rules: rep?.resolution_rules_raw ?? null,
+    source: rep?.resolution_source ?? null,
+    sourceUrl: rep?.source_citation ?? null,
+    sourceType: (rep as any)?.resolution_source_type ?? (rep as any)?.source_type ?? null,
+    underlyingRef: rep?.underlying_reference ?? null,
+    proposer: rep?.resolution_proposer ?? null,
+    arbiter: rep?.arbitration_model ?? null,
+    regClass: ((rep as any)?.regulatory_class ?? 'Other') as string,
+    notes: (rep as any)?.analyst_notes ?? null,
+    commitment: (rep as any)?.source_commitment ?? null,
+    hedge: (rep as any)?.source_hedge_text ?? null,
+    provenance: (rep as any)?.resolution_source_provenance ?? null,
+  };
+});
+// The LITERAL platform field + raw value, no normalizing. Maps our provenance tag back to the
+// actual platform API field, and shows the verbatim value the platform returned (Kalshi's
+// settlement_sources name, or the URL literally present in Polymarket's description) — never our
+// shortened "bea.gov" or our "uncommitted" label (those are our classifications, in the table above).
+function realUrl(u: string | null): string | null {
+  return u && !isPlaceholderCitation(u) ? u : null;
+}
+function verbatimSource(b: any): { field: string; val: string; href: string | null } {
+  const u = realUrl(b.sourceUrl);
+  if (b.provenance === 'kalshi_series_settlement_sources' && b.source)
+    return { field: 'settlement_sources', val: `"${b.source}"`, href: u };
+  if (b.provenance === 'polymarket_description' && u)
+    return { field: 'description', val: u, href: u };
+  if (b.provenance === 'polymarket_description' && b.source)
+    return { field: 'description', val: `"${b.source}"`, href: null };
+  if (b.commitment === 'uncommitted')
+    return { field: 'resolutionSource', val: '∅  no committed source — see rules text above', href: null };
+  if (b.source) return { field: 'resolution_source', val: `"${b.source}"`, href: u };
+  return { field: 'resolutionSource', val: '∅  none returned', href: null };
+}
+---
+<section id="resolution" class="vr-sec">
+  <div class="cm-section-h">resolution architecture</div>
+  <div class="cm-table-wrap">
+    <table class="cm-res-table">
+      <thead>
+        <tr>
+          <th scope="col">venue</th>
+          <th scope="col" class="cm-tt cm-th-help" data-tt="Who proposes the resolution answer. Exchange Staff: venue employees. Whitelisted Proposers: approved oracle proposers.">proposer</th>
+          <th scope="col" class="cm-tt cm-th-help" data-tt="The venue's committed resolution source. A named authority = committed. 'uncommitted' = the venue gave only illustrative/placeholder language (e.g. 'a consensus of credible reporting') without naming a definitive source. 'not provided' = no source language at all.">source</th>
+          <th scope="col" class="cm-tt cm-th-help" data-tt="Direct URL to the stated source. 'not provided' = no link given, or only a venue homepage (not a real citation).">citation</th>
+          <th scope="col" class="cm-tt cm-th-help" data-tt="Dispute-resolution path. Kalshi Staff: internal review, CFTC backstop. Optimistic Oracle (UMA): on-chain token-holder vote on dispute.">arbitration</th>
+          <th scope="col" class="cm-tt cm-th-help" data-tt="Regulatory class. DCM: CFTC-regulated Designated Contract Market. DeFi: token-vote-arbitrated protocol.">class</th>
+          <th scope="col">analyst notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {blocks.map((b) => (
+          <tr data-cm-venue={b.venue}>
+            <td class="cm-res-td-venue">{b.venue}</td>
+            <td>{b.proposer ? <code class="cm-code-pill">{proposerLabel(b.proposer)}</code> : '—'}</td>
+            <td class="cm-res-td-src">{
+              b.source ? <span class="cm-verbatim">{b.source}</span>
+              : b.commitment === 'uncommitted'
+                ? <span class="cm-dd-uncommitted cm-tt" data-tt={b.hedge ? `Venue named no definitive source — illustrative/placeholder language only: “${b.hedge}”` : 'Venue named candidate sources but did not commit to a definitive one (illustrative / placeholder language). See verbatim rules below.'}>uncommitted</span>
+                : <span class="cm-dd-empty">not provided</span>
+            }</td>
+            <td>{b.sourceUrl && !isPlaceholderCitation(b.sourceUrl) ? <a class="cm-res-link" href={b.sourceUrl} rel="noopener nofollow">link</a> : <span class="cm-dd-empty">not provided</span>}</td>
+            <td>{b.arbiter ? <code class="cm-code-pill">{arbiterLabel(b.arbiter)}</code> : '—'}</td>
+            <td><code class={`cm-class-chip cm-class-${b.regClass.toLowerCase()}`}>{b.regClass}</code></td>
+            <td class="cm-res-td-notes">{b.notes ?? <span class="cm-dd-empty">—</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="vr-rules-h">verbatim rules</div>
+  {blocks.map((b) => (
+    <div class="vr-block">
+      <div class="vr-head">
+        <span class="vr-venue">{b.venue}</span>
+        <span class="vr-meta">{b.count} {b.count === 1 ? 'market' : 'markets'} · share this text</span>
+      </div>
+      {b.rules
+        ? <div class="vr-text">{b.rules}</div>
+        : <div class="vr-text vr-empty">No verbatim resolution text captured for this venue.</div>}
+      {(() => { const vs = verbatimSource(b); return (
+        <div class="vr-src-line">
+          <span class="vr-k">platform source field</span>
+          <code class="vr-src-code"><span class="vr-src-key">{b.venue}.{vs.field}</span> → {
+            vs.href && vs.val === vs.href
+              ? <a class="cm-res-link" href={vs.href} rel="noopener nofollow">{vs.href}</a>
+              : vs.val
+          }{vs.href && vs.val !== vs.href ? <> <a class="cm-res-link" href={vs.href} rel="noopener nofollow">↗</a></> : null}</code>
+        </div>
+      ); })()}
+    </div>
+  ))}
+</section>
+
+<style>
+  .vr-sec { margin-bottom: var(--cm-space-section-rule); scroll-margin-top: 120px; }
+  .vr-rules-h {
+    font-family: var(--cm-font-mono); font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.16em; color: var(--cm-fg-muted);
+    margin: 22px 0 10px;
+  }
+  .vr-block {
+    border: 1px solid var(--cm-border-hairline); background: var(--cm-bg-surface);
+    padding: 14px 16px; margin-bottom: 12px;
+  }
+  .vr-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .vr-venue {
+    font-family: var(--cm-font-mono); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-primary);
+  }
+  .vr-meta { font-family: var(--cm-font-mono); font-size: 10px; color: var(--cm-fg-muted); }
+  .vr-ref { font-family: var(--cm-font-sans); font-size: 11.5px; color: var(--cm-fg-secondary); padding-bottom: 8px; }
+  .vr-k { font-family: var(--cm-font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cm-fg-faint); margin-right: 6px; }
+  .vr-text {
+    font-family: var(--cm-font-sans); font-size: 12px; line-height: 1.55; color: var(--cm-fg-secondary);
+    white-space: pre-wrap; padding-left: 12px; border-left: 2px solid var(--cm-border-rule);
+  }
+  .vr-empty { color: var(--cm-fg-faint); font-style: italic; }
+</style>

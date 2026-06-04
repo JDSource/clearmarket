@@ -3,7 +3,7 @@ import Site from '../layouts/Site.astro';
 
 // Production endpoints (custom domains cut over at go-live; Worker is the backing host).
 const API = 'https://api.clearmarket.fyi';
-const MCP = 'https://mcp.clearmarket.fyi';
+const MCP = 'https://api.clearmarket.fyi/mcp';
 const sampleSlug = 'kxgdpyear-26';
 const updated = '2026-05-29';
 ---
@@ -67,6 +67,7 @@ const updated = '2026-05-29';
       <section class="surface" id="mcp">
         <div class="surface-tab">MCP · THE HANDSHAKE</div>
         <p>The agent-first surface. Same data, spoken as tools an agent calls directly. No HTML to crawl, no REST to compose. Streamable HTTP at <code>{`${MCP}`}</code>. Open, read-only.</p>
+        <p class="mcp-note">Note: the endpoint is the path <code>/mcp</code> on the API domain — <code>api.clearmarket.fyi/mcp</code>, not an <code>mcp.</code> subdomain. POST JSON-RPC (<code>application/json</code> is enough; <code>text/event-stream</code> is only needed if you consume the SSE stream).</p>
 
         <div class="console">
           <div class="console-h">tools</div>
@@ -161,6 +162,7 @@ const updated = '2026-05-29';
     .ep-verb { color: var(--va-up); font-weight: 700; font-size: 11px; }
     .ep-path { color: var(--va-fg); overflow-x: auto; white-space: nowrap; }
     .ep-desc { margin: 0 0 8px; font-size: 13px; }
+    .mcp-note { margin: -4px 0 14px; font-size: 12.5px; color: var(--cm-fg-muted); line-height: 1.5; }
 
     /* MCP console / tool list */
     .console { border: 1px solid var(--va-border); background: var(--va-bg-2); margin: 16px 0; }

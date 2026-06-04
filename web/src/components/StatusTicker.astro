@@ -1,0 +1,81 @@
+---
+/* StatusTicker — borderless single-line terminal status line, flush under the meta row.
+ * Replaces the MostTraded + RCG box strips. No border, no bg, no card. One STATUS // line,
+ * colored by state: divergent (amber), aligned (green), single-venue (green A / amber lower).
+ * Tailwind classes from the spec mapped to the project's cm-* tokens.
+ */
+import type { Event, Market } from '../lib/universe';
+import { rationaleFor, sourceLabel } from '../lib/labels';
+const { markets } = Astro.props as { event?: Event; markets: Market[] };
+
+// Short settlement-mechanism word — names HOW it resolves. Respects the GRADE first: a
+// grade-A market resolves against a named/mechanical source regardless of which arbiter is
+// the dispute backstop. Only when there's no named source does the arbiter's judgment
+// character (oracle vs staff) become the mechanism.
+function mechWord(m: Market | undefined): string {
+  const hasSource = !!(m?.resolution_source || m?.source_citation);
+  const grade = (m?.resolution_clarity_grade ?? '').toUpperCase();
+  if (grade === 'A') return 'NAMED SOURCE';
+  if (hasSource) return 'NAMED SOURCE';           // B with a source still resolves to one
+  const a = m?.arbitration_model;
+  if (a === 'uma_oracle') return 'ORACLE JUDGMENT';
+  if (a === 'platform_auto') return 'MECHANICAL';
+  return 'OPERATOR JUDGMENT';                       // staff / committee / unnamed
+}
+
+const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
+const reps = VENUES.map((v) => {
+  const m = markets.filter((x) => x.platform === v)[0];
+  return { venue: v, market: m, r: rationaleFor(m as any), src: sourceLabel(m?.resolution_source, m?.source_citation), mech: mechWord(m) };
+});
+
+let tone: 'amber' | 'green';
+let text: string;
+
+if (reps.length > 1) {
+  // MULTI-VENUE — flag the state, then NAME the divergence by mechanism (not by grade, which
+  // the table already shows). Aligned only when BOTH grade AND mechanism match; a grade tie
+  // with different mechanisms is still a (softer) divergence.
+  const k = reps.find((x) => x.venue === 'kalshi') ?? reps[0];
+  const p = reps.find((x) => x.venue === 'polymarket') ?? reps[1];
+  const gradesMatch = k.r.grade === p.r.grade;
+  const mechMatch = k.mech === p.mech;
+  if (gradesMatch && mechMatch) {
+    tone = 'green';
+    text = `CROSS-VENUE RESOLUTION ALIGNED · ${k.mech}`;
+  } else if (gradesMatch) {
+    // same grade, different settlement path — note it, but keep it green-ish (not a grade risk)
+    tone = 'green';
+    text = `CROSS-VENUE GRADES ALIGNED · ${k.mech} vs ${p.mech}`;
+  } else {
+    tone = 'amber';
+    text = `CROSS-VENUE RESOLUTION MISMATCH · ${k.mech} vs ${p.mech}`;
+  }
+} else {
+  // SINGLE-VENUE — the ticker is the ONLY place this fact lives, so keep it informative:
+  // grade · source · mechanism.
+  const x = reps[0];
+  tone = x.r.grade === 'A' ? 'green' : 'amber';
+  const srcUp = (x.src === 'Undefined / Ambiguous' ? 'NO NAMED SOURCE' : x.src).toUpperCase();
+  text = x.r.grade === 'A'
+    ? `RESOLUTION VERIFIED · [${x.r.grade}] ${srcUp} · ${x.mech}`
+    : `RESOLUTION FLAGGED · [${x.r.grade}] ${srcUp} · ${x.mech}`;
+}
+---
+<div class={`st st-${tone}`}>
+  <span class="st-prefix">STATUS // </span>{text} <a class="st-link" href="#rules">RULES ›</a> <a class="st-link" href="/methodology">METHOD ›</a>
+</div>
+
+<style>
+  .st {
+    width: 100%; padding: 4px 0; margin: 0 0 16px;
+    font-family: var(--cm-font-mono); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em; line-height: 1.5;
+    user-select: none; white-space: normal;
+  }
+  .st-prefix { color: var(--cm-fg-faint); }
+  .st-amber { color: var(--cm-divergence); }
+  .st-green { color: var(--cm-positive); }
+  .st-link { color: var(--cm-fg-link); text-decoration: none; letter-spacing: 0.06em; }
+  .st-link:hover { text-decoration: underline; }
+</style>

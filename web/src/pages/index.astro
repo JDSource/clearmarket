@@ -2,6 +2,10 @@
 import Base from '../layouts/Base.astro';
 
 import { getCollection } from 'astro:content';
+import { getAllEvents } from '../lib/universe';
+
+// Live event count from the same universe the /events/ index renders — never hardcode.
+const eventCount = getAllEvents().length;
 
 // Latest signals pulled live from the content collection at build time. The homepage
 // streams the actual wire log (same records as /signals/), truncated to the most recent few.
@@ -79,13 +83,13 @@ const schemaJson = `{
           <span class="va-nav-sep" aria-hidden="true">·</span>
           <a href="/methodology/">Methodology</a>
           <a href="https://github.com/JDSource/clearmarket">GitHub</a>
-          <a class="va-cta-mini" href="mailto:hello@clearmarket.fyi">Contact</a>
+          <a href="mailto:hello@clearmarket.fyi">Contact</a>
         </nav>
       </header>
 
       <div class="va-hero-grid">
         <div class="va-hero-text">
-          <div class="va-eyebrow">OPEN SCHEMA · API · MCP · DAILY WIRE</div>
+          <div class="va-eyebrow">API · MCP · DAILY WIRE</div>
           <h1>
             the reference layer for<br/>
             <em>prediction markets.</em>
@@ -94,15 +98,27 @@ const schemaJson = `{
           <p class="va-lede">
             Graded resolutions · Cross-venue linked · Catalysts tagged
           </p>
-          <div class="va-cta">
-            <a href="/api/" class="va-btn va-btn-primary">Query the data, free →</a>
-            <a href="#wires" class="va-btn va-btn-secondary">Read today's wire →</a>
+          <form class="va-hero-search" action="/events/" method="get" role="search">
+            <span class="va-hero-search-prompt" aria-hidden="true">&gt;</span>
+            <input
+              class="va-hero-search-input"
+              type="text"
+              name="q"
+              autocomplete="off"
+              spellcheck="false"
+              aria-label="Search the event universe"
+              placeholder="SEARCH UNIVERSE — FED, ISRAEL, RECESSION, BITCOIN…"
+            />
+            <button class="va-hero-search-go" type="submit" aria-label="Search">↵</button>
+          </form>
+          <div class="va-hero-search-sub">
+            <a class="va-hero-count" href="/events/">{eventCount.toLocaleString()} events</a> · cross-venue linked · graded resolutions
           </div>
 
-          <div class="va-schema-access">
-            <a class="va-schema-access-row" href="/api/#rest"><span class="va-schema-access-key">REST</span><span class="va-schema-access-val">GET /v1/events/:slug</span><span class="va-schema-access-arrow">→</span></a>
-            <a class="va-schema-access-row" href="/api/#mcp"><span class="va-schema-access-key">MCP</span><span class="va-schema-access-val">get_event · live</span><span class="va-schema-access-arrow">→</span></a>
-            <a class="va-schema-access-row" href="/api/#agent"><span class="va-schema-access-key">AGENT</span><span class="va-schema-access-val">/llms.txt</span><span class="va-schema-access-arrow">→</span></a>
+          <div class="va-cta" role="group" aria-label="Product surfaces">
+            <a href="/api/#rest" class="va-btn va-btn-secondary" target="_blank" rel="noopener">[ FREE API&nbsp;→ ]</a>
+            <a href="/api/#mcp" class="va-btn va-btn-secondary" target="_blank" rel="noopener">[ FREE MCP&nbsp;→ ]</a>
+            <a href="/signals/" class="va-btn va-btn-secondary">[ DAILY WIRE&nbsp;→ ]</a>
           </div>
         </div>
 
@@ -138,7 +154,7 @@ const schemaJson = `{
                 <td class="va-l-time">{fmtFeedTime(s.data.published_at)}</td>
                 <td class="va-l-id">{s.data.signal_id}</td>
                 <td class={`va-l-type va-type-${s.data.detection_path}`}>{typeLabel(s.data.detection_path).toUpperCase()}</td>
-                <td class="va-l-head"><a href={`/signals-preview/${s.data.signal_slug}/`}>{s.data.headline}</a></td>
+                <td class="va-l-head"><a href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a></td>
                 <td class="va-l-venues">{venueCodes(s)}</td>
               </tr>
             ))}
@@ -293,11 +309,62 @@ const schemaJson = `{
       margin: 0 0 36px;
       font-weight: 400;
     }
+    /* HERO SEARCH — the human door. Terminal-prompt field, accent border at rest,
+       crisp white on focus (no soft glow), matching the /events/ + nav search treatment. */
+    .va-hero-search {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      max-width: 560px;
+      margin: 0 0 16px;
+      border: 1px solid var(--va-accent);
+      background: var(--va-bg-2);
+      transition: border-color .12s ease;
+    }
+    .va-hero-search:focus-within { border-color: var(--va-fg); }
+    .va-hero-search-prompt {
+      display: inline-flex; align-items: center;
+      padding: 0 10px 0 14px;
+      font-family: var(--va-mono); font-size: 14px; font-weight: 700;
+      color: var(--va-accent);
+      user-select: none;
+    }
+    .va-hero-search-input {
+      flex: 1; min-width: 0;
+      background: transparent; border: 0; outline: 0;
+      font-family: var(--va-mono); font-size: 13.5px;
+      color: var(--va-fg);
+      padding: 13px 8px 13px 0;
+      letter-spacing: 0.01em;
+    }
+    .va-hero-search-input::placeholder { color: var(--va-fg-faint); }
+    /* Unboxed: no fill, no divider — a low-contrast carriage-return macro that
+       brightens to accent on hover/focus. Keyboard-first terminal language. */
+    .va-hero-search-go {
+      flex: none;
+      background: transparent; border: 0;
+      font-family: var(--va-mono); font-size: 15px; font-weight: 400;
+      color: var(--va-fg-faint);
+      padding: 0 14px;
+      cursor: pointer;
+      transition: color .12s ease;
+    }
+    .va-hero-search-go:hover { color: var(--va-accent); }
+    .va-hero-search:focus-within .va-hero-search-go { color: var(--va-fg-muted); }
+    .va-hero-search-sub {
+      font-family: var(--va-mono); font-size: 10.5px;
+      color: var(--va-fg-faint); letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 14px 0 34px;
+    }
+    .va-hero-count { color: var(--va-fg-muted); font-weight: 600; text-decoration: none; }
+    .va-hero-count:hover { color: var(--va-accent); text-decoration: underline; }
+
     .va-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 32px; }
     .va-btn {
       display: inline-flex; align-items: center;
-      font-family: var(--va-mono); font-size: 12px;
-      padding: 12px 20px;
+      font-family: var(--va-mono); font-size: 12.5px;
+      padding: 14px 24px;
       border-radius: 0;
       text-decoration: none;
       letter-spacing: 0.04em;
@@ -319,10 +386,16 @@ const schemaJson = `{
     }
     /* Secondary: a real surface with a visible outline (was near-invisible). Accent on hover. */
     .va a.va-btn-secondary {
-      background: var(--va-surface); color: var(--va-fg);
-      border-color: var(--va-fg-faint);
+      background: rgba(118,184,255,0.05); color: var(--va-fg);
+      border-color: rgba(118,184,255,0.42);
+      font-weight: 500;
     }
-    .va a.va-btn-secondary:hover { border-color: var(--va-accent); color: var(--va-accent); transform: translateY(-1px); }
+    .va a.va-btn-secondary:hover {
+      border-color: var(--va-accent);
+      background: rgba(118,184,255,0.11);
+      color: var(--va-accent);
+      transform: translateY(-1px);
+    }
     .va-meta {
       font-family: var(--va-mono); font-size: 11px;
       color: var(--va-fg-faint);
@@ -388,10 +461,21 @@ const schemaJson = `{
       line-height: 1.7;
       color: #5a6068;
       margin: 0;
-      overflow-x: auto;
+      max-height: 392px;
+      overflow: hidden;
       background: transparent;
       white-space: pre;
       tab-size: 2;
+    }
+    /* Bottom fade — the record continues; reads as a live window, not a cut-off. */
+    .va-hero-schema::after {
+      content: "";
+      position: absolute;
+      left: 1px; right: 1px; bottom: 1px;
+      height: 84px;
+      background: linear-gradient(180deg, rgba(20,24,29,0), var(--va-bg-2));
+      pointer-events: none;
+      z-index: 2;
     }
     /* Syntax colors moved to global block below. Astro scoping breaks set:html spans */
     .va-schema-access {
@@ -586,6 +670,59 @@ const schemaJson = `{
       .va-hero-text { max-width: none; }
       .va-schema-code { font-size: 10.5px; }
       .va-wire-foot { flex-direction: column; align-items: flex-start; }
+    }
+
+    /* MOBILE (~390px). Additive only — contain wide children, wrap the nav,
+       and keep the .va shell from widening the page past the viewport. */
+    @media (max-width: 640px) {
+      /* .va breaks out of Base's 24px body padding via -24px side margins.
+         Clamp the horizontal break-out so the shell never exceeds the viewport. */
+      .va { margin-left: -24px; margin-right: -24px; max-width: 100vw; overflow-x: hidden; }
+      .va-head { padding: 18px 18px; flex-wrap: wrap; gap: 12px 16px; }
+      .va-head nav { flex-wrap: wrap; gap: 10px 14px; row-gap: 8px; }
+      .va-nav-sep { display: none; }
+      .va-hero-grid { padding: 28px 18px 56px; gap: 28px; }
+      .va-wires { padding: 24px 18px 40px; }
+      .va-foot { padding: 24px 18px 48px; }
+      /* JSON record scrolls inside its own panel instead of stretching the page */
+      .va-hero-schema { padding: 16px 14px 18px; max-width: 100%; overflow: hidden; }
+      .va-schema-code { max-width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+      .va-hero-search { max-width: 100%; }
+
+      /* Product buttons were different-width boxes (content-sized, wrapping 2+1). Stack them
+         full-width + uniform on phones. */
+      .va-cta { flex-direction: column; gap: 10px; }
+      .va a.va-btn { width: 100%; justify-content: center; box-sizing: border-box; }
+
+      /* WIRE LEDGER — headlines were clipped at the right edge (5-col nowrap table).
+         Reflow each row to a stacked block: a top meta line (time · id · type · venues)
+         then the full headline wrapping below. The row is a flex/wrap container so the
+         meta cells flow as one line and the headline is forced full-width on its own
+         line via order + flex-basis. Mirrors the events-index card reflow. Nothing clipped. */
+      .va-ledger, .va-ledger tbody {
+        display: block; width: 100%; box-sizing: border-box;
+      }
+      .va-ledger-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid var(--va-rule);
+        padding: 10px 12px;
+        margin-bottom: 8px;
+      }
+      .va-ledger-row td { border: none; padding: 0; white-space: normal; }
+      /* meta cells reflow inline as the top line */
+      .va-ledger-row .va-l-time,
+      .va-ledger-row .va-l-id,
+      .va-ledger-row .va-l-type,
+      .va-ledger-row .va-l-venues {
+        order: 1; margin-right: 10px; font-size: 10.5px; line-height: 1.6;
+      }
+      /* headline forced onto its own full-width line below the meta, wraps fully */
+      .va-ledger-row .va-l-head { order: 2; flex-basis: 100%; width: 100%; margin-top: 6px; }
+      .va-ledger-row .va-l-head a { font-size: 14px; line-height: 1.35; }
     }
   </style>
 

@@ -15,6 +15,10 @@ export interface Props {
 }
 
 const { title, description, canonical, noindex, bareChrome } = Astro.props;
+// The events index has its own full-width terminal search; the global nav search there is
+// redundant (the dual-search bug). Suppress it on that route only — it returns on every other page.
+const path = Astro.url.pathname.replace(/\/+$/, '');
+const isEventsIndex = path === '/events';
 ---
 <Base title={title} description={description} canonical={canonical} noindex={noindex} bare>
   <Fragment slot="head">
@@ -40,11 +44,14 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
             <a class="va-nav-product" href="/signals/">CM Signal</a>
             <span class="va-nav-sep" aria-hidden="true">·</span>
             <a href="/api/">API</a>
-            <a href="/methodology/">Methodology</a>
+            <a href="/methodology/" target="_blank" rel="noopener">Methodology</a>
             <a href="https://github.com/JDSource/clearmarket">GitHub</a>
-            <form class="va-nav-search" role="search" action="/events/" method="get">
-              <input type="search" name="q" placeholder="Search events…" aria-label="Search events" autocomplete="off" />
-            </form>
+            {!isEventsIndex && (
+              <form class="va-nav-search" role="search" action="/events/" method="get">
+                <input type="search" name="q" id="cm-search-input" placeholder="SEARCH EVENTS…" aria-label="Search events" autocomplete="off" />
+                <div class="cm-search-results" id="cm-search-results" hidden></div>
+              </form>
+            )}
           </nav>
         </header>
         {/* Global system status bar — running grid header on every page (Gemini design direction).
@@ -56,7 +63,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
           <span class="va-sb-sep">·</span>
           <span>PRICES: HOURLY REFRESH</span>
           <span class="va-sb-sep">·</span>
-          <span>COVERAGE: ~2,100 EVENTS / ~18,000 MARKETS</span>
+          <span>COVERAGE: ~2,000 EVENTS / ~16,000 MARKETS</span>
           <span class="va-sb-sep">·</span>
           <span>KALSHI + POLYMARKET</span>
         </div>
@@ -74,7 +81,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       <footer class="va-foot">
         <div class="va-foot-row">
           <a href="/signals/">Signals</a>
-          <a href="/methodology/">Methodology</a>
+          <a href="/methodology/" target="_blank" rel="noopener">Methodology</a>
           <a href="/api/">API</a>
           <a href="/api/#mcp">MCP</a>
           <a href="/llms.txt">llms.txt</a>
@@ -87,6 +94,55 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       </footer>
     )}
   </div>
+
+  <script is:inline>
+    // Header search — fetch the build-time index once, filter client-side, keyboard-navigable dropdown.
+    (() => {
+      const input = document.getElementById('cm-search-input');
+      const box = document.getElementById('cm-search-results');
+      if (!input || !box) return;
+      let idx = null, timer = null, active = -1;
+      const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+      async function load() {
+        if (idx === null) { try { idx = await (await fetch('/search-index.json')).json(); } catch (e) { idx = []; } }
+        return idx;
+      }
+      function render(q) {
+        const ql = q.trim().toLowerCase();
+        active = -1;
+        if (ql.length < 2) { box.hidden = true; box.innerHTML = ''; return; }
+        const hits = idx.filter((e) => e.q.indexOf(ql) !== -1).slice(0, 8);
+        box.innerHTML = hits.length
+          ? hits.map((e) => '<a class="cm-search-hit" href="/events/' + e.s + '/">' + esc(e.t) + '</a>').join('')
+          : '<div class="cm-search-empty">no match</div>';
+        box.hidden = false;
+      }
+      input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => { await load(); render(input.value); }, 160);
+      });
+      input.addEventListener('keydown', (ev) => {
+        const hits = Array.from(box.querySelectorAll('.cm-search-hit'));
+        if (ev.key === 'ArrowDown' && hits.length) { ev.preventDefault(); active = Math.min(active + 1, hits.length - 1); }
+        else if (ev.key === 'ArrowUp' && hits.length) { ev.preventDefault(); active = Math.max(active - 1, 0); }
+        else if (ev.key === 'Enter') {
+          // Only intercept Enter when the user has arrow-selected a specific suggestion — jump
+          // straight to that event. Otherwise let the form submit to /events/?q=… (the full
+          // index results page), which is the expected behavior (esp. on mobile where the
+          // typeahead dropdown isn't easily navigable).
+          if (active >= 0 && hits[active]) { ev.preventDefault(); location.href = hits[active].getAttribute('href'); }
+          return;
+        }
+        else if (ev.key === 'Escape') { box.hidden = true; return; }
+        else return;
+        hits.forEach((h, i) => h.classList.toggle('cm-search-active', i === active));
+      });
+      document.addEventListener('click', (ev) => {
+        const wrap = input.closest('.va-nav-search');
+        if (wrap && !wrap.contains(ev.target)) box.hidden = true;
+      });
+    })();
+  </script>
 
   <style>
     .va {
@@ -181,7 +237,7 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       font-size: 11.5px;
       color: var(--va-fg);
       background: var(--va-bg-surface, rgba(255,255,255,0.04));
-      border: 1px solid var(--va-rule);
+      border: 1px solid var(--va-accent);
       border-radius: 0;
       padding: 5px 9px;
       width: 150px;
@@ -190,7 +246,8 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
       transition: border-color 0.12s, width 0.12s;
     }
     .va-nav-search input::placeholder { color: var(--va-fg-faint); }
-    .va-nav-search input:focus { border-color: var(--va-accent); width: 190px; }
+    .va-nav-search input:focus { border-color: var(--va-fg); width: 190px; }
+    .va-nav-search { position: relative; }
 
     /* Global status bar — institutional running header, zero-radius, hard rule */
     .va-statusbar {
@@ -268,19 +325,45 @@ const { title, description, canonical, noindex, bareChrome } = Astro.props;
     }
 
     @media (max-width: 720px) {
-      .va-head { padding: 16px 18px; flex-wrap: wrap; gap: 10px 14px; }
-      .va-head nav { gap: 12px 14px; flex-wrap: wrap; row-gap: 8px; }
+      /* Chrome must never widen the page: the sticky block and its rows clamp to viewport. */
+      /* Gemini direction: let the global header + search scroll OUT of view on small screens;
+         only the section sub-nav stays pinned (sticky rule on .cm-subnav in cm-event.css). */
+      .va-sticky-chrome { position: static; max-width: 100%; overflow-x: hidden; }
+      .va-head { padding: 16px 18px; flex-wrap: wrap; gap: 10px 14px; max-width: 100%; }
+      .va-head nav { gap: 12px 14px; flex-wrap: wrap; row-gap: 8px; max-width: 100%; }
       .va-nav-sep { display: none; }
-      .va-nav-search { order: 99; flex-basis: 100%; }
+      .va-nav-search { order: 99; flex-basis: 100%; min-width: 0; }
       .va-nav-search input { width: 100%; }
       .va-nav-search input:focus { width: 100%; }
-      .va-statusbar { padding: 7px 18px; font-size: 9px; gap: 8px; }
-      .va-main { padding: 16px 18px 40px; }
-      .va-foot { padding: 24px 18px 48px; }
+      /* status bar scrolls horizontally inside its own bar (already nowrap), never the page */
+      /* Cull the SYSTEM:LIVE / COVERAGE status strip on small screens — it was sticky chrome
+         crowding the title, and the info isn't essential on mobile. */
+      .va-statusbar { display: none; }
+      .va-main { padding: 16px 18px 40px; max-width: 100%; }
+      .va-foot { padding: 24px 18px 48px; max-width: 100%; }
     }
   </style>
 
   <style is:global>
+    /* Dark page root so macOS rubber-band overscroll reveals the dark theme, not a white gap
+       (the .va shell is dark but sits inside Base.astro's light html/body). */
+    html { background: #0e1014; }
+    /* Search dropdown — GLOBAL (not scoped) because the result rows are created by JS innerHTML and
+       never receive Astro's scope attribute, so scoped rules would not match them (the wall-of-text bug). */
+    .cm-search-results {
+      position: absolute; top: 100%; right: 0; margin-top: 4px;
+      width: 340px; max-width: 78vw; max-height: 360px; overflow-y: auto; z-index: 200;
+      background: #14181d; border: 1px solid #232830;
+    }
+    .cm-search-hit {
+      display: block; padding: 8px 11px;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif; font-size: 12.5px;
+      color: #e6e8eb; text-decoration: none; border-bottom: 1px solid #1d2128;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .cm-search-hit:last-child { border-bottom: 0; }
+    .cm-search-hit:hover, .cm-search-hit.cm-search-active { background: #1a1e25; color: #76b8ff; }
+    .cm-search-empty { padding: 8px 11px; font-size: 12px; color: #6c727a; }
     /* JSON syntax colors. Three categories: labels (keys), data (values), counts (numbers).
        Defined globally because Astro scoping breaks set:html span scoping. */
     .va-schema-code .t-key  { color: #7faedb; }

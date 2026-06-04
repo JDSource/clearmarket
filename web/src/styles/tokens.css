@@ -27,8 +27,9 @@
 
   /* ---- ACCENTS (carry meaning) ---- */
   --cm-positive:        #10d894;  /* aligned / on-time / A-grade / fresh */
+  --cm-caution:         #f4d63a;  /* B-grade — yellow, deliberately separated from the C orange */
   --cm-divergence:      #f0a830;  /* divergence / risk / C-grade / opacity */
-  --cm-negative:        #ef5d6a;  /* resolved-wrong / dispute-overturned */
+  --cm-negative:        #ef5d6a;  /* resolved-wrong / dispute-overturned (NOT a clarity grade) */
 
   /* ---- TYPE ---- */
   --cm-font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -38,7 +39,7 @@
   --cm-space-row:          28px;
   --cm-space-row-tight:    24px;
   --cm-space-section:      32px;
-  --cm-space-section-rule: 48px;
+  --cm-space-section-rule: 40px;
   --cm-space-card-pad:     16px;
   --cm-space-meta-row:     10px;
   --cm-space-meta-col:     32px;

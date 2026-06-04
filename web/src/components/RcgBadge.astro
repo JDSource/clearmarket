@@ -1,0 +1,104 @@
+---
+/* RcgBadge — a compact, assertive RCG strip that sits directly under the horizon strip,
+ * ABOVE the price table. Price still leads the body; this badges the resolution-clarity
+ * grade and the single sharpest risk up top, and links down to the full broken-out
+ * scorecard. The teaser, not the spine.
+ */
+import type { Event, Market } from '../lib/universe';
+const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+
+const primary = markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0];
+const grade = ((primary?.resolution_clarity_grade ?? 'C') as string).toUpperCase() as 'A' | 'B' | 'C';
+const score = (primary as any)?.rcg_score ?? null;
+const applied = (primary as any)?.rcg_applied_factors ?? 7;
+const caps: string[] = (primary as any)?.rcg_caps ?? [];
+const sourceUrl = primary?.source_citation ?? null;
+const sourceName = primary?.resolution_source ?? null;
+function hostOf(url: string | null): string | null {
+  if (!url) return null;
+  return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || null;
+}
+const sourceLabel = sourceName ?? hostOf(sourceUrl) ?? 'no named source';
+const provenanceTier = sourceUrl ? 'direct' : (primary?.underlying_reference ? 'editorial' : 'subjective');
+
+const CAP_FLAG: Record<string, string> = {
+  multi_source_no_conflict_rule: 'NO PRECEDENCE RULE',
+  adversarial_ground_truth: 'ADVERSARIAL GROUND TRUTH',
+  discretionary_trigger_no_source: 'DISCRETIONARY TRIGGER',
+  permissionless_oracle_discretionary: 'ORACLE + DISCRETIONARY',
+};
+const statusFlag = caps.length ? (CAP_FLAG[caps[0]] ?? caps[0].toUpperCase()) : (grade === 'A' ? 'CLEAN' : 'REVIEW');
+
+// sharpest single risk = first FAIL factor, else first PARTIAL
+const rf = ((event as any).rcg_factors ?? {}) as Record<string, { rating: string; why: string }>;
+const LABEL: Record<string, string> = {
+  trigger_objectivity: 'trigger objectivity',
+  contested_reality: 'contested reality',
+  source_conflict: 'source-conflict rule',
+  temporal_precision: 'temporal precision',
+  source_mutability: 'source mutability',
+};
+const ordered = Object.entries(rf);
+const worst =
+  ordered.find(([, v]) => v.rating === 'fail') ??
+  ordered.find(([, v]) => v.rating === 'partial') ??
+  null;
+const worstLabel = worst ? LABEL[worst[0]] ?? worst[0] : null;
+const worstRating = worst ? worst[1].rating.toUpperCase() : null;
+---
+<a class={`rb rb-${grade.toLowerCase()}`} href="#resolution" aria-label={`Resolution Clarity Grade ${grade}, ${score} of 100. See full breakdown.`}>
+  <span class={`rb-grade rb-grade-${grade.toLowerCase()}`}>{grade}</span>
+  <span class="rb-score">{score !== null ? score : '—'}<span class="rb-score-d">/100</span></span>
+  <span class="rb-applied">scored on {applied}/7</span>
+  <span class="rb-sep">│</span>
+  <span class={`rb-status rb-status-${grade.toLowerCase()}`}>[!] {statusFlag}</span>
+  {worstLabel && (
+    <span class="rb-risk">top risk: <span class="rb-risk-name">{worstLabel}</span> <span class={`rb-risk-tag rb-rt-${worst![1].rating}`}>{worstRating}</span></span>
+  )}
+  <span class="rb-sep">│</span>
+  <span class="rb-src">source: <span class="rb-src-name">{sourceLabel}</span> <span class={`rb-prov rb-prov-${provenanceTier}`}>{provenanceTier}</span></span>
+  <span class="rb-cta">full RCG breakdown ↓</span>
+</a>
+
+<style>
+  .rb {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px;
+    padding: 8px 12px; margin: 0 0 20px;
+    border: 1px solid var(--cm-border-rule);
+    background: var(--cm-bg-surface);
+    font-family: var(--cm-font-mono); font-size: 12px;
+    text-decoration: none; color: var(--cm-fg-secondary);
+    border-left-width: 3px;
+  }
+  .rb-a { border-left-color: var(--cm-positive); }
+  .rb-b { border-left-color: var(--cm-border-emphasis); }
+  .rb-c { border-left-color: var(--cm-divergence); }
+  .rb:hover { background: var(--cm-bg-callout); }
+  .rb-grade {
+    font-size: 15px; font-weight: 700; width: 24px; height: 24px;
+    display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid;
+  }
+  .rb-grade-a { color: var(--cm-positive); border-color: var(--cm-positive); }
+  .rb-grade-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+  .rb-grade-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
+  .rb-score { font-size: 16px; font-weight: 700; color: var(--cm-fg-primary); font-variant-numeric: tabular-nums; }
+  .rb-score-d { font-size: 11px; color: var(--cm-fg-faint); font-weight: 400; }
+  .rb-applied { font-size: 10px; color: var(--cm-fg-muted); letter-spacing: 0.04em; }
+  .rb-sep { color: var(--cm-border-rule); }
+  .rb-status { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; }
+  .rb-status-a { color: var(--cm-positive); }
+  .rb-status-b { color: var(--cm-fg-secondary); }
+  .rb-status-c { color: var(--cm-divergence); }
+  .rb-risk { font-size: 11px; color: var(--cm-fg-muted); }
+  .rb-risk-name { color: var(--cm-fg-secondary); }
+  .rb-risk-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.06em; padding: 0 4px; }
+  .rb-rt-fail { color: var(--cm-divergence); }
+  .rb-rt-partial { color: var(--cm-fg-secondary); }
+  .rb-src { font-size: 11px; color: var(--cm-fg-muted); }
+  .rb-src-name { color: var(--cm-fg-secondary); }
+  .rb-prov { font-size: 8.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 4px; }
+  .rb-prov-direct { color: var(--cm-positive); background: rgba(16,216,148,0.10); }
+  .rb-prov-editorial { color: var(--cm-fg-link); background: rgba(92,157,255,0.10); }
+  .rb-prov-subjective { color: var(--cm-divergence); background: rgba(240,168,48,0.10); }
+  .rb-cta { margin-left: auto; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-link); }
+</style>

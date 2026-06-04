@@ -1,0 +1,90 @@
+---
+/* ResolutionStrip — ONE thin borderless line. Both venues on the same line. Each venue's
+ * clause is colored by its GRADE (A green, C red, B neutral) so the whole phrase reads as
+ * the signal. The clause is the ABBREVIATED tooltip language from two RCG factors — the same
+ * words that appear in the Resolution Architecture grid's `why` text, compressed to the noun
+ * phrase. No new vocabulary layer.
+ *   source_conflict     → source structure  (single source / multiple, tie-break / no tie-break)
+ *   trigger_objectivity → placeholder-or-not (objective outcome / reporting consensus)
+ * All derived from structured factor ratings (~99.9% coverage); scales across the universe.
+ * Small "methodology" link at the end.
+ */
+import type { Event, Market } from '../lib/universe';
+import { getEventById } from '../lib/universe';
+const { event, markets } = Astro.props as { event?: Event; markets: Market[] };
+
+const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
+
+// Abbreviated tooltip language, keyed off the factor rating.
+//   source_conflict: na = "Single source...", pass = "...has tie-break", fail = "...no tie-break"
+function sourceClause(r: string | null): string | null {
+  if (r === 'na') return 'single source';
+  if (r === 'pass') return 'multiple sources, tie-break';
+  if (r === 'fail') return 'multiple sources, no tie-break';
+  return null;
+}
+//   trigger_objectivity: pass = "Objective ... outcome", else = "...reporting consensus"
+function placeholderClause(r: string | null): string | null {
+  if (r === 'pass') return 'objective outcome';
+  if (r === 'partial' || r === 'fail') return 'reporting consensus';
+  return null;
+}
+
+const segs = VENUES.map((v) => {
+  const m = markets.filter((x) => x.platform === v)[0];
+  const grade = ((m?.resolution_clarity_grade ?? 'C') as string).toUpperCase() as 'A' | 'B' | 'C';
+  const ev = m?.event_id ? getEventById(m.event_id) : (event ?? undefined);
+  const factors = (ev as any)?.rcg_factors ?? {};
+  const clauses = [
+    sourceClause(factors?.source_conflict?.rating ?? null),
+    placeholderClause(factors?.trigger_objectivity?.rating ?? null),
+  ].filter(Boolean) as string[];
+  return { venue: v, grade, clauses };
+});
+---
+<div class="rstr">
+  {segs.map((s, i) => (
+    <span class="rstr-seg">
+      {i > 0 && <span class="rstr-pipe" aria-hidden="true">│</span>}
+      <span class="rstr-venue">{s.venue}:</span>
+      <span class={`rstr-grade rstr-${s.grade.toLowerCase()}`}>[{s.grade}]</span>
+      <span class="rstr-clause">
+        {s.clauses.map((c, j) => (<>{j > 0 && <span class="rstr-dot">·</span>}{c}</>))}
+      </span>
+    </span>
+  ))}
+  <a class="rstr-method" href="/methodology" target="_blank" rel="noopener">methodology ›</a>
+</div>
+
+<style>
+  /* Color-ANCHORED terminal status line: the line is uniformly muted; only the bracketed
+   * grade token [A]/[C] carries the accent color. Uppercase + tracked so the clauses read as
+   * hardcoded system parameters, not prose. */
+  .rstr {
+    display: flex; align-items: baseline; gap: 0; margin: 6px 0 16px;
+    font-family: var(--cm-font-mono); font-size: 10.5px; line-height: 1.4;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    white-space: nowrap; overflow: hidden; color: var(--cm-fg-muted);
+  }
+  .rstr-seg { display: inline-flex; align-items: baseline; gap: 7px; }
+  /* faint structural divider framing the two venues as separate data columns */
+  .rstr-pipe { color: var(--cm-fg-faint); opacity: 0.55; padding: 0 13px 0 5px; }
+  .rstr-venue { color: var(--cm-fg-secondary); font-weight: 600; }
+  /* the ONLY color flash on the line — bracketed grade token */
+  .rstr-grade { font-weight: 700; letter-spacing: 0.04em; }
+  .rstr-a { color: var(--cm-positive); }
+  .rstr-b { color: var(--cm-caution); }
+  .rstr-c { color: var(--cm-divergence); }
+  /* descriptive clauses stay quiet and uniform — no color */
+  .rstr-clause { color: var(--cm-fg-muted); }
+  .rstr-dot { opacity: 0.45; padding: 0 1px; }
+  /* methodology sits right after the content, not pushed to the far edge */
+  .rstr-method { padding-left: 20px; color: var(--cm-fg-link); flex-shrink: 0; text-decoration: none; font-size: 10px; letter-spacing: 0.06em; text-transform: lowercase; }
+  .rstr-method:hover { text-decoration: underline; }
+  /* Phones: wrap the venue clauses to multiple lines (each seg stays intact) rather than
+     clipping mid-word — the clipped overrun was acting as an off-screen horizontal anchor. */
+  @media (max-width: 640px) {
+    .rstr { flex-wrap: wrap; white-space: normal; overflow: visible; row-gap: 4px; }
+    .rstr-method { padding-left: 0; }
+  }
+</style>

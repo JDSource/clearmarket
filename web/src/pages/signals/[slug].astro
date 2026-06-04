@@ -4,7 +4,7 @@
  * lowercase mono pattern). Body is typed atomic-claim fields with per-claim
  * provenance. No card chrome. No editorial brand watermarks. No prose bullets.
  *
- * Compare side-by-side with /events-v2/fed-april-2026-rate-decision/ —
+ * Compare side-by-side with /events/fed-april-2026-rate-decision/ —
  * the two pages should look like siblings of one product.
  *
  * Field structure mirrors the canonical atomic-field telemetry mapping
@@ -173,15 +173,17 @@ const promptTemplate = data.prompt_template ?? (
 const matchMethod = isNewsCycle ? 'entity_slug_match (mechanical)' : null;
 
 // ----- citation graph -----
-const eventHref = `/events-v2/${data.event_slug}/`;
-const venueAUrl = primary.platform === 'polymarket'
-  ? `https://polymarket.com/market/${primary.platform_market_id}`
-  : `https://kalshi.com/markets/${primary.platform_market_id}`;
-const venueBUrl = related
-  ? (related.platform === 'polymarket'
-      ? `https://polymarket.com/market/${related.platform_market_id}`
-      : `https://kalshi.com/markets/${related.platform_market_id}`)
-  : null;
+const eventHref = `/events/${data.event_slug}/`;
+// Kalshi has a stable by-ticker market URL; Polymarket has no public by-conditionId
+// page (the conditionId path 404s), so we don't emit a deep link that breaks — we
+// show the venue + id as text instead. Avoids a dead link on the cross-venue claim.
+const venueHref = (m: any) =>
+  m && m.platform === 'kalshi' ? `https://kalshi.com/markets/${m.platform_market_id}` : null;
+const venueLabel = (m: any) => (m ? `${m.platform} · ${m.platform_market_id}` : null);
+const venueAUrl = venueHref(primary);
+const venueBUrl = venueHref(related);
+const venueALabel = venueLabel(primary);
+const venueBLabel = venueLabel(related);
 
 // ----- canonical URLs + JSON-LD -----
 const canonicalURL = `https://clearmarket.fyi/signals/${data.signal_slug}/`;
@@ -298,7 +300,7 @@ const datasetJsonLd = {
   creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
   license: 'https://creativecommons.org/licenses/by/4.0/',
   distribution: [
-    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
   isBasedOn: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
@@ -392,6 +394,10 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
 
   <article class="cm-v2" data-cm-signal-id={data.signal_id}>
 
+    <nav class="cm-crumb" aria-label="Breadcrumb">
+      <a href="/signals/">&larr; CM Signal &middot; all wires</a>
+    </nav>
+
     <h1 class="cm-h1" data-cm-field="headline">{data.headline}</h1>
 
     {/* Internal taxonomy fields (bucket, detection_path, pre_news_classification)
@@ -425,7 +431,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
          a first-time reader gets the human-readable read, then drills into the
          structured fields below. The bullets here populate JSON-LD ClaimReview.reviewBody. */}
     <section class="cm-wire-body" data-cm-field="bullets">
-      <div class="cm-callout-label">5-bullet brief <span class="cm-callout-tag">| narrative</span></div>
+      <div class="cm-callout-label">{data.bullets.length}-bullet brief <span class="cm-callout-tag">| narrative</span></div>
       <ul class="cm-wire-bullets">
         {data.bullets.map((b: string) => <li>{b}</li>)}
       </ul>
@@ -658,8 +664,8 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     <section id="evaluation" class="cm-section">
       <div class="cm-section-h">evaluation</div>
       <p class="cm-section-summary">{isNewsCycle
-        ? 'Methodology made explicit. News-cycle wires publish on coverage, not editorial selection — top-5 daily stories matched mechanically to PM markets pricing them. No judge gate.'
-        : 'Non-determinism made explicit. The judge engine, prompt template, and confidence are first-class fields so downstream consumers can re-evaluate.'}</p>
+        ? 'News-cycle wires publish on coverage, not editorial selection — the day’s top stories matched to the prediction markets pricing them, so nothing is cherry-picked.'
+        : 'The model, prompt version, and confidence behind this wire are published below — so you can see how it was judged, and re-check it yourself.'}</p>
       <dl class="cm-kv cm-kv-wide">
         <div class="cm-kv-row"><dt>judge_engine</dt><dd><code class="cm-kv-id">{judgeEngine}</code></dd></div>
         <div class="cm-kv-row"><dt>judge_verdict</dt><dd><span class="cm-kv-pass">{judgeVerdict}</span></dd></div>
@@ -676,7 +682,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     {/* ===== CITATION GRAPH ===== */}
     <section id="citations" class="cm-section">
       <div class="cm-section-h">citation graph</div>
-      <p class="cm-section-summary">Internal: back-link to the CM event page (closes the PRD &sect;6.5.4 citation loop). External: venue ingress + benchmark source for audit.</p>
+      <p class="cm-section-summary">Every wire traces back to the ClearMarket event it is built on, and out to each venue&rsquo;s own market page &mdash; so any figure here can be verified at its source.</p>
 
       <div class="cm-citation-group">
         <div class="cm-citation-group-label">internal</div>
@@ -691,9 +697,9 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       <div class="cm-citation-group">
         <div class="cm-citation-group-label">external</div>
         <dl class="cm-kv">
-          <div class="cm-kv-row"><dt>venue_a</dt><dd><a class="cm-kv-link" href={venueAUrl} rel="noopener nofollow">{venueAUrl}</a></dd></div>
-          {venueBUrl && (
-            <div class="cm-kv-row"><dt>venue_b</dt><dd><a class="cm-kv-link" href={venueBUrl} rel="noopener nofollow">{venueBUrl}</a></dd></div>
+          <div class="cm-kv-row"><dt>venue_a</dt><dd>{venueAUrl ? <a class="cm-kv-link" href={venueAUrl} rel="noopener nofollow">{venueAUrl}</a> : <span class="cm-kv-id">{venueALabel}</span>}</dd></div>
+          {related && (
+            <div class="cm-kv-row"><dt>venue_b</dt><dd>{venueBUrl ? <a class="cm-kv-link" href={venueBUrl} rel="noopener nofollow">{venueBUrl}</a> : <span class="cm-kv-id">{venueBLabel}</span>}</dd></div>
           )}
           {benchmarkSource && (
             <div class="cm-kv-row"><dt>benchmark</dt><dd><a class="cm-kv-link" href={benchmarkSource.url} rel="noopener nofollow">{benchmarkSource.url}</a></dd></div>
@@ -709,7 +715,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       <table class="cm-endpoints-table">
         <tbody>
           <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (contains embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code> + <code class="cm-inline-code">ClaimReview</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
-          <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}.json`}><code class="cm-endpoint-url">{jsonURL}.json</code></a></td></tr>
+          <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}`}><code class="cm-endpoint-url">{jsonURL}</code></a></td></tr>
           <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.get_signal("{data.signal_slug}")</code></td></tr>
           <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
         </tbody>
@@ -836,6 +842,31 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     .cm-dot-positive { color: var(--cm-positive); }
 
     /* H1 */
+    /* Breadcrumb — orients a first-time reader (who often lands here straight from
+       the homepage wire feed) and gives a one-click route back to the wire index. */
+    .cm-crumb {
+      margin: 4px 0 2px;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .cm-crumb a {
+      display: inline-block;
+      /* terminal amber — wayfinding accent, deliberately distinct from the blue
+         data-links and the green live-status used elsewhere on this page. */
+      color: #f0b429;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 2px 0;
+      transition: color .12s ease;
+    }
+    .cm-crumb a:hover {
+      color: #ffc847;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
     .cm-h1 {
       font-family: var(--cm-font-mono);
       font-size: clamp(17px, 1.7vw, 22px);
@@ -847,7 +878,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       line-height: 1.35;
     }
 
-    /* Horizon meta strip — sibling of /events-v2/[slug] horizon.
+    /* Horizon meta strip — sibling of /events/[slug] horizon.
        Bloomberg/Eikon pattern: top + bottom hairlines, min-height 28px,
        tokens distributed across width via justify-content:space-between,
        sans-serif lowercase labels in muted, mono uppercase values in link. */
@@ -907,7 +938,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       margin: 0 0 28px;
     }
 
-    /* Wire body — narrative summary. Mirrors /events-v2/[slug] editorial callout
+    /* Wire body — narrative summary. Mirrors /events/[slug] editorial callout
        so the two pages read as siblings of one product. Callout label uses
        events-page chrome: bottom hairline + flex + 0.15em letter-spacing.
        Bullets use the events-page tiny-bar ::before marker, not a literal em-dash. */
@@ -1250,7 +1281,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       padding-left: 16px;
     }
 
-    /* Programmatic access — ported from /events-v2/[slug] verbatim for sibling parity */
+    /* Programmatic access — ported from /events/[slug] verbatim for sibling parity */
     .cm-section-machine .cm-section-summary { max-width: 720px; }
     .cm-endpoints-table {
       width: 100%;
@@ -1341,7 +1372,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     .cm-machine-json :global(.t-num)  { color: #d4b850; }
 
     /* Scroll-margin offsets so anchor jumps land at the section header rather than
-       halfway down. Matches /events-v2/[slug] convention (~120px = sticky chrome height). */
+       halfway down. Matches /events/[slug] convention (~120px = sticky chrome height). */
     #briefs { scroll-margin-top: 120px; }
     #evaluation { scroll-margin-top: 120px; }
     #citations { scroll-margin-top: 120px; }
@@ -1382,6 +1413,65 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       .cm-kv-row dt { margin-bottom: 1px; }
       .cm-kv-link, .cm-prov-link { word-break: break-all; }
       .cm-v2 pre { overflow-x: auto; }
+    }
+
+    /* ===== mobile (~390px iPhone) — additive, desktop untouched =====
+       (a) record meta strip wraps cleanly (reassert over the 720px rule for phones).
+       (b) ATOMIC BRIEF key-value rows: fixed-width label column so every value lines
+           up at the same left edge instead of floating at ragged positions. The
+           tier-stamp (3rd grid col) drops to its own line under the value. */
+    @media (max-width: 640px) {
+      .cm-horizon { flex-wrap: wrap; gap: 6px 10px; }
+      .cm-horizon-pipe { display: none; }
+
+      /* two-column grid: label fixed, value aligned; tier-stamp spans full row below */
+      .cm-kv-row,
+      .cm-kv-wide .cm-kv-row {
+        grid-template-columns: 116px 1fr;
+        column-gap: 12px;
+        row-gap: 1px;
+        margin-bottom: 8px;
+        align-items: baseline;
+      }
+      .cm-kv-row dt {
+        margin-bottom: 0;
+        overflow-wrap: anywhere;
+      }
+      .cm-kv-row dd { min-width: 0; overflow-wrap: anywhere; }
+      /* tier-stamp: out of the 3rd column onto its own full-width line, left-aligned
+         under the value so it doesn't push the value off-edge */
+      .cm-tier-stamp {
+        grid-column: 1 / -1;
+        text-align: left;
+        padding-left: 116px;
+      }
+
+      /* PROGRAMMATIC-ACCESS table — URL column clipped on phones. Reflow each row to a
+         stacked block: surface label, description, then the URL on its own line wrapping
+         via overflow-wrap:anywhere so URLs are fully readable. */
+      .cm-endpoints-table,
+      .cm-endpoints-table tbody,
+      .cm-endpoints-table tr,
+      .cm-endpoints-table td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .cm-endpoints-table tr {
+        border-bottom: 1px solid var(--cm-border-hairline);
+        padding: 8px 0;
+      }
+      .cm-endpoints-table tr:last-child { border-bottom: 0; }
+      .cm-endpoints-table td {
+        border: none !important;
+        padding: 2px 12px;
+      }
+      .cm-endpoints-table td.cm-fmt {
+        width: auto;
+        display: inline-block;
+        margin-bottom: 2px;
+      }
+      .cm-endpoint-url { overflow-wrap: anywhere; word-break: break-word; }
     }
   </style>
 

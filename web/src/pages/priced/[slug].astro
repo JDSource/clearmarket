@@ -1,0 +1,156 @@
+---
+/* Price-first event page — LEAN resolution verdict (not the heavy scorecard).
+ * Demoed on two clean, shippable cases so the layout is judged on real data:
+ *   - treasury  (grade A — the calm/green version)
+ *   - netanyahu (grade C — the alarm version)
+ * Order: header → horizon → lean resolution verdict → price → wires → API → footer.
+ * Full 7-factor methodology lives off-page (/methodology) + in the JSON record.
+ */
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import '../../styles/cm-event.css';
+import ResolutionStrip from '../../components/ResolutionStrip.astro';
+import MarketsTable from '../../components/MarketsTable.astro';
+import VerbatimRules from '../../components/VerbatimRules.astro';
+import WireItems from '../../components/WireItems.astro';
+import ProgrammaticAccess from '../../components/ProgrammaticAccess.astro';
+import { RCG_TOOLTIP } from '../../lib/labels';
+import {
+  getEventBySlug, getMarketsForEvent, getMarkByMarketId,
+  SPECIMEN_GENERATED_AT, SCHEMA_VERSION, type Market,
+} from '../../lib/universe';
+
+export async function getStaticPaths() {
+  const demoSlugs = [
+    'how-low-will-10-year-treasury-yield-get-before-2027',
+    'netanyahu-out-before-2027',
+    'spacex-ipo-by',
+    'kxnberrecessq',                  // A + B mix → green + yellow on one page
+    'what-price-will-nvda-hit-in-may-2026', // all-B strike ladder → yellow
+  ];
+  // Only render demo slugs that still resolve to a live event. Specimens can be
+  // dropped by the horizon filter on a fresh data pull (e.g. a past-month NVDA
+  // ladder) — a dead slug must never crash the static build.
+  return demoSlugs.filter((slug) => getEventBySlug(slug)).map((slug) => ({ params: { slug } }));
+}
+const { slug } = Astro.params as { slug: string };
+const event = getEventBySlug(slug)!;
+const markets = getMarketsForEvent(event.event_id);
+const venue = markets[0]?.platform ?? 'polymarket';
+
+function fmtPct(p: number | null | undefined): string { return (p === null || p === undefined) ? '—' : `${(p * 100).toFixed(1)}%`; }
+function fmtVol(v: number | null | undefined): string {
+  if (v === null || v === undefined || v === 0) return '—';
+  if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e4) return `$${(v / 1e3).toFixed(0)}K`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${(v / 1e3).toFixed(2)}K`;
+}
+function fmtDate(d: string | null | undefined): string { return d ? d.slice(0, 10) : '—'; }
+function truncId(id: string | null): string {
+  if (!id) return '—';
+  if (id.length <= 18) return id;
+  if (id.startsWith('0x')) return `${id.slice(0, 8)}…${id.slice(-4)}`;
+  return `${id.slice(0, 14)}…${id.slice(-3)}`;
+}
+function shortLabel(q: string | null): string {
+  if (!q) return '—';
+  const range = q.match(/(below|above|less than|under|over|more than|greater than)\s+\$?([\d,.]+%?)/i);
+  if (range) {
+    const op = /below|less than|under/i.test(range[1]) ? '<' : '>';
+    return `${op} ${range[2]}`;
+  }
+  return q.replace(/^Will\s+/i, '').replace(/\?$/, '').slice(0, 40);
+}
+
+const withP = markets.map((m) => ({ m, mark: getMarkByMarketId(m.market_id) }));
+// ladder/series: sort by resolve date; otherwise by P(YES)
+const ranked = [...withP].sort((a, b) => {
+  const ra = a.m.resolve_at ?? '', rb = b.m.resolve_at ?? '';
+  if (ra && rb && ra !== rb) return ra.localeCompare(rb);
+  return (b.mark?.implied_probability ?? b.m.last_price ?? 0) - (a.mark?.implied_probability ?? a.m.last_price ?? 0);
+});
+const TOP = 12;
+const shown = ranked.slice(0, TOP);
+const hidden = ranked.length - shown.length;
+const marketGroups = [{ venue, items: shown }];
+const marketsLabel = `${markets.length > 3 ? 'distribution' : 'markets'} · by resolution date`;
+const maxProb = Math.max(0.0001, ...ranked.map((r) => r.mark?.implied_probability ?? r.m.last_price ?? 0));
+const maxVol = Math.max(1, ...ranked.map((r) => r.mark?.volume_total_usd ?? r.m.volume_total_usd ?? 0));
+let cumVol = 0; for (const m of markets) cumVol += m.volume_total_usd ?? 0;
+const resolveDates = [...new Set(markets.map((m) => (m.resolve_at ?? m.close_at ?? '').slice(0, 10)).filter(Boolean))].sort();
+const earliest = resolveDates[0] ?? null;
+const latest = resolveDates[resolveDates.length - 1] ?? null;
+const multiDate = resolveDates.length > 1;
+const daysTo = earliest ? Math.ceil((new Date(earliest).getTime() - new Date(SPECIMEN_GENERATED_AT).getTime()) / 86400000) : null;
+const resolveLabel = multiDate
+  ? `resolves ${earliest.slice(0, 7)} – ${latest!.slice(0, 7)}`
+  : `resolves ${fmtDate(earliest)}${daysTo !== null && daysTo >= 0 ? ` (${daysTo}D)` : ''}`;
+// plain-language "what's measured" line — PLATFORM-VERBATIM, never our editorial. We show a
+// representative contract's raw venue question (`question_raw`). For a single-market binary this
+// IS the question; for a strike ladder we pick the contract nearest the market-implied level
+// (P closest to 50%) — the most informative rung — rather than the enrichment's arbitrary primary.
+const repMarket = markets.length > 2
+  ? [...markets].sort((a, b) => Math.abs((a.last_price ?? 0.5) - 0.5) - Math.abs((b.last_price ?? 0.5) - 0.5))[0]
+  : (markets.find((m) => m.market_id === event.primary_market_id) ?? markets[0]);
+const questionLine = repMarket?.question_raw ?? event.question;
+const canonicalURL = `https://clearmarket.fyi/events/${slug}/`;
+---
+<Site title={`${event.question} · ClearMarket`} description={event.question} canonical={canonicalURL}>
+  <nav class="cm-subnav" aria-label="Sections" slot="subnav">
+    <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
+    <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>
+    <a href="#signal" data-section="signal" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Signal</a>
+    <a href="#api" data-section="api" class="cm-subnav-link"><span class="cm-active-mark">▎</span>API</a>
+    <span class="cm-subnav-snapshot">snapshot <span class="cm-dot-positive">●</span> {fmtDate(SPECIMEN_GENERATED_AT)}</span>
+  </nav>
+
+  <article class="cm-v2" data-cm-event-id={event.event_id}>
+    <h1 class="cm-h1">{event.question}<span class="cm-h1-resolves">  [ {resolveLabel} ]</span></h1>
+    <p class="cm-question-line">{questionLine}</p>
+
+    {/* BORDERLESS STATUS TICKER — flush under the title (meta strip removed; vol on H1) */}
+    <ResolutionStrip event={event} markets={markets} />
+
+    {/* PRICE LEADS — the one shared markets-table template */}
+    <MarketsTable groups={marketGroups} sectionLabel={marketsLabel} />
+
+    {/* verbatim rules — the #rules section the verdict card links to */}
+    <VerbatimRules event={event} markets={markets} />
+
+    <WireItems event={event} />
+    <ProgrammaticAccess event={event} markets={markets} />
+
+    <div class="cm-event-foot">
+      <span><span class="cm-meta-l">snapshot</span> <code>{SPECIMEN_GENERATED_AT}</code></span>
+      <span><span class="cm-meta-l">schema</span> <code>{SCHEMA_VERSION}</code></span>
+      <a href="/events/">all events →</a>
+    </div>
+
+    <script is:inline>
+      // copy contract id on click
+      document.querySelectorAll('.cm-copy').forEach((el) => {
+        el.addEventListener('click', async (ev) => {
+          const t = ev.currentTarget;
+          try { await navigator.clipboard.writeText(t.dataset.copy || t.textContent || ''); t.classList.add('cm-copied'); setTimeout(() => t.classList.remove('cm-copied'), 1200); } catch (_) {}
+        });
+      });
+      // (column sort lives in MarketsTable.astro — the shared table component)
+      // scroll-spy: move the green accent to the section in view
+      (function () {
+        const links = Array.from(document.querySelectorAll('.cm-subnav-link'));
+        const map = {};
+        links.forEach((l) => { const s = document.getElementById(l.getAttribute('data-section')); if (s) map[l.getAttribute('data-section')] = { link: l, sec: s }; });
+        const obs = new IntersectionObserver((entries) => {
+          const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+          if (!vis.length) return;
+          links.forEach((l) => l.classList.remove('cm-subnav-active'));
+          const id = vis[0].target.id;
+          if (map[id]) map[id].link.classList.add('cm-subnav-active');
+        }, { rootMargin: '-120px 0px -65% 0px', threshold: 0 });
+        Object.values(map).forEach(({ sec }) => obs.observe(sec));
+      })();
+    </script>
+  </article>
+</Site>

@@ -1,0 +1,90 @@
+---
+/* ResolutionVerdict — the LEAN resolution strip. Replaces the heavy 7-factor ResolutionAnchor
+ * on the human page. A desk glances; it does not read a rubric. So this shows only:
+ *   - the grade (A/B/C, colored)
+ *   - ONE plain-English sentence (what the grade means for trading this)
+ *   - ONE flag if it's risky
+ *   - a quiet "methodology ›" link to the full 7-factor breakdown (for the auditor/agent)
+ * The depth (factors, weights, caps, per-factor why) lives on /methodology + in the JSON/API,
+ * not in the human's face. The badge is a citable rating, not a scorecard to display.
+ */
+import type { Event, Market } from '../lib/universe';
+import { rationaleFor } from '../lib/labels';
+const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+
+const primary = markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0];
+const score = (primary as any)?.rcg_score ?? null;
+const applied = (primary as any)?.rcg_applied_factors ?? 7;
+
+// Same shared rationale used per-row on the cross-venue compare page, so one market
+// reads identically everywhere.
+const { grade, word, flag, text: verdict } = rationaleFor(primary as any);
+---
+<a class={`rv rv-${grade.toLowerCase()}`} href="#rules" aria-label={`Resolution clarity grade ${grade}. ${verdict}`}>
+  <span class={`rv-grade rv-grade-${grade.toLowerCase()}`}>{grade}</span>
+  <span class="rv-body">
+    <span class="rv-label">Resolution Clarity Grade</span>
+    <span class="rv-line">
+      <span class="rv-word">{word}</span>
+      {flag && <span class="rv-flag">[!] {flag}</span>}
+    </span>
+    <span class="rv-verdict">{verdict}</span>
+    {score !== null && <span class="rv-score">{score} / 100 · {applied} weighted factors · <a class="rv-method" href="/methodology">how it's graded</a></span>}
+  </span>
+  <span class="rv-more">verbatim rules ›</span>
+</a>
+
+<style>
+  .rv {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px; margin: 0 0 20px;
+    border: 1px solid var(--cm-border-rule); border-left-width: 3px;
+    background: var(--cm-bg-surface);
+    text-decoration: none; color: var(--cm-fg-secondary);
+    font-family: var(--cm-font-sans);
+  }
+  .rv:hover { background: var(--cm-bg-callout); }
+  .rv-a { border-left-color: var(--cm-positive); }
+  .rv-b { border-left-color: var(--cm-border-emphasis); }
+  .rv-c { border-left-color: var(--cm-divergence); }
+
+  .rv-grade {
+    font-family: var(--cm-font-mono);
+    font-size: 28px; font-weight: 700; line-height: 1;
+    width: 44px; height: 44px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; border: 2px solid;
+  }
+  .rv-grade-a { color: var(--cm-positive); border-color: var(--cm-positive); }
+  .rv-grade-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+  .rv-grade-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
+
+  .rv-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .rv-label {
+    font-family: var(--cm-font-mono); font-size: 9px; font-weight: 600;
+    letter-spacing: 0.16em; text-transform: uppercase; color: var(--cm-fg-faint);
+    margin-bottom: 2px;
+  }
+  .rv-line { display: flex; align-items: baseline; gap: 10px; }
+  .rv-word {
+    font-family: var(--cm-font-mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--cm-fg-primary);
+  }
+  .rv-flag {
+    font-family: var(--cm-font-mono); font-size: 10px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--cm-divergence);
+  }
+  .rv-verdict { font-size: 13px; line-height: 1.45; color: var(--cm-fg-secondary); }
+  .rv-score {
+    font-family: var(--cm-font-mono); font-size: 10px; color: var(--cm-fg-faint);
+    letter-spacing: 0.04em; margin-top: 4px;
+  }
+  .rv-method { color: var(--cm-fg-link); text-decoration: none; }
+  .rv-method:hover { text-decoration: underline; }
+
+  .rv-more {
+    margin-left: auto; flex-shrink: 0; align-self: center;
+    font-family: var(--cm-font-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--cm-fg-link);
+  }
+  @media (max-width: 640px) { .rv-more { display: none; } }
+</style>

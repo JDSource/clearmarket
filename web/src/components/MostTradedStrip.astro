@@ -1,0 +1,49 @@
+---
+/* MostTradedStrip — thin field strip under the meta header. The single most-traded
+ * market (by 24h vol, cum tiebreak), as fields not a full-width table. ~1/3 width.
+ */
+import type { Event, Market } from '../lib/universe';
+import { getMarkByMarketId } from '../lib/universe';
+const { markets } = Astro.props as { event?: Event; markets: Market[] };
+
+function vol24(m: Market) { return getMarkByMarketId(m.market_id)?.volume_24h_usd ?? m.volume_24h_usd ?? 0; }
+function volCum(m: Market) { return getMarkByMarketId(m.market_id)?.volume_total_usd ?? m.volume_total_usd ?? 0; }
+const top = [...markets].sort((a, b) => (vol24(b) - vol24(a)) || (volCum(b) - volCum(a)))[0];
+const mark = top ? getMarkByMarketId(top.market_id) : null;
+const price = mark?.implied_probability ?? top?.last_price ?? null;
+const cum = top ? volCum(top) : 0;
+const d24 = top ? vol24(top) : 0;
+
+function fmtPct(p: number | null): string { return p === null ? '—' : `${(p * 100).toFixed(1)}%`; }
+function fmtVol(v: number): string {
+  if (!v) return '—';
+  if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+  if (v >= 1e4) return `$${(v / 1e3).toFixed(0)}K`;
+  if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+}
+function trim(q: string | null): string { return (q ?? '—').replace(/\?$/, '').slice(0, 52); }
+---
+{top && (
+  <div class="mt">
+    <span class="mt-k">most traded</span>
+    <span class="mt-venue">{top.platform}</span>
+    <span class="mt-p">{fmtPct(price)}</span>
+    <span class="mt-q">{trim(top.question_raw)}</span>
+    <span class="mt-vol">{d24 ? fmtVol(d24) : fmtVol(cum)}{d24 ? ' 24h' : ' cum'}</span>
+  </div>
+)}
+
+<style>
+  .mt {
+    display: flex; align-items: baseline; gap: 12px;
+    max-width: 720px; padding: 6px 12px; margin: 0 0 8px;
+    border: 1px solid var(--cm-border-hairline); background: var(--cm-bg-surface);
+    font-family: var(--cm-font-mono); font-size: 12px; white-space: nowrap; overflow: hidden;
+  }
+  .mt-k { font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--cm-fg-faint); flex-shrink: 0; }
+  .mt-venue { text-transform: uppercase; letter-spacing: 0.04em; color: var(--cm-fg-primary); flex-shrink: 0; }
+  .mt-p { color: var(--cm-fg-link); font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .mt-q { font-family: var(--cm-font-sans); color: var(--cm-fg-secondary); overflow: hidden; text-overflow: ellipsis; }
+  .mt-vol { margin-left: auto; color: var(--cm-fg-muted); flex-shrink: 0; }
+</style>

@@ -1,0 +1,182 @@
+---
+import Site from '../layouts/Site.astro';
+
+// Canonical methodology doc. Mirrors src/pages/api.astro's doc layout (sticky gutter +
+// surface sections + --va-* tokens) so the two reference pages read as one system.
+const updated = '2026-05-26';
+---
+<Site title="Methodology — ClearMarket" description="How ClearMarket selects, sources, and grades prediction-market data across Kalshi and Polymarket.">
+  <div class="doc">
+    <aside class="doc-gutter">
+      <div class="dg-meta">
+        <div class="dg-row"><span class="dg-k">doc_id</span><span class="dg-v">cm-methodology</span></div>
+        <div class="dg-row"><span class="dg-k">version</span><span class="dg-v">RCG v2</span></div>
+        <div class="dg-row"><span class="dg-k">updated</span><span class="dg-v">{updated}</span></div>
+        <div class="dg-row"><span class="dg-k">scope</span><span class="dg-v">public · canonical</span></div>
+        <div class="dg-row"><span class="dg-k">spec</span><span class="dg-v">rcg-scoring-model.csv</span></div>
+      </div>
+      <nav class="dg-nav">
+        <a href="#overview">Overview</a>
+        <a href="#universe">1 · Universe &amp; filter</a>
+        <a href="#sources">2 · Verified sources</a>
+        <a href="#rcg">3 · Clarity Grade</a>
+        <a href="#editorial">4 · Editorial</a>
+      </nav>
+    </aside>
+
+    <div class="doc-body">
+      <header class="doc-head" id="overview">
+        <h1>Methodology</h1>
+        <p class="doc-lede">How ClearMarket selects, sources, and grades prediction-market data across Kalshi and Polymarket.</p>
+        <p class="doc-note">This document is the source for the public <code>/methodology</code> page and the canonical internal record. Last updated {updated}.</p>
+      </header>
+
+      <section class="surface" id="universe">
+        <div class="surface-tab">1 · UNIVERSE &amp; INSTITUTIONAL FILTER</div>
+        <p>ClearMarket ingests the full Kalshi + Polymarket universe and filters to the institutionally relevant set.</p>
+
+        <h3>Three filter inputs</h3>
+        <ol class="m-list">
+          <li><strong>Category whitelist</strong> — 9 institutional categories IN: <code>economics</code>, <code>financials</code>, <code>crypto</code>, <code>companies</code>, <code>technology</code>, <code>health</code>, <code>politics</code>, <code>geopolitics</code>, <code>climate</code>. OUT: <code>sports</code>, <code>entertainment</code>, <code>mentions</code>.</li>
+          <li><strong>Volume threshold</strong> — venue-specific minimum (tuned empirically).</li>
+          <li><strong>Resolution horizon</strong> — resolves within 24 months.</li>
+        </ol>
+
+        <p><strong>Category derivation differs by venue.</strong> Kalshi ships a clean category field, so we map it directly. Polymarket has no category field, so we derive it from <code>tags[]</code>: a deterministic map keyed on top-level tags (weighting Polymarket's <code>forceShow</code> flag), with a constrained LLM fallback for events whose tags carry no category signal.</p>
+      </section>
+
+      <section class="surface" id="sources">
+        <div class="surface-tab">2 · VERIFIED-SOURCE LAYER</div>
+        <p>Every market's resolution source is captured from <strong>platform-provided data</strong>, never invented by a model. The mechanism differs by venue.</p>
+
+        <h3>Kalshi — structured (direct)</h3>
+        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Coverage across 703 unique series:</p>
+        <ul class="m-list">
+          <li><strong>98% authoritative</strong> — Federal Reserve, BLS, BEA, NWS, Library of Congress, ICE, CF Benchmarks.</li>
+          <li><strong>2% loose</strong> — a placeholder ("For example, Google Finance"), all in the equity-index family.</li>
+          <li><strong>0% missing.</strong></li>
+        </ul>
+
+        <h3>Polymarket — hybrid extraction with a verbatim gate</h3>
+        <p>The source and URL are embedded in the market description free-text. We extract them <strong>without ever letting a model mint a URL</strong>:</p>
+        <ol class="m-list">
+          <li><strong>Regex</strong> extracts the candidate URLs present in the description (the deterministic floor).</li>
+          <li><strong>By count:</strong> 0 URLs goes to subjective/none; exactly 1 is used directly (no LLM); 2+ has an LLM select the primary <em>by number among the candidates</em>.</li>
+          <li><strong>Verbatim gate:</strong> the selected URL must appear verbatim in the description, or it is rejected and flagged for review.</li>
+        </ol>
+        <p>Result: <strong>88% pure-deterministic</strong> (49% subjective-no-URL + 39% single-URL), <strong>12% gated-LLM</strong>, and <strong>zero hallucinated URLs</strong> (6 borderline cases fell back to first-candidate and were flagged). The LLM is constrained to selecting among URLs that provably exist in platform text; it cannot introduce or mistype one.</p>
+
+        <h3>Provenance tiers</h3>
+        <p>Every value carries its origin. <strong>direct</strong>: platform API, structured field, or verbatim-extracted URL. <strong>editorial</strong>: LLM-drafted interpretation, e.g. <code>underlying_reference</code>. <strong>subjective</strong>: resolution by consensus, no named data source. The LLM is confined to the <code>editorial</code> tier; any verifiable identifier (source name, URL) traces to platform data.</p>
+
+        <h3>Source commitment</h3>
+        <p>Capturing a source is not the same as the venue <em>committing</em> to one. We classify every market's resolution source on a <strong>commitment axis</strong>, because a hedge or a placeholder is not a definitive source:</p>
+        <ul class="m-list">
+          <li><strong>named</strong> — a concrete, resolvable authority (Federal Reserve, BLS, the NYC Rent Guidelines Board, a deep-link .gov / official-electoral citation). No grade cap.</li>
+          <li><strong>uncommitted</strong> — a source is <em>gestured at</em> but not committed to. Two sub-cases: <em>illustrative</em> ("For example, Google Finance" — a candidate, not a commitment) and <em>placeholder</em> ("a consensus of credible reporting" — names no concrete authority).</li>
+          <li><strong>none</strong> — no source language at all.</li>
+        </ul>
+        <p>The principle: <strong>"for example" means the venue did not commit to a definitive source.</strong> Source commitment is a <em>separate axis</em> from outcome objectivity — an objective outcome resolved against an uncommitted source still carries resolution risk, because <em>which</em> report decides is left unspecified. This is the gap the CFTC comment documents: regulated venues commit to a named authority; unregulated markets frequently do not. The commitment classification feeds a grade ceiling (see below), and the <strong>venue's literal source field is shown verbatim</strong> on each event page — including when it does not match the resolution rules — so the reader judges the source in the venue's own words, not ours.</p>
+      </section>
+
+      <section class="surface" id="rcg">
+        <div class="surface-tab">3 · RESOLUTION CLARITY GRADE (RCG) · v2</div>
+        <p>A per-<strong>market</strong> A/B/C grade of how unambiguously a market will resolve. Per market, not per event: one event can hold a Kalshi market that resolves clearly and a Polymarket market on the same question that resolves subjectively. The grade is a <strong>weighted score (0–100) banded into A/B/C, then capped</strong> — not a single rule. It rolls seven factors grounded in documented resolution failures (Hall's a16z analysis + the CFTC ANPRM comment): the failures were not absent sources but specific structural defects, so the grade scores those defects directly.</p>
+
+        <h3>Seven factors (weights sum to 100)</h3>
+        <table class="m-table">
+          <thead>
+            <tr><th>Factor</th><th class="m-num">Weight</th><th>What it measures</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Trigger objectivity</td><td class="m-num">28</td><td>Objective measurable trigger vs. discretionary criterion (the Zelensky-"suit" defect). Heaviest because it stays hard after venues clean up citations.</td></tr>
+            <tr><td>Contested reality</td><td class="m-num">22</td><td>Whether the underlying fact is controlled or disputed by an interested party (Venezuela, Ukraine). Most saturation-resistant.</td></tr>
+            <tr><td>Source clarity</td><td class="m-num">18</td><td>Authoritative named source + usable link. Necessary but commoditizes fastest.</td></tr>
+            <tr><td>Arbiter incentive</td><td class="m-num">12</td><td>Dispute resolver's capture risk: regulated/automated vs. permissionless oracle (the UMA flip).</td></tr>
+            <tr><td>Source-conflict rule</td><td class="m-num">8</td><td>If 2+ <strong>genuinely competing</strong> sources (independent authorities that could give contradictory answers) are named, is there an explicit precedence/fallback rule? A named <em>primary with an informal fallback</em> is not a conflict (Venezuela). Situational — the only one.</td></tr>
+            <tr><td>Temporal precision</td><td class="m-num">7</td><td>Controlling timestamp vs. source-update lag (OPM shutdown).</td></tr>
+            <tr><td>Source mutability</td><td class="m-num">5</td><td>Editable/tamperable source without a snapshot rule (Ukraine map, Météo-France sensor).</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Scoring rules</h3>
+        <ul class="m-list">
+          <li><strong>Always-on factors</strong> (trigger, contested, source clarity, arbiter, temporal, mutability — 92 of 100) score every market. The <strong>one situational</strong> factor (source-conflict rule) scores only when 2+ distinct sources are named and is excluded from the denominator otherwise (score re-normalized over applicable factors).</li>
+          <li>Score = <code>100 × earned / applicable</code>, banded <strong>A ≥ 80, B 55–79, C ≤ 54</strong>.</li>
+          <li><strong>Hard caps</strong> (ceilings, applied after banding): <strong>source uncommitted-illustrative goes to B; uncommitted-placeholder or none goes to C</strong> (§2 — a hedge is not a committed source; the binding constraint on most unregulated markets); 2+ <em>genuinely competing</em> sources with no precedence rule goes to C; discretionary trigger with no named source goes to C; permissionless oracle + discretionary trigger goes to C; adversarial ground truth (contested reality) goes to B. Caps only ever <em>lower</em> a grade, never raise it.</li>
+          <li>The <strong>applicable-factor count is surfaced with the grade</strong> ("B — scored on 6 of 7 factors") for comparability across markets of different complexity.</li>
+        </ul>
+
+        <p>Five LLM-judged factors — trigger objectivity, contested reality, source-conflict rule, temporal precision, source mutability — are scored in <strong>one per-event call</strong> (<code>enhance.llm_rcg_factors</code>). Source clarity is hybrid: it reads the §2 verified-source layer (deterministic for Kalshi, gated-LLM for Polymarket). Only arbiter incentive is purely deterministic (it reads the venue's arbitration model). Adding factors adds tokens, not calls. The full weighted model, scoring rules, and caps are in <code>rcg-scoring-model.csv</code> (repo root) — the canonical spec for this section.</p>
+
+        <p>The source-conflict rule was deterministic (URL-count + regex) through 2026-05-26; it moved to the LLM on 2026-05-27 because URL counting mis-read one source across multiple pages as "multiple sources" (false C) and missed prose-named sources entirely (false <code>na</code>). It is now a reading-comprehension judgment.</p>
+
+        <h3>Validation</h3>
+        <p>The model reproduces the four documented failures as <strong>C / C / B / C</strong> (Venezuela, Zelensky, OPM, Ukraine). Full-universe distribution is pending the per-event LLM rater's calibration run against a sample of <em>ordinary</em> markets — four tail failures are not a calibration set.</p>
+
+        <p>The cross-venue resolution-governance contrast (objective, named-authority Kalshi markets vs. the subjective-consensus share on Polymarket) is the signal the venues themselves do not surface.</p>
+      </section>
+
+      <section class="surface" id="editorial">
+        <div class="surface-tab">4 · EDITORIAL ENRICHMENT</div>
+        <p>On top of the verified-source layer, ClearMarket adds editorial fields (<code>editorial_notes</code>, <code>underlying_reference</code>, <code>tags</code>, canonical question) drafted by an LLM and tagged <code>editorial</code>. These <em>interpret and gloss</em> the verified data — e.g. naming the authoritative publisher (S&amp;P Dow Jones Indices) where a venue cites only a placeholder (Google Finance) — but never serve as the source of record. Enrichment is per-event (shared across a market's strike ladder), not per-strike.</p>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    .doc {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .doc-gutter { position: sticky; top: 120px; font-family: var(--va-mono); }
+    .dg-meta { border-left: 2px solid var(--va-accent); padding-left: 12px; margin-bottom: 24px; }
+    .dg-row { display: flex; justify-content: space-between; gap: 10px; font-size: 10.5px; padding: 3px 0; letter-spacing: 0.03em; }
+    .dg-k { color: var(--va-fg-faint); text-transform: uppercase; }
+    .dg-v { color: var(--va-fg-muted); }
+    .dg-nav { display: flex; flex-direction: column; gap: 2px; }
+    .dg-nav a { font-size: 11.5px; color: var(--va-fg-muted); text-decoration: none; padding: 5px 0; border-bottom: 1px solid var(--va-rule); letter-spacing: 0.03em; }
+    .dg-nav a:hover { color: var(--va-accent); }
+
+    .doc-body { border-left: 1px solid var(--va-border); padding-left: 40px; min-width: 0; max-width: 760px; }
+    .doc-head { margin-bottom: 8px; }
+    .doc-head h1 { font-family: var(--va-sans); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--va-fg); }
+    .doc-lede { font-size: 17px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 16px; }
+    .doc-note { font-size: 14px; line-height: 1.6; color: var(--va-fg-muted); }
+
+    .doc-body p { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; }
+    .doc-body strong { color: var(--va-fg); }
+    .doc-body em { color: var(--va-fg-muted); font-style: italic; }
+    .doc-body h3 { font-family: var(--va-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); margin: 28px 0 10px; }
+    .doc-body a { color: var(--va-accent); text-decoration: none; }
+    .doc-body a:hover { text-decoration: underline; }
+    .doc-body code { font-family: var(--va-mono); font-size: 0.86em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); border-radius: 0; }
+
+    /* Ordered/unordered prose lists */
+    .m-list { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; padding-left: 20px; margin: 0 0 16px; }
+    .m-list li { margin: 0 0 7px; }
+    .m-list strong { color: var(--va-fg); }
+    .m-list code { font-family: var(--va-mono); font-size: 0.86em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); }
+
+    /* Seven-factor table */
+    .m-table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13px; }
+    .m-table th { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--va-border); }
+    .m-table td { color: var(--va-fg-muted); line-height: 1.5; padding: 9px 10px; border-bottom: 1px solid var(--va-rule); vertical-align: top; }
+    .m-table td:first-child { color: var(--va-fg); font-weight: 600; white-space: nowrap; }
+    .m-table .m-num { text-align: right; font-family: var(--va-mono); color: var(--va-fg); white-space: nowrap; }
+
+    .surface { border-top: 1px solid var(--va-border); padding-top: 22px; margin-top: 40px; scroll-margin-top: 130px; }
+    .surface-tab { display: inline-block; font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: var(--va-bg); background: var(--va-accent); padding: 3px 9px; margin-bottom: 14px; }
+
+    @media (max-width: 820px) {
+      .doc { grid-template-columns: 1fr; gap: 24px; }
+      .doc-gutter { position: static; top: auto; }
+      .doc-body { border-left: 0; padding-left: 0; }
+      .dg-nav { flex-flow: row wrap; gap: 8px 16px; }
+      .dg-nav a { border-bottom: 0; padding: 2px 0; }
+      .m-table td:first-child { white-space: normal; }
+    }
+  </style>
+</Site>

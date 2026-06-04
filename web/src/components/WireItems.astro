@@ -1,0 +1,42 @@
+---
+/* WireItems — the "Recent CM Signal wire items" section. Shared across all event templates.
+ * Queries the signals content collection for wires tagged to this event (primary or linked);
+ * renders them, or the monitoring-active empty state. Reuses cm-event.css signal classes.
+ */
+import { getCollection } from 'astro:content';
+import type { Event } from '../lib/universe';
+const { event } = Astro.props as { event: Event };
+
+const allSignals = await getCollection('signals');
+const linked = allSignals
+  .filter((s) => s.data.event_id === event.event_id || (s.data.linked_event_ids ?? []).some((id: string) => id === event.event_id))
+  .slice(0, 5);
+---
+<section id="signal" class="cm-section">
+  <div class="cm-section-h">recent wire items</div>
+  {linked.length === 0 ? (
+    <div class="cm-signal-state3">
+      <div class="cm-signal-state3-head">
+        <span class="cm-signal-state3-status">monitoring status: active</span>
+        <span class="cm-signal-state3-tag">no active wire</span>
+      </div>
+      <div class="cm-signal-state3-body">
+        <p class="cm-signal-state3-lede">No CM Signal wire has been published for this event yet.</p>
+        <p class="cm-signal-state3-foot">CM Signal&rsquo;s news-cycle scan surfaces the day&rsquo;s top stories alongside the prediction markets pricing them. When a story references this event, its wire is published here and links back to this page.</p>
+      </div>
+    </div>
+  ) : (
+    <ul class="cm-wire-list">
+      {linked.map((s) => (
+        <li class="cm-wire">
+          <div class="cm-wire-meta">
+            <span class="cm-wire-time">{s.data.published_at}</span>
+            <span class="cm-wire-tag">{s.data.category_tag.toLowerCase().replace(/_/g, '-')}</span>
+          </div>
+          <a class="cm-wire-head" href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
+          <ul class="cm-wire-bullets">{s.data.bullets.map((b: string) => <li>{b}</li>)}</ul>
+        </li>
+      ))}
+    </ul>
+  )}
+</section>

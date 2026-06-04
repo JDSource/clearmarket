@@ -6,7 +6,7 @@
  * ?venue=<venue>. URL params drive client-side row visibility; all rows
  * render server-side so crawlers see the full feed.
  *
- * Sibling layout to /events-v2/[slug] and /signals-preview/[slug] —
+ * Sibling layout to /events-v2/[slug] and /signals/[slug] —
  * monospace, hairline borders, no card frames. Terminal ledger aesthetic.
  *
  * Schema: each <tr> carries data-cms-* attributes for crawler parsing.
@@ -157,11 +157,6 @@ const dataCatalogJsonLd = {
       </span>
       <span class="cm-horizon-pipe">|</span>
       <span class="cm-horizon-token">
-        <span class="cm-horizon-label">resolved:</span>
-        <a class="cm-horizon-value cm-horizon-link" href="/signals/archive/">archive &rarr;</a>
-      </span>
-      <span class="cm-horizon-pipe">|</span>
-      <span class="cm-horizon-token">
         <span class="cm-horizon-label">feed:</span>
         <a class="cm-horizon-value cm-horizon-link" href="/signals/rss.xml">rss</a>
       </span>
@@ -243,11 +238,11 @@ const dataCatalogJsonLd = {
                     <td class="cm-ledger-id">{s.data.signal_id}</td>
                     <td class={`cm-ledger-type cm-type-${s.data.detection_path}`}>{(wireTypeLabel[s.data.detection_path] ?? s.data.detection_path).toUpperCase()}</td>
                     <td class="cm-ledger-headline">
-                      <a href={`/signals-preview/${s.data.signal_slug}/`}>{s.data.headline}</a>
+                      <a href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
                     </td>
                     <td class="cm-ledger-venues">{venues.display}</td>
                     <td class="cm-ledger-formats">
-                      <a href={`/signals-preview/${s.data.signal_slug}/`} class="cm-fmt-link">html</a>
+                      <a href={`/signals/${s.data.signal_slug}/`} class="cm-fmt-link">html</a>
                       <span class="cm-fmt-sep">·</span>
                       <a href={`/signals/${s.data.signal_slug}.json`} class="cm-fmt-link">json</a>
                     </td>
@@ -282,7 +277,6 @@ const dataCatalogJsonLd = {
     </section>
 
     <div class="cm-event-foot">
-      <span><span class="cm-meta-l">view</span> <a href="/signals/archive/">resolved archive &rarr;</a></span>
       <span><span class="cm-meta-l">events</span> <a href="/events/">event catalog &rarr;</a></span>
       <a href="/">&larr; home</a>
     </div>
@@ -761,6 +755,33 @@ const dataCatalogJsonLd = {
         display: inline-block; margin-right: 10px; font-size: 11px; line-height: 1.6;
       }
       .cm-ledger-row .cm-ledger-id { color: var(--cm-fg-faint); }
+    }
+
+    /* ===== mobile (~390px iPhone): filter chips read as a clean wrapped chip set,
+       not a piped run-on sentence. Hide the pipe separators, let each chip wrap as
+       a distinct tappable item, keep each TYPE/VENUE/SORT row grouped with its label
+       on its own line. Additive — desktop pipe-strip layout untouched. ===== */
+    @media (max-width: 640px) {
+      .cm-filter-sep { display: none; }
+      .cm-filter-row {
+        flex-wrap: wrap;
+        gap: 6px 8px;
+        row-gap: 6px;
+        align-items: center;
+      }
+      /* label on its own line so the chips below read as the row's set */
+      .cm-filter-label {
+        flex-basis: 100%;
+        min-width: 0;
+        margin-bottom: 2px;
+      }
+      /* each chip a distinct tappable item with clear padding + reserved bracket space */
+      .cm-filter {
+        padding: 4px 6px;
+        line-height: 1.3;
+      }
+      .cm-filter::before,
+      .cm-filter::after { visibility: visible; }
     }
   </style>
 

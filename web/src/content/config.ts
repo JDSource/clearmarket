@@ -10,7 +10,7 @@ const signals = defineCollection({
       'MOMENTUM_REPRICING',
       'CROSS_VENUE_DIVERGENCE',
       'COVERAGE_GAP',
-      'PRE_NEWS_PRICING',
+      'PRE_EVENT_PRICING',
       'VS_BENCHMARK_DRIFT',
       'RESOLUTION_DISPUTED',
       'VOLUME_SPIKE',
