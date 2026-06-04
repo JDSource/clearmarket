@@ -2194,10 +2194,9 @@
       .cm-mkt-legend-p { justify-self: end; }
       .cm-mkt-legend-cum { justify-self: end; }
       .cm-mkt-legend-rcg { justify-self: center; }
-      /* Wire-page metadata (record · category · target · published): stack each field on its own
-         line on phones instead of an inline run that wraps mid-pair (target | published). */
-      .cm-v2[data-cm-signal-id] .cm-horizon { flex-direction: column; align-items: flex-start; gap: 4px; }
-      .cm-v2[data-cm-signal-id] .cm-horizon-pipe { display: none; }
+      /* NOTE: the wire-page metadata stacking rule lives in signals/[slug].astro's own scoped
+         <style> — that page imports tokens.css only, NOT this file, so a data-cm-signal-id rule
+         here never loads. Kept this note so the fix isn't re-added in the wrong place again. */
       /* Drop the venue-head divider on mobile so the legend's border is the SINGLE header/data
          separator — otherwise the head-bottom + legend-bottom rules sit ~24px apart and read as
          one double-thick line bracketing the micro-header (Gemini). */

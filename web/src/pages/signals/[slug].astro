@@ -1409,7 +1409,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     @media (max-width: 720px) {
       .cm-v2 { padding: 18px 14px 50px; box-sizing: border-box; overflow-wrap: break-word; }
       .cm-h1 { font-size: 18px; line-height: 1.3; }
-      .cm-horizon { flex-wrap: wrap; gap: 6px 10px; }
+      .cm-horizon { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: 4px; }
       .cm-horizon-pipe { display: none; }
       /* kv-rows: 3-col grid -> stacked label-over-value */
       .cm-kv-row, .cm-kv-wide .cm-kv-row { grid-template-columns: 1fr; gap: 0; margin-bottom: 7px; }
@@ -1424,7 +1424,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
            up at the same left edge instead of floating at ragged positions. The
            tier-stamp (3rd grid col) drops to its own line under the value. */
     @media (max-width: 640px) {
-      .cm-horizon { flex-wrap: wrap; gap: 6px 10px; }
+      .cm-horizon { flex-direction: column; align-items: flex-start; flex-wrap: nowrap; gap: 4px; }
       .cm-horizon-pipe { display: none; }
 
       /* two-column grid: label fixed, value aligned; tier-stamp spans full row below */
