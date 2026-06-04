@@ -1,8 +1,38 @@
 # ClearMarket
 
-> Institutional reference layer for prediction market data. Structures, classifies, and links markets across Polymarket and Kalshi so research, risk, and data teams can use them like any other asset class.
+> Institutional reference layer for prediction market data. Structures, classifies, grades, and links markets across Polymarket and Kalshi so research, risk, and data teams can use them like any other asset class.
 
-v0.1.0 · April 2026
+**Live now:** [clearmarket.fyi](https://clearmarket.fyi) · REST `api.clearmarket.fyi/v1` · MCP `api.clearmarket.fyi/mcp` · daily wire feed at [`/signals`](https://clearmarket.fyi/signals). Open and read-only — no key required.
+
+**Coverage:** ~1,857 events / ~15,138 markets across Kalshi + Polymarket. Every market carries a **Resolution Clarity Grade** (RCG A/B/C), a named resolution source, and cross-venue claim links. Prices refresh hourly.
+
+v0.2 · June 2026
+
+---
+
+## Quickstart
+
+No key, no signup — open and read-only.
+
+```bash
+# REST — search the graded universe
+curl -s "https://api.clearmarket.fyi/v1/events?q=fed"
+
+# one event, fully graded (markets + resolution provenance + cross-venue links)
+curl -s "https://api.clearmarket.fyi/v1/events/kxfed-26jul"
+
+# the daily CM Signal wire feed
+curl -s "https://clearmarket.fyi/signals.json"
+```
+
+**MCP** (agent clients — Claude Desktop, Cursor): streamable HTTP at `https://api.clearmarket.fyi/mcp`, six read-only tools (`list_events`, `get_event`, `get_market`, `list_upcoming_catalysts`, `list_signals`, `get_signal`).
+
+```jsonc
+// claude_desktop_config.json  /  ~/.cursor/mcp.json
+{ "mcpServers": { "clearmarket": { "command": "npx", "args": ["-y", "mcp-remote", "https://api.clearmarket.fyi/mcp"] } } }
+```
+
+Every URL also ships a parallel `.json`, embedded JSON-LD, and a row in [`/llms.txt`](https://clearmarket.fyi/llms.txt) — agents never have to scrape HTML.
 
 ---
 
@@ -86,13 +116,13 @@ Full record (markets, daily marks, per-field provenance) at [`samples/fed-apr-20
 
 ## What's here
 
-This repo contains:
+The live product (site, REST API, MCP, daily wire feed) serves the full ~1,857-event universe. This repo is the **open schema + enrichment pipeline + reference specimens** behind it:
 
 - **JSON Schemas** for the four ClearMarket tables (`events`, `markets`, `marks`, `resolution_log`)
 - **Postgres DDL** matching the schemas
 - **An Enhancement Script** (`enhance.py`) that transforms raw Polymarket + Kalshi API pulls into ClearMarket-shaped records, with AI-drafted editorial enrichment
-- **Four v0.1.0 specimens** covering 15 canonical events and 55 markets
-- **A sample cache** of the 4 raw API pulls used to generate the specimens (for reproducibility)
+- **Reference specimens** (15 canonical events, 55 markets) you can diff against — the worked examples below
+- **The CFTC ANPRM comment** (`cftc-anprm/`) — the cross-venue resolution-divergence analysis filed with the Commission (RIN 3038-AF65)
 
 All specimens validate against the JSON Schemas. All records carry per-field `field_provenance` flagging whether a value came from the platform API, ClearMarket editorial, a derived computation, an imputed proxy, or a known venue limitation.
 
@@ -116,15 +146,13 @@ Open any `samples/<id>/specimen.json` for the full bundle. The top-level `_meta.
 
 ClearMarket is the independent enrichment layer above those feeds. It parses what the platforms don't publish in structured form: canonical questions, authoritative data sources, parsed resolution structures, cross-platform linkage, thematic families, and per-field provenance.
 
-Three product surfaces sit on top of the same schema:
+Two products sit on top of the same schema (a third is on the roadmap):
 
-| Surface | What it does | Buyer |
+| Product | What it does | Buyer |
 |---|---|---|
-| **Screen** | Classify which markets are institutionally tradable vs. which rely on vague placeholder resolution language. | Hedge funds wanting structured exposure without parsing prose at 20K-market scale. |
-| **Rate** (v0.3+) | Quantify dispute risk via historical UMA patterns. Requires UMA subgraph reader. | Swap desks pricing tail risk, middle-office counterparties sizing collateral. |
-| **Normalize** | Present the same canonical event on Kalshi and Polymarket side by side with uniform fields. | Data distributors (Bloomberg, ICE, Tradeweb, VettaFi) consuming a consistent feed. |
-
-Screen and Normalize are v0.1-shippable. Rate is v0.3 and depends on on-chain UMA data.
+| **CM Data** (live) | The reference layer: grade resolution clarity (RCG A/B/C), name resolution sources, link the same claim across venues, per-field provenance. Markit-shape, licensable. | Data distributors (Bloomberg, ICE, Tradeweb, VettaFi), research/risk desks, AI agents. |
+| **CM Signal** (live) | Daily wire feed on top of CM Data — news-cycle, volume-spike, cross-venue divergence, and benchmark-drift bulletins, published to web + JSON + MCP. | Analysts and desks tracking prediction-market-implied signal. |
+| **Rate** (roadmap) | Quantify dispute risk via historical UMA patterns. Requires UMA subgraph reader. | Swap desks pricing tail risk, middle-office counterparties sizing collateral. |
 
 ---
 
@@ -170,11 +198,11 @@ Three steps. The first two are deterministic Python; the third is the editorial 
                              │
                              ▼
  ┌────────────────────────────────────────────────────────────────┐
- │  4. STORAGE + API (not yet in v0.1)                            │
+ │  4. STORAGE + API (LIVE)                                       │
  │                                                                │
- │     • Postgres (Supabase): 4 tables per schema/ddl.sql         │
- │     • Public API: /events/*, /markets/*, /marks/*              │
- │     • All derived fields computed at serve time, not stored    │
+ │     • Cloudflare D1 + Worker: api.clearmarket.fyi/v1/*         │
+ │     • REST + MCP (/mcp) + parallel JSON / JSON-LD              │
+ │     • Hourly price refresh; daily CM Signal wires              │
  └────────────────────────────────────────────────────────────────┘
 ```
 
@@ -229,33 +257,39 @@ Four tables. Full definitions in `schema/`.
 
 ---
 
-## v0.1.0 scope
+## What's shipped (v0.2)
 
-### Included
+### Live
+
+- Public site, REST API, and MCP server over the full ~1,857-event universe
+- Resolution Clarity Grade (RCG A/B/C) + named resolution source on every market
+- Cross-venue claim linking (the same graded claim across Kalshi + Polymarket)
+- CM Signal daily wire feed (news-cycle, volume-spike, cross-venue divergence, benchmark-drift)
+- Hourly price refresh; four-format output (HTML + JSON-LD + parallel JSON + `llms.txt`)
+
+### In this repo
 
 - 4-table schema (JSON Schema + Postgres DDL)
 - Enhancement Script (`enhance.py`) with CLOB + LLM enrichment
-- 4 specimens: 15 events, 55 markets, 55 marks
+- Reference specimens: 15 events, 55 markets, 55 marks
 - `field_provenance` on every record
-- Deterministic 12-character canonical event IDs
+- Deterministic canonical event + market IDs
 
-### Known v0.1 limitations (called out honestly)
+### Known limitations (called out honestly)
 
 - **`resolution_log` ships empty.** UMA subgraph reader lands in v0.3; Kalshi lifecycle events are editorial-gated. Shipping zero rows beats shipping thin rows that oversell the capability.
 - **`open_interest_usd` is null for Polymarket.** Requires on-chain subgraph; v0.2+.
 - **`size` fields are top-of-book only.** Full-book depth requires a dedicated crawler; deferred to v0.2.
-- **`liquidity` field dropped entirely.** Kalshi ships `liquidity_dollars` as top-of-book; Polymarket ships `liquidityNum` as full-book. They are not comparable. Revisit in v0.2 with an own-crawler for both.
-- **No live API yet.** v0.1 is the schema + specimens. Live HTTP endpoints land in v0.2 conditional on buyer pull.
-- **`resolution_triggers` parsing of rules prose is deferred.** v0.1 ships the raw rules text; v0.2 adds LLM-parsed structured triggers, thresholds, and exclusions.
+- **`liquidity` field dropped entirely.** Kalshi ships `liquidity_dollars` as top-of-book; Polymarket ships `liquidityNum` as full-book. They are not comparable. Revisit with an own-crawler for both.
+- **`resolution_triggers` parsing of rules prose is deferred.** The raw rules text ships today; LLM-parsed structured triggers, thresholds, and exclusions are next.
 
 ### Roadmap
 
-| Version | What lands | Target |
+| Version | What lands | Status |
 |---|---|---|
-| v0.1.0 | Schema + Enhancement Script + 4 specimens (this release) | Apr 2026 |
-| v0.1.1 | CI validation, contract tests, additional specimens | May 2026 |
-| v0.2 | Live HTTP API, size depth, `resolution_triggers` parsing, Polymarket open interest via on-chain subgraph | Conditional on buyer pull |
-| v0.3 | `resolution_log` populated via UMA subgraph reader, dispute-risk `Rate` surface | Q3 2026 |
+| v0.1 | Schema + Enhancement Script + reference specimens | Shipped Apr 2026 |
+| v0.2 | Live site + REST API + MCP, RCG grading, cross-venue linking, CM Signal wire feed, hourly prices | **Shipped Jun 2026** |
+| v0.3 | `resolution_log` via UMA subgraph reader, dispute-risk `Rate` surface, full-book depth, Polymarket open interest | Planned |
 
 ---
 
@@ -295,6 +329,9 @@ Run `python3 enhance.py --no-llm` to skip LLM enrichment and produce structurall
 ```
 clearmarket/
 ├── README.md                           this file
+├── web/                                Astro site (clearmarket.fyi): pages, components, wire content
+├── api/                                Cloudflare Worker: REST /v1/* + MCP /mcp, D1 schema + seed
+├── cftc-anprm/                         CFTC ANPRM comment + reproducible analysis (RIN 3038-AF65)
 ├── enhance.py                          Enhancement Script
 ├── schema/
 │   ├── events.schema.json              JSON Schema
@@ -324,6 +361,6 @@ This release uses public data from [Polymarket](https://polymarket.com) and [Kal
 
 ## Status
 
-Pre-MVP. v0.1.0 ships the schema, enhancement pipeline, and four worked specimens. Design-stage feedback welcome via GitHub issues or direct contact.
+Live. The site, REST API, and MCP server are public over the full universe, and CM Signal wires publish daily. Feedback welcome via GitHub issues or direct contact.
 
 **Built by:** Jeremy Dietz. Ran Digital Products at the Toronto Stock Exchange. VP Product at Coinsquare, the first fully regulated crypto exchange in Canada. Independently built Catalyst Signal, an AI research platform covering 220+ public equities. Now building ClearMarket.
