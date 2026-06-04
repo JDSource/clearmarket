@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-05-27T18:15:21.695540+00:00",
+  "generated_at": "2026-06-03T14:52:43.794845+00:00",
   "schema": "v0.2.0-universe",
-  "event_count": 2100,
-  "market_count": 18102,
+  "event_count": 1857,
+  "market_count": 15138,
   "demo_slugs": [
-    "strait-of-hormuz-traffic-returns-to-normal-by-end-of-may",
     "kxlayoffsyinfo-26",
-    "when-will-bitcoin-hit-150k"
+    "when-will-bitcoin-hit-150k",
+    "fed-decision-in-june-825"
   ]
 }

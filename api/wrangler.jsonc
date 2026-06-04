@@ -1,9 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "clearmarket-api",
+  "account_id": "698a149b405eccb8b03a87c31df15af8",
   "main": "src/index.ts",
   "compatibility_date": "2026-05-01",
   "workers_dev": true,
+  "routes": [
+    { "pattern": "api.clearmarket.fyi", "custom_domain": true }
+  ],
   "observability": { "enabled": true },
   "triggers": { "crons": ["0 * * * *"] },
   "d1_databases": [
