@@ -18,7 +18,7 @@
 import Site from '../../layouts/Site.astro';
 import '../../styles/tokens.css';
 import '../../styles/cm-event.css';
-import { getAllEvents, getMarketsForEvent } from '../../lib/universe';
+import { getAllEvents, getMarketsForEvent, isEventLive } from '../../lib/universe';
 import { eventDisplayQuestion } from '../../lib/labels';
 
 const API_BASE = 'https://api.clearmarket.fyi';
@@ -34,6 +34,7 @@ function fmtVol(v: number): string {
 
 const rows = getAllEvents().map((e) => {
   const mkts = getMarketsForEvent(e.event_id);
+  const resolved = !isEventLive(e);
   const isLadder = (e as any).event_type === 'LADDER';
   // Compact, hard-edged shape codes for the ledger column: LADDER n / BIN / n MKT.
   const shape = isLadder
@@ -53,12 +54,14 @@ const rows = getAllEvents().map((e) => {
     shape,
     mktCount,
     vol,
+    resolved,
     venueStr: e.venues_covered
       .map((v) => (v === 'polymarket' ? 'POLY' : v === 'kalshi' ? 'KAL' : v.toUpperCase()))
       .join(' · '),
   };
 });
-rows.sort((a, b) => (b.vol - a.vol) || a.question.localeCompare(b.question));
+// Active events first; resolved ones subordinate to the bottom (still browsable, badged RESOLVED).
+rows.sort((a, b) => (Number(a.resolved) - Number(b.resolved)) || (b.vol - a.vol) || a.question.localeCompare(b.question));
 
 const cats = Array.from(new Set(rows.map((r) => r.category))).sort();
 const canonicalURL = 'https://clearmarket.fyi/events/';
@@ -113,9 +116,9 @@ const canonicalURL = 'https://clearmarket.fyi/events/';
         </thead>
         <tbody id="ev-body">
           {rows.map((r) => (
-            <tr class="evl-row" data-cat={r.category} data-vol={r.vol} data-mkt={r.mktCount} data-q={`${r.question.toLowerCase()} ${r.id.toLowerCase()}`}>
+            <tr class={`evl-row${r.resolved ? ' evl-resolved' : ''}`} data-cat={r.category} data-vol={r.vol} data-mkt={r.mktCount} data-resolved={String(r.resolved)} data-q={`${r.question.toLowerCase()} ${r.id.toLowerCase()}`}>
               <td class="evl-id"><a href={`/events/${r.slug}/`}>{r.id}</a></td>
-              <td class="evl-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
+              <td class="evl-q"><a href={`/events/${r.slug}/`}>{r.resolved && <span class="evl-resolved-badge">RESOLVED</span>}{r.question}</a></td>
               <td class="evl-cat">{r.category.toUpperCase()}</td>
               <td class="evl-ven">{r.venueStr}</td>
               <td class="evl-shape">{r.shape}</td>
@@ -427,6 +430,14 @@ const canonicalURL = 'https://clearmarket.fyi/events/';
 
   .evl-q a { font-family: var(--cm-font-sans); font-size: 13.5px; color: var(--cm-fg-primary); text-decoration: none; line-height: 1.35; }
   .evl-q a:hover { color: var(--cm-fg-link); }
+  /* Resolved events stay browsable but read as subordinate: muted row + a RESOLVED tag. */
+  .evl-resolved .evl-q a, .evl-resolved .evl-id a { color: var(--cm-fg-muted); }
+  .evl-resolved-badge {
+    display: inline-block; margin-right: 7px; padding: 1px 5px; vertical-align: 1px;
+    font-family: var(--cm-font-mono); font-size: 9px; font-weight: 700;
+    letter-spacing: 0.12em; color: var(--cm-fg-faint);
+    border: 1px solid var(--cm-border-emphasis);
+  }
   .evl-cat { font-family: var(--cm-font-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; color: var(--cm-fg-muted); white-space: nowrap; }
   .evl-ven { font-family: var(--cm-font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--cm-fg-secondary); white-space: nowrap; }
   .evl-shape { font-family: var(--cm-font-mono); font-size: 10.5px; letter-spacing: 0.06em; color: var(--cm-fg-muted); white-space: nowrap; }

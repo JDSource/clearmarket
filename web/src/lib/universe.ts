@@ -208,5 +208,22 @@ export function getResolutionLogForEvent(_event_id: string): never[] {
   return [];
 }
 
+// Build-date "today" — the static site rebuilds daily (CM Signal cron), so this re-filters daily.
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+// An event is LIVE if at least one of its markets still resolves today or later. Multi-date series
+// (e.g. "Bitcoin ATH by Mar / Jun / Sep / Dec") stay live until the final leg resolves; a fully-
+// resolved event drops out of the active index + search (still reachable by URL as a record).
+export function isEventLive(event: Event): boolean {
+  const mk = getMarketsForEvent(event.event_id);
+  if (!mk.length) return false;
+  return mk.some((m) => {
+    const d = (m.resolve_at ?? (m as any).close_at ?? '').slice(0, 10);
+    return !d || d >= TODAY_ISO; // missing date → keep (never hide on absent data)
+  });
+}
+export function getActiveEvents(): Event[] {
+  return allEvents.filter(isEventLive);
+}
+
 export const SPECIMEN_GENERATED_AT = generatedAt;
 export const SCHEMA_VERSION = (bundle._meta?.schema as string) ?? 'v0.2.0';

@@ -68,6 +68,12 @@ export function marketOut(m: any) {
       source_citation: m.source_citation,
       source_type: m.resolution_source_type,
       source_quality: m.resolution_source_quality,
+      // source COMMITMENT: did the venue commit to a definitive source, or only hedge/placeholder?
+      // named = concrete authority committed to; uncommitted = gestured-at but hedged
+      // ("for example …") or pure placeholder ("consensus of credible reporting"); none = no source.
+      source_commitment: m.source_commitment ?? null,
+      source_commitment_subtype: m.source_commitment_subtype ?? null,
+      source_hedge_text: m.source_hedge_text ?? null,
     },
     rcg: {
       grade: m.resolution_clarity_grade,
@@ -199,12 +205,21 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const p = url.searchParams;
   const where: string[] = ['e.published = 1'];
   const args: unknown[] = [];
+  // "live" = has at least one market still open (resolve/close in the future or unknown). Used to
+  // subordinate resolved events (active first) and to support ?status filtering. Evaluated against
+  // date('now') so it stays accurate continuously, not just at the last reseed.
+  const liveExpr = `EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND (
+    (m.resolve_at IS NULL AND m.close_at IS NULL) OR COALESCE(m.resolve_at, m.close_at) >= date('now')))`;
+  const status = (p.get('status') || 'all').toLowerCase();
+  if (status === 'active') where.push(liveExpr);
+  else if (status === 'resolved') where.push(`NOT (${liveExpr})`);
   if (p.get('category')) { where.push('e.category = ?'); args.push(p.get('category')); }
   if (p.get('q')) { where.push('e.question LIKE ?'); args.push(`%${p.get('q')}%`); }
 
   const limit = Math.min(Number(p.get('limit') ?? 50) || 50, 200);
   const offset = Math.max(Number(p.get('offset') ?? 0) || 0, 0);
-  const sql = `SELECT * FROM events e WHERE ${where.join(' AND ')} ORDER BY e.updated_at DESC LIMIT ? OFFSET ?`;
+  // Active events first (is_live DESC), resolved subordinate to the bottom but still returned.
+  const sql = `SELECT *, (${liveExpr}) AS is_live FROM events e WHERE ${where.join(' AND ')} ORDER BY is_live DESC, e.updated_at DESC LIMIT ? OFFSET ?`;
   const { results: evs } = await env.DB.prepare(sql).bind(...args, limit, offset).all<any>();
 
   if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed, events: [] });
@@ -219,7 +234,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
 
   // optional platform/grade filters applied post-rollup
-  let out = evs.map((e) => eventSummary(e, byEvent.get(e.event_id) ?? []));
+  let out = evs.map((e) => ({ ...eventSummary(e, byEvent.get(e.event_id) ?? []), resolved: !e.is_live }));
   if (p.get('platform')) out = out.filter((e) => e.venues_covered.includes(p.get('platform')!));
   if (p.get('grade')) out = out.filter((e) => e.grade === p.get('grade'));
 
@@ -476,6 +491,22 @@ export default {
     }
 
     if (path === '/v1/catalysts/upcoming') return upcomingCatalysts(env, url);
+
+    // CM Signal wire is served as static JSON by Pages (it's content, not D1). Proxy it here so the
+    // obvious REST path resolves for agents (an external agent hit /v1/signals and got a 404).
+    // /v1/signals -> wire index; /v1/signals/:slug -> one bulletin.
+    if (path === '/v1/signals' || path.startsWith('/v1/signals/')) {
+      const slug = path === '/v1/signals' ? '' : path.slice('/v1/signals/'.length).replace(/\/+$/, '');
+      const target = slug
+        ? `https://clearmarket.fyi/signals/${encodeURIComponent(slug)}.json`
+        : 'https://clearmarket.fyi/signals.json';
+      const upstream = await fetch(target, { cf: { cacheTtl: 300, cacheEverything: true } });
+      if (!upstream.ok) return err(upstream.status === 404 ? 404 : 502, upstream.status === 404 ? 'Signal not found' : 'Upstream error', 'Try /v1/signals or /signals.json');
+      return new Response(await upstream.text(), {
+        status: 200,
+        headers: { ...CORS, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300' },
+      });
+    }
 
     if (path === '/mcp') return handleMcp(req, env);
 

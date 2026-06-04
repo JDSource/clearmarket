@@ -3,7 +3,7 @@
 //   s = event slug (nav target), t = display title, q = lowercased search blob
 //       (title + tags + category + every venue market-id, so pasting KXIPO-26-STRIPE or a 0x… id hits).
 import type { APIRoute } from 'astro';
-import { getAllEvents, getMarketsForEvent } from '../lib/universe';
+import { getAllEvents, getMarketsForEvent, isEventLive } from '../lib/universe';
 import { eventDisplayQuestion } from '../lib/labels';
 
 export const GET: APIRoute = () => {
@@ -19,8 +19,11 @@ export const GET: APIRoute = () => {
       s: e.slug,
       t: title,
       q: `${title} ${tags} ${e.category} ${ids}`.toLowerCase(),
+      r: isEventLive(e) ? 0 : 1, // resolved flag — consumers rank these lower
     };
   });
+  // Active first so the typeahead dropdown + index filter surface live events before resolved ones.
+  index.sort((a, b) => a.r - b.r);
   return new Response(JSON.stringify(index), {
     headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=3600' },
   });

@@ -65,9 +65,14 @@ const earliest = resolveDates[0] ?? null;
 const latest = resolveDates[resolveDates.length - 1] ?? null;
 const multiDate = resolveDates.length > 1;
 const daysTo = earliest ? Math.ceil((new Date(earliest).getTime() - new Date(SPECIMEN_GENERATED_AT).getTime()) / 86400000) : null;
-const resolveLabel = multiDate
-  ? `resolves ${earliest.slice(0, 7)} – ${latest!.slice(0, 7)}`
-  : `resolves ${fmtDate(earliest)}${daysTo !== null && daysTo >= 0 ? ` (${daysTo}D)` : ''}`;
+// Resolved = the LAST leg's resolution date is already in the past (vs the build date / today).
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+const isResolved = latest !== null && latest < TODAY_ISO;
+const resolveLabel = isResolved
+  ? `resolved ${fmtDate(latest)}`
+  : multiDate
+    ? `resolves ${earliest.slice(0, 7)} – ${latest!.slice(0, 7)}`
+    : `resolves ${fmtDate(earliest)}${daysTo !== null && daysTo >= 0 ? ` (${daysTo}D)` : ''}`;
 
 // A strike ladder = many same-date markets distinguished by threshold; its natural axis is the
 // strike, not the (uniform) resolution date — so label + ordering reflect that.
@@ -104,7 +109,7 @@ const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
   </nav>
 
   <article class="cm-v2" data-cm-event-id={event.event_id} data-cm-slug={event.slug}>
-    <h1 class="cm-h1" data-cm-field="question">{displayQuestion}<span class="cm-h1-resolves">  [ {resolveLabel} ]</span></h1>
+    <h1 class="cm-h1" data-cm-field="question">{displayQuestion}<span class={isResolved ? 'cm-h1-resolved' : 'cm-h1-resolves'}>  [ {resolveLabel} ]</span></h1>
     {questionLine && <p class="cm-question-line" data-cm-field="question_raw">{questionLine}</p>}
 
     {/* BORDERLESS STATUS TICKER — flush under the title */}
