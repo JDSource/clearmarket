@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604VS05"
 signal_slug: "will-bitcoin-dip-to-65-000-in-june-vol-246287"
-headline: "BTC dips $65K in June: 87% on $246K"
+headline: "BTC dip to $65K in June: 87% on $246K"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-3PF6P6GGK5"
 event_slug: "what-price-will-bitcoin-hit-in-june-2026"
 event_question: "Will Bitcoin's price reach a specific level in June?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-07-01T04:00:00Z"
 bullets:
-  - "Polymarket prices 87% probability Bitcoin touches $65K at some point in June."
-  - "$246K 24h volume equals 71% of all-time; high-conviction positioning into contract."
-  - "Current BTC spot price implies $65K breach already occurred or is near-certain."
-  - "Contract resolves June 30; high probability reflects observed or imminent price level."
+  - "Polymarket prices 87% probability Bitcoin touches $65K or below during June 2026."
+  - "Polymarket: $246K 24h, 71% of $344K all-time; strong conviction flow in compressed window."
+  - "Implies current BTC spot is near or below $65K, or trajectory strongly points there within June."
+  - "Contract expires end of June; 87% reflects broad market consensus on downside range."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will Bitcoin's price reach a specific level in June?"
     url: "https://clearmarket.fyi/events/what-price-will-bitcoin-hit-in-june-2026"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-87% probability with majority of lifetime volume in one day indicates this downside level has likely already been touched, driving confirmation trades to YES.
+87% probability with 71% of all-time volume signals the crypto desk consensus is firmly positioned for BTC trading at or through $65K this month, implying significant spot weakness.

@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604VS03"
 signal_slug: "who-will-win-los-angeles-mayoral-electio-vol-1168668"
-headline: "LA mayoral winner: Bass 79% on $1.2M"
+headline: "LA mayor race, Bass: 79% on $1.17M"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-X27NWLJN20"
 event_slug: "kxmayorla-26"
 event_question: "Will there be a Los Angeles Mayor winner?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-06-02T14:00:00Z"
 bullets:
-  - "Kalshi market prices Karen Bass at 79% to win 2026 Los Angeles mayoral election."
-  - "$1.17M 24h volume is 26% of all-time; sustained attention across a broad pool."
-  - "Recent polling or candidate field developments drawing fresh capital to Bass position."
-  - "Election date approaching; volume surge consistent with pre-event positioning cycle."
+  - "Kalshi prices Karen Bass at 79% to win the 2026 Los Angeles mayoral election."
+  - "Kalshi: $1.17M 24h, 26% of $4.5M all-time; sustained fresh inflow, not a one-session blip."
+  - "Post-primary field clarification and polling movement likely catalyzing position-taking ahead of November."
+  - "General election; months to resolution, current price reflects Bass as heavy favourite but contest open."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will there be a Los Angeles Mayor winner?"
     url: "https://clearmarket.fyi/events/kxmayorla-26"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Bass consolidating at 79% with significant volume inflow suggests political desks view LA mayoral race as increasingly settled, though not fully priced.
+Steady 26% of all-time volume in a single session suggests institutional and political-risk desks are actively marking Bass as the probable winner following primary consolidation.

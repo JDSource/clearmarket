@@ -5,7 +5,7 @@ headline: "Lahn IA GOP governor nominee: 100% on $557K"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-N70PDTB9T9"
 event_slug: "kxgovianomr-26"
 event_question: "Will Kim Reynolds be the Iowa Republican Governor nominee by the 2026 election?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-06-02T14:00:00Z"
 bullets:
-  - "Kalshi contract prices Zach Lahn as certain Republican gubernatorial nominee in Iowa."
-  - "$557K 24h volume is 64% of all-time; market effectively calling the race closed."
-  - "No credible primary challenger remains; 100% reflects resolved or near-resolved consensus."
-  - "Contract likely approaching or at resolution following primary certification."
+  - "Kalshi prices 100%, market has fully resolved Lahn as Iowa GOP gubernatorial nominee."
+  - "Kalshi: $557K 24h volume, 64% of $868K all-time; bulk of lifetime activity hit on resolution."
+  - "Lahn's primary win confirmation triggered settlement flow, concentrating volume at finality."
+  - "Contract resolves YES; volume is settlement and position close-out activity."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will Kim Reynolds be the Iowa Republican Governor nomin"
     url: "https://clearmarket.fyi/events/kxgovianomr-26"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Full-certainty pricing with majority of lifetime volume printing in one session indicates the Iowa GOP primary result is considered definitive by market participants.
+100% price absorbing 64% of all-time volume in one day is a classic resolution signature; desks should note Lahn as the confirmed Iowa GOP gubernatorial candidate for 2026 cycle positioning.

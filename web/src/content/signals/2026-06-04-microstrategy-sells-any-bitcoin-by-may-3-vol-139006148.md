@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604VS00"
 signal_slug: "microstrategy-sells-any-bitcoin-by-may-3-vol-139006148"
-headline: "MicroStrategy BTC sale: 0% on $139M surge"
+headline: "MicroStrategy BTC sale by May 31: 0% on $139M"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-QW6P6GZ8N4"
 event_slug: "microstrategy-sell-any-bitcoin-in-2025"
 event_question: "MicroStrategy sells any Bitcoin by May 31, 2026?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-07-01T04:00:00Z"
 bullets:
-  - "Polymarket prices zero chance MSTR liquidates any BTC before May 31 deadline."
-  - "$139M 24h volume equals 60% of all-time; largest single-day flow on this contract."
-  - "May 31 resolution date passed, late settlement flow or dispute driving final flush."
-  - "Resolution imminent; volume likely reflects last-minute positioning ahead of official close."
+  - "Market prices 0% chance MSTR sold any BTC before May 31 deadline."
+  - "Polymarket: $139M 24h volume, 60% of $230M all-time; massive terminal settlement flow."
+  - "Contract near/past resolution date; volume reflects final settlement arbitrage and confirmation."
+  - "Resolves NO, market is locked; flow is closing positions, not pricing new risk."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: MicroStrategy sells any Bitcoin by May 31, 2026?"
     url: "https://clearmarket.fyi/events/microstrategy-sell-any-bitcoin-in-2025"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Massive terminal-day volume on a near-certain NO outcome signals institutional desks confirming MSTR hodl narrative ahead of formal resolution.
+Near-zero price and 60% of all-time volume in one session signals contract is resolving NO, with desks and arb bots closing out residual positions at settlement.

@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604VS01"
 signal_slug: "us-x-iran-permanent-peace-deal-by-june-1-vol-2480648"
-headline: "US-Iran perm peace: 14% on $2.5M volume"
+headline: "US-Iran permanent peace: 14% on $2.5M surge"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-TQTJ2MLTV8"
 event_slug: "us-x-iran-permanent-peace-deal-by"
 event_question: "US x Iran permanent peace deal by May 31, 2026?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-06-15T00:00:00Z"
 bullets:
-  - "Polymarket assigns 14% probability to permanent US-Iran peace deal by June 15."
-  - "$2.5M in 24h volume represents 28% of all-time; sharp acceleration into deadline."
-  - "Nuclear talks resuming and back-channel diplomacy reports driving fresh market attention."
-  - "Contract resolves June 15; nine trading days remain for a diplomatic breakthrough."
+  - "Polymarket prices 14% probability of permanent US-Iran peace deal by June 15."
+  - "Polymarket: $2.5M 24h volume, 28% of $8.7M all-time; significant fresh attention."
+  - "Iran nuclear talks and back-channel diplomatic signals driving renewed speculative interest ahead of June 15 deadline."
+  - "Contract expires June 15; 11-day window compresses resolution risk sharply."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: US x Iran permanent peace deal by May 31, 2026?"
     url: "https://clearmarket.fyi/events/us-x-iran-permanent-peace-deal-by"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A 14% print with accelerating volume into a hard deadline signals geopolitical desks are actively hedging tail risk around Iran nuclear negotiation outcomes.
+A 14% price with 28% of all-time volume in 24 hours signals macro desks are actively hedging or speculating on a near-term diplomatic breakthrough that would reprice energy and EM risk.

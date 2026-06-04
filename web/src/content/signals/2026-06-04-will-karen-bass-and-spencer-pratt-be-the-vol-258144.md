@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604VS07"
 signal_slug: "will-karen-bass-and-spencer-pratt-be-the-vol-258144"
-headline: "Bass-Pratt LA ballot: 79% on $258K"
+headline: "Bass vs. Pratt LA mayor ticket confirmed: 79% on $258K"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-04T03:24:48+00:00"
+published_at: "2026-06-04T11:15:28+00:00"
 event_id: "CM-EVT-5D13MHJ4R8"
 event_slug: "kxlamayormatchup-26jun"
 event_question: "Will there be a Los Angeles mayoral election by the specified date?"
@@ -19,10 +19,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-06-02T14:00:00Z"
 bullets:
-  - "Kalshi contract prices 79% probability both Bass and Spencer Pratt appear on LA mayoral ballot."
-  - "$258K 24h volume equals 51% of all-time; market reaching consensus on nomination slate."
-  - "Pratt's candidacy filing status driving binary volume; market leans toward confirmation."
-  - "Nomination deadline approaching; resolution contingent on official ballot certification."
+  - "Kalshi prices 79% that Bass and Spencer Pratt are the two general-election nominees in LA mayor race."
+  - "Kalshi: $258K 24h, 51% of $510K all-time; majority of lifetime volume settling in one session."
+  - "Primary results appear to have confirmed the two-candidate matchup, triggering position-taking at near-resolution prices."
+  - "General election resolution later in cycle; 79% leaves residual uncertainty on ballot/candidacy changes."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -39,10 +39,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will there be a Los Angeles mayoral election by the spe"
     url: "https://clearmarket.fyi/events/kxlamayormatchup-26jun"
-    retrieved_at: "2026-06-04T03:24:48+00:00"
+    retrieved_at: "2026-06-04T11:15:28+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Majority of lifetime volume clearing at 79% indicates political markets are treating the Bass-Pratt ballot configuration as the base case ahead of certification.
+51% of all-time volume at 79% in a single session indicates primary results largely confirmed the Bass-Pratt matchup, with political-risk desks locking in positions on the general-election pairing.

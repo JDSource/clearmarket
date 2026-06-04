@@ -1,11 +1,11 @@
 ---
 signal_id: "CMSIG20260604DV00"
 signal_slug: "xai-grok-5-release-k14-p6"
-headline: "xAI Grok 5 before Jul 1 2026: Kalshi 14% vs Polymarket 6%"
+headline: "Grok 5 before Jul 1 2026: Kalshi 14% vs Polymarket 6%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-06-04T03:24:57+00:00"
+published_at: "2026-06-04T11:15:34+00:00"
 event_id: "CM-EVT-CW5RM996H4"
 event_slug: "kxgrok-grok5"
 event_question: "Will xAI release Grok 5 before Jul 1, 2026?"
@@ -22,10 +22,10 @@ related_markets:
     question_raw: "Will xAI release Grok 5 before Jul 1, 2026?"
     current_price: 0.14
 bullets:
-  - "Kalshi at 14%, Polymarket at 6%, an 8pp gap with under 4 weeks to resolution."
-  - "Kalshi prices higher; Kalshi cumulative volume $3,582 vs Polymarket $53,516."
-  - "Polymarket's deeper liquidity likely reflects stronger informed consensus; Kalshi's thin book susceptible to noise."
-  - "Resolves YES only if xAI publicly releases Grok 5 before July 1, 2026 UTC."
+  - "Kalshi 14% vs Polymarket 6%; gap of 8pp on same binary outcome."
+  - "Kalshi is higher; $3,582 cum vol vs Polymarket's $53,516, Polymarket far more liquid."
+  - "Thin Kalshi book may reflect noise; Polymarket's deeper pool likely a more reliable signal."
+  - "Resolves YES if xAI publicly releases Grok 5 model before 2026-07-01."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (claim_sig CMX-967EBBB3FC); prices direct from venue APIs"
@@ -46,10 +46,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will xAI release Grok 5 before Jul 1, 2026?"
     url: "https://clearmarket.fyi/compare/xai-grok-5-release-m-2026-06"
-    retrieved_at: "2026-06-04T03:24:57+00:00"
+    retrieved_at: "2026-06-04T11:15:34+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 8pp divergence is heavily discounted by Polymarket's ~15x liquidity advantage, suggesting the Kalshi price is the outlier and the true market implied probability sits closer to 6%.
+The 8pp gap likely reflects Kalshi's low liquidity distorting its price; Polymarket's 6% at 14x the volume is the more credible anchor with under 4 weeks to resolution.
