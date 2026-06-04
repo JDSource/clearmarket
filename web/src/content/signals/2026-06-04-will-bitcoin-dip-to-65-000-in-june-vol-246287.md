@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS05"
 signal_slug: "will-bitcoin-dip-to-65-000-in-june-vol-246287"
 headline: "BTC dip to $65K in June: 87% on $246K"
+semantic_title: "Bitcoin touching $65K in June nears full pricing on flows"
+telemetry: "87% · $246K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

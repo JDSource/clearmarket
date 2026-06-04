@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060302"
 signal_slug: "iran-war-powers-resolution-passed-by-congress-polymarket-4-2026-06-03"
 headline: "Iran war powers resolution passed by Congress: Polymarket 4%"
+semantic_title: "Iran war powers resolution by June 30 written off by markets"
+telemetry: "Polymarket 4%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "lagging"

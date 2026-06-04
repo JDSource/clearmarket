@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060205"
 signal_slug: "us-unemployment-above-5-before-2027-kalshi-27-2026-06-02"
 headline: "US unemployment above 5% before 2027: Kalshi 27%"
+semantic_title: "Unemployment above 5 percent before 2027 a long shot"
+telemetry: "Kalshi 27%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

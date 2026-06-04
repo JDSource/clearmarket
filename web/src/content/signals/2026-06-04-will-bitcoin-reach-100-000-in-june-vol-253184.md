@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS04"
 signal_slug: "will-bitcoin-reach-100-000-in-june-vol-253184"
 headline: "BTC $100K in June: 0% on $253K surge"
+semantic_title: "Traders write off Bitcoin reaching $100K in June"
+telemetry: "0% · $253K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

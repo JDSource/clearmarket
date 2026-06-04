@@ -3,13 +3,14 @@ import Base from '../layouts/Base.astro';
 
 import { getCollection } from 'astro:content';
 import { getAllEvents } from '../lib/universe';
+import { displayTitle, composeTelemetry, dedupeActiveWires } from '../lib/signal-display';
 
 // Live event count from the same universe the /events/ index renders — never hardcode.
 const eventCount = getAllEvents().length;
 
 // Latest signals pulled live from the content collection at build time. The homepage
 // streams the actual wire log (same records as /signals/), truncated to the most recent few.
-const latestSignals = (await getCollection('signals'))
+const latestSignals = dedupeActiveWires(await getCollection('signals'))
   .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime())
   .slice(0, 5);
 
@@ -154,7 +155,7 @@ const schemaJson = `{
                 <td class="va-l-time">{fmtFeedTime(s.data.published_at)}</td>
                 <td class="va-l-id">{s.data.signal_id}</td>
                 <td class={`va-l-type va-type-${s.data.detection_path}`}>{typeLabel(s.data.detection_path).toUpperCase()}</td>
-                <td class="va-l-head"><a href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a></td>
+                <td class="va-l-head"><a href={`/signals/${s.data.signal_slug}/`}>{displayTitle(s.data)}</a>{composeTelemetry(s.data) && <span class="va-l-telem">{composeTelemetry(s.data)}</span>}</td>
                 <td class="va-l-venues">{venueCodes(s)}</td>
               </tr>
             ))}
@@ -632,6 +633,7 @@ const schemaJson = `{
     .va-type-volume_spike { color: var(--va-down); }
     .va-l-head { white-space: normal; width: 100%; }
     .va-l-head a { color: var(--va-fg); text-decoration: none; }
+    .va-l-telem { margin-left: 0.6em; color: var(--va-fg-muted, var(--va-fg)); font-size: 11px; opacity: 0.6; white-space: nowrap; }
     @media (hover: hover) { .va-l-head a:hover { color: var(--va-accent); } }
     .va-l-venues { color: var(--va-fg-faint); font-size: 10.5px; letter-spacing: 0.04em; }
     .va-feed-foot {

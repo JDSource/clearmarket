@@ -11,6 +11,7 @@
  */
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
+import { displayTitle, composeTelemetry, dedupeActiveWires } from '../../lib/signal-display';
 
 const SITE_URL = 'https://clearmarket.fyi';
 
@@ -28,7 +29,7 @@ function rfc822(iso: string): string {
 }
 
 export const GET: APIRoute = async () => {
-  const signals = await getCollection('signals');
+  const signals = dedupeActiveWires(await getCollection('signals'));
   const sorted = signals.sort((a, b) =>
     new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime()
   );
@@ -37,9 +38,11 @@ export const GET: APIRoute = async () => {
 
   const items = sorted.map((s) => {
     const url = `${SITE_URL}/signals/${s.data.signal_slug}/`;
-    const description = s.data.bullets[0] ?? '';
+    // Clean semantic title in the feed title (the indexed surface); telemetry leads the description.
+    const telem = composeTelemetry(s.data);
+    const description = [telem, s.data.bullets[0] ?? ''].filter(Boolean).join(' — ');
     return `    <item>
-      <title>${xmlEscape(s.data.headline)}</title>
+      <title>${xmlEscape(displayTitle(s.data))}</title>
       <link>${url}</link>
       <description>${xmlEscape(description)}</description>
       <pubDate>${rfc822(s.data.published_at)}</pubDate>

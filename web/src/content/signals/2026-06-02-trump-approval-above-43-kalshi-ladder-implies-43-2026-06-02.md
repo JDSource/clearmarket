@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060208"
 signal_slug: "trump-approval-above-43-kalshi-ladder-implies-43-2026-06-02"
 headline: "Trump approval above 43%: Kalshi ladder implies <43%"
+semantic_title: "Consensus anchors Trump approval below 43 percent"
+telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

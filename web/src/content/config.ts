@@ -5,7 +5,17 @@ const signals = defineCollection({
   schema: z.object({
     signal_id: z.string(),
     signal_slug: z.string(),
+    // Legacy flat title — KEPT for backward compat (RSS/.json consumers, the 54 pre-refactor
+    // wires). No longer the source for <title>/<h1>/JSON-LD. Title now splits into two fields:
     headline: z.string(),
+    // semantic_title (LLM-authored) — durable, directional, symbol-free narrative anchor.
+    // Maps to <title>, <h1>, JSON-LD name/claimReviewed. Optional so pre-refactor wires build;
+    // renderers fall back to a cleaned event_question via displayTitle() (lib/signal-display.ts).
+    semantic_title: z.string().max(90).optional(),
+    // telemetry (Python-composed, NEVER LLM) — terse as-of read (e.g. "Kalshi 76% vs Polymarket 70%").
+    // Rendered as a muted track after the title. Optional; falls back to composeTelemetry() over
+    // primary_market fields for pre-refactor wires.
+    telemetry: z.string().optional(),
     category_tag: z.enum([
       'MOMENTUM_REPRICING',
       'CROSS_VENUE_DIVERGENCE',

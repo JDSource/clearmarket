@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060207"
 signal_slug: "hormuz-traffic-normal-by-end-of-june-polymarket-42-2026-06-02"
 headline: "Hormuz traffic normal by end of June: Polymarket 42%"
+semantic_title: "Hormuz traffic normal by end of June priced a coin flip"
+telemetry: "Polymarket 42%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS07"
 signal_slug: "will-the-nasdaq-100-be-above-29999-99-af-vol-63317"
 headline: "Nasdaq-100 above 30K before Dec 31: 99% on $63K"
+semantic_title: "Nasdaq-100 above 30K before Dec 31 priced near-certain"
+telemetry: "99% · $63K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

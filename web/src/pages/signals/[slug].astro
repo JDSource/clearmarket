@@ -15,6 +15,7 @@
 
 import { getCollection } from 'astro:content';
 import Site from '../../layouts/Site.astro';
+import { displayTitle, composeTelemetry } from '../../lib/signal-display';
 import '../../styles/tokens.css';
 import { createHash } from 'node:crypto';
 
@@ -108,16 +109,17 @@ function fmtPp(left: number | null | undefined, right: number | null | undefined
   return `${Math.abs(left - right) * 100}pp`;
 }
 
+// ----- title split: durable semantic anchor (indexed) + as-of telemetry (muted) -----
+const titleText = displayTitle(data);
+const telemetryText = composeTelemetry(data);
+
 // ----- derived spread (for Bucket A) -----
 const primary = data.primary_market;
 const related = data.related_markets?.[0] ?? null;
-// Right-side price is not in schema yet for related markets; pull from headline for demo.
-// (Schema extension: related_markets[].current_price)
-const headlineNums = (data.headline.match(/\d+(?:\.\d+)?%/g) ?? []).map((s) => parseFloat(s) / 100);
+// Read the related-venue price directly from the structured field (schema: related_markets[].current_price).
+// Replaces the old headline-regex scrape — telemetry now lives in fields, never parsed out of the title.
 const leftPrice = primary.current_price;
-const rightPrice = headlineNums.length >= 2
-  ? (primary.platform === 'polymarket' ? headlineNums[1] : headlineNums[0])
-  : null;
+const rightPrice = related?.current_price ?? null;
 const spreadPp = (leftPrice != null && rightPrice != null)
   ? Math.abs(leftPrice - rightPrice) * 100
   : null;
@@ -288,7 +290,7 @@ const datasetJsonLd = {
   ],
   '@type': 'Dataset',
   '@id': canonicalURL,
-  name: data.headline,
+  name: titleText,
   description: `CM Signal wire item: ${data.category_tag.toLowerCase().replace(/_/g, ' ')} detection on event ${data.event_id}`,
   identifier: data.signal_id,
   url: canonicalURL,
@@ -311,7 +313,7 @@ const claimReviewJsonLd = {
   '@type': 'ClaimReview',
   url: canonicalURL,
   datePublished: data.published_at,
-  claimReviewed: data.headline,
+  claimReviewed: titleText,
   reviewBody: data.bullets.join(' '),
   author: { '@type': 'Organization', name: 'ClearMarket' },
   itemReviewed: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
@@ -380,7 +382,7 @@ function colorizeJson(obj: unknown): string {
 const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
 ---
 
-<Site title={`${data.headline} · CM Signal`} description={`Atomic-claim wire item for ${data.event_question}`} canonical={canonicalURL}>
+<Site title={`${titleText} · CM Signal`} description={`Atomic-claim wire item for ${data.event_question}`} canonical={canonicalURL}>
   <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
   <script type="application/ld+json" set:html={JSON.stringify(claimReviewJsonLd)} slot="head" />
 
@@ -398,7 +400,8 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       <a href="/signals/">&larr; CM Signal &middot; all wires</a>
     </nav>
 
-    <h1 class="cm-h1" data-cm-field="headline">{data.headline}</h1>
+    <h1 class="cm-h1" data-cm-field="semantic_title">{titleText}</h1>
+    {telemetryText && <div class="cm-h1-telem" data-cm-field="telemetry">{telemetryText}</div>}
 
     {/* Internal taxonomy fields (bucket, detection_path, pre_news_classification)
         live in JSON-LD + the .json endpoint only — they're not reader-facing.

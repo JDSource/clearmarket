@@ -15,7 +15,7 @@ import os, json, sys, time, re
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -135,8 +135,21 @@ def find_candidates():
 SYS = (
     "You write CM Signal BENCHMARK-DRIFT wire items: a prediction market pricing meaningfully away from "
     "the external benchmark it resolves against. Return ONLY JSON.\n"
-    "Per candidate return {idx:int, drift:bool, headline:str, bullets:[str], interp:str}. Set drift=false "
-    "and OMIT from items if the PM pricing is broadly consistent with where the benchmark sits.\n"
+    "Per candidate return {idx:int, drift:bool, semantic_title:str, headline:str, bullets:[str], interp:str}. "
+    "Set drift=false and OMIT from items if the PM pricing is broadly consistent with where the benchmark sits.\n"
+    "- SEMANTIC_TITLE (durable, indexed title — telemetry is added deterministically, not by you): a "
+    "MARKET-STANCE line, wire-service register, framing the market's pricing RELATIVE TO the hard macro "
+    "benchmark it resolves against. Do NOT predict the outcome and do NOT pose a question — report the "
+    "divergence or tracking velocity vs the baseline data. Register: macro friction + deviation from FRED/BLS "
+    "baselines. Palette (inspiration, NOT a lookup): outruns, paces ahead, gaps, lags, overshoots, tracks "
+    "tight, challenges, detaches, nears full pricing. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). NO probability, NO venue names, NO math "
+    "symbols (≥, ≤, ~, %); claim-defining figures (the level/threshold/date in the question) may be spelled "
+    "out ('4 percent', 'by end-2026'); the PROBABILITY and the benchmark NUMBER are forbidden in the title. "
+    "NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only — no permanence. Do NOT invent a date/horizon absent from the question. VARIATION (whole "
+    "batch in one call): alternate Subject-first and Market-first; do NOT reuse an opening verb/noun across "
+    "items. GOOD: 'CPI above 4 percent nears full pricing in inflation markets'; 'Rate expectations detach "
+    "from historical target trend'; 'Jobs pricing outruns the baseline policy path'. BAD (predicts/asks/has "
+    "metrics): 'Fed funds to exceed 4.5%'; 'Fed Funds ≥4.5%: 3%; rate at 3.75%'.\n"
     "- ONLY wire markets about a LEVEL or THRESHOLD of the metric the benchmark measures (e.g. 'CPI above "
     "3%', 'unemployment below 5%', 'fed funds above 4.5%') where the current actual gives real context vs "
     "the threshold. SKIP markets about a forward DECISION or COUNT (will the Fed hike/cut, how many cuts in "
@@ -163,7 +176,7 @@ def render(cands):
                       f'BENCHMARK: {label} currently {cur}')
     user = (f"Today: {now_utc().date()}. Assess these {len(cands)} markets for benchmark drift:\n\n"
             + "\n".join(blocks)
-            + '\n\nReturn {"items":[{"idx":int,"drift":bool,"headline":str,"bullets":[str],"interp":str}]} — '
+            + '\n\nReturn {"items":[{"idx":int,"drift":bool,"semantic_title":str,"headline":str,"bullets":[str],"interp":str}]} — '
             "include ONLY genuine divergences (drift=true).")
     # resilient for the unattended cron: retry once on a transient empty/malformed response, then skip
     for attempt in range(2):
@@ -190,6 +203,13 @@ def build_md(d, it, sig_id, slug, date):
     fm = [
         f"signal_id: {yz(sig_id)}", f"signal_slug: {yz(slug)}",
         f"headline: {yz(no_dash(it['headline']))}",
+    ]
+    # Title split (2026-06-04): semantic_title (durable) + telemetry (as-of: price · benchmark anchor)
+    if it.get("semantic_title"):
+        fm.append(f"semantic_title: {yz(no_dash(it['semantic_title']))}")
+    _bench_telemetry = f"{pct(m.get('last_price'))} · {label} {cur}"
+    fm.append(f"telemetry: {yz(_bench_telemetry)}")
+    fm += [
         'category_tag: "VS_BENCHMARK_DRIFT"', 'detection_path: "benchmark_drift"',
         'pre_news_classification: "concurrent"', f"published_at: {yz(now)}",
         f"event_id: {yz(ev.get('event_id') or m.get('event_id'))}",

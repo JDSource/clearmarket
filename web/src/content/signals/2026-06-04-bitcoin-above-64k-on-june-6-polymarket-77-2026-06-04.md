@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060407"
 signal_slug: "bitcoin-above-64k-on-june-6-polymarket-77-2026-06-04"
 headline: "Bitcoin above $64k on June 6: Polymarket 77%"
+semantic_title: "Bitcoin above $68K on June 6 priced a long shot"
+telemetry: "Polymarket 31%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

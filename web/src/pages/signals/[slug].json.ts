@@ -10,6 +10,7 @@
  */
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
+import { displayTitle, composeTelemetry } from '../../lib/signal-display';
 
 // Short-form definitions of the 4 provenance tiers. Embedded in every wire
 // record so the JSON payload is a self-contained unit of proof — consumers
@@ -43,6 +44,10 @@ export const GET: APIRoute = ({ props }) => {
     schema_version: 'v0.2.0',
     provenance_version: '0.2.0',
     published_at: data.published_at,
+    // Title split (2026-06-04): semantic_title = durable indexed anchor; telemetry = as-of read.
+    // headline kept for backward compat with consumers reading the pre-refactor flat field.
+    semantic_title: displayTitle(data),
+    telemetry: composeTelemetry(data),
     headline: data.headline,
     category_tag: data.category_tag,
     secondary_tags: data.secondary_tags ?? [],

@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS01"
 signal_slug: "us-x-iran-permanent-peace-deal-by-june-1-vol-2480648"
 headline: "US-Iran permanent peace: 14% on $2.5M surge"
+semantic_title: "Capital piles into US-Iran peace by June 15 as a long shot"
+telemetry: "14% · $2.5M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

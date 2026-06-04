@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603BD26"
 signal_slug: "inflation-surge-in-2026-vs-bench"
 headline: "Kalshi inflation surge 2026: 98%; CPI at 3.9%"
+semantic_title: "Inflation surge pricing outruns FRED 3.9 percent CPI reading"
+telemetry: "98% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
 pre_news_classification: "concurrent"

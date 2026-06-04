@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604BD24"
 signal_slug: "will-inflation-reach-more-than-4-in-2026-vs-bench"
 headline: "CPI Above 4% in 2026: 98%; CPI now 3.9%"
+semantic_title: "Inflation above 4 percent in 2026 overshoots FRED baseline"
+telemetry: "98% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
 pre_news_classification: "concurrent"

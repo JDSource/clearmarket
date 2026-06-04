@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603DV00"
 signal_slug: "databricks-ipo-k16-p24"
 headline: "Databricks IPO before 2027: Polymarket 24% vs Kalshi 16%"
+semantic_title: "Databricks IPO before 2027 decouples sharply across venues"
+telemetry: "Polymarket 24% vs Kalshi 16%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"

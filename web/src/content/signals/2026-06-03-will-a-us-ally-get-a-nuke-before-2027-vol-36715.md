@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS09"
 signal_slug: "will-a-us-ally-get-a-nuke-before-2027-vol-36715"
 headline: "US ally acquires nuke before 2027: 10% on $37K"
+semantic_title: "Flows price a US ally acquiring a nuke before 2027 as remote"
+telemetry: "10% · $37K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

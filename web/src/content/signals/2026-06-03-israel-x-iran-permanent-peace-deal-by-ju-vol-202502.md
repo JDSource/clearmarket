@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS06"
 signal_slug: "israel-x-iran-permanent-peace-deal-by-ju-vol-202502"
 headline: "Israel-Iran permanent peace by June 30: 19% on $202K"
+semantic_title: "Traders fade an Israel-Iran peace deal by June 30"
+telemetry: "19% · $203K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

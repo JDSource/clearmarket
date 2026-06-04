@@ -234,6 +234,17 @@
       overflow-wrap: break-word;
     }
 
+    /* As-of telemetry under the wire H1 — the dynamic read, demoted below the durable title. */
+    .cm-h1-telem {
+      font-family: var(--cm-font-mono);
+      font-size: 13px;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: var(--cm-fg-secondary);
+      margin: 0 0 14px;
+      opacity: 0.85;
+    }
+
     /* Legacy banner classes — preserved for safety, no longer rendered */
     .cm-banner, .cm-banner-meta, .cm-banner-snapshot, .cm-divergence-chip { display: none; }
 
@@ -1623,8 +1634,17 @@
       font-weight: 600;
       color: var(--cm-fg-primary);
       text-decoration: none;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       line-height: 1.35;
+    }
+    .cm-wire-telem {
+      display: block;
+      font-family: var(--cm-font-mono);
+      font-size: 11.5px;
+      font-weight: 400;
+      color: var(--cm-fg-secondary);
+      opacity: 0.78;
+      margin-bottom: 8px;
     }
     .cm-wire-bullet-0 {
       font-family: var(--cm-font-sans);

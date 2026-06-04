@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS03"
 signal_slug: "who-will-win-los-angeles-mayoral-electio-vol-1168668"
 headline: "LA mayor race, Bass: 79% on $1.17M"
+semantic_title: "Bass commands LA mayoral race on heavy flow conviction"
+telemetry: "79% · $1.2M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

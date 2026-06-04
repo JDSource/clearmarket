@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060407"
 signal_slug: "bitcoin-price-jun-5-kalshi-ladder-implies-67k-67-5k-2026-06-04"
 headline: "Bitcoin price Jun 5: Kalshi ladder implies ~$67K-$67.5K"
+semantic_title: "Market anchors Bitcoin near $67K-$67.5K for June 5"
+telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "lagging"

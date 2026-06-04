@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603DV02"
 signal_slug: "xai-grok-5-release-k16-p11"
 headline: "xAI Grok 5 release before Jul 1 2026: Kalshi 16% vs Polymarket 11%"
+semantic_title: "Grok 5 by June 30 pricing splits across venues"
+telemetry: "Polymarket 11% vs Kalshi 16%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"

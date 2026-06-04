@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060406"
 signal_slug: "israel-lebanon-ceasefire-extension-by-june-7-polymarket-20-2026-06-04"
 headline: "Israel-Lebanon ceasefire extension by June 7: Polymarket 20%"
+semantic_title: "Israel-Lebanon ceasefire extension by June 7 a long shot"
+telemetry: "Polymarket 20%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

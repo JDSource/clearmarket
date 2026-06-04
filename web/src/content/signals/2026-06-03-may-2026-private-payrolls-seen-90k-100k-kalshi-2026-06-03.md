@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060303"
 signal_slug: "may-2026-private-payrolls-seen-90k-100k-kalshi-2026-06-03"
 headline: "May 2026 private payrolls seen 90k-100k: Kalshi"
+semantic_title: "Private payrolls above 100K in May sits near a coin flip"
+telemetry: "Kalshi 41%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

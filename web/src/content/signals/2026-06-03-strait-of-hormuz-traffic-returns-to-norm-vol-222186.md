@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS03"
 signal_slug: "strait-of-hormuz-traffic-returns-to-norm-vol-222186"
 headline: "Hormuz traffic normal by June 15: 14% on $222K"
+semantic_title: "Heavy flows defend Hormuz normal by June 15 as a long shot"
+telemetry: "14% · $222K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

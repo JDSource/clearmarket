@@ -12,7 +12,7 @@ Usage: python3 gen_cross_venue_divergence.py [--dry] [--min-gap 0.08] [--min-vol
 import json, sys, re
 from collections import defaultdict
 from pathlib import Path
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
 
 ROOT = Path(__file__).parent
 PAIRS = ROOT / "web/data/canon-pairs.json"
@@ -76,7 +76,19 @@ def find_divergences():
 SYS = (
     "You write CM Signal CROSS-VENUE DIVERGENCE wire items: the SAME prediction-market claim priced "
     "differently on Kalshi vs Polymarket. Newswire/terminal style. Return ONLY JSON.\n"
-    "Per divergence return {div_index:int, headline:str, bullets:[str], interp:str}.\n"
+    "Per divergence return {div_index:int, semantic_title:str, headline:str, bullets:[str], interp:str}.\n"
+    "- SEMANTIC_TITLE (durable, indexed title — the venue prices are added deterministically as telemetry, "
+    "not by you): a MARKET-STANCE line, wire-service register, about the PRICING BEHAVIOR BETWEEN the venues "
+    "tracking this claim. Do NOT predict the outcome and do NOT pose a question — report the structural "
+    "dislocation / spread state. Register: arbitrage spread + fragmentation + platform friction. Palette "
+    "(inspiration, NOT a lookup): splits sharply, decouples, mirrors, bridges, spreads, isolates, converges, "
+    "tracks a premium. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). Refer to venues GENERICALLY ('across venues', 'on the major desks') — do "
+    "NOT name Kalshi/Polymarket or print either price (those live in telemetry). NO probability, NO math "
+    "symbols; claim-defining figures (the level/date in the claim) may be spelled out. NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only. Do NOT "
+    "invent a date/horizon absent from the claim. VARIATION (whole batch in one call): alternate Subject-first "
+    "and Market-first; do NOT reuse an opening verb/noun across items. GOOD: 'Anthropic IPO pricing splits "
+    "sharply across venues'; 'Grok 5 timeline decouples on the major prediction desks'. BAD (predicts/asks/"
+    "names venue+price): 'Anthropic to IPO before 2027'; 'Anthropic IPO: Kalshi 76% vs Polymarket 70%'.\n"
     "- HEADLINE: <=72 chars, NOUN PHRASE, lead with the claim then BOTH prices, e.g. "
     "'Anthropic IPO before 2027: Kalshi 76% vs Polymarket 70%'. Use '%'.\n"
     "- BULLETS: 3-4, each ONE tight line (<=20 words), fragments OK. bullet 1 = the gap (both venues + "
@@ -97,7 +109,7 @@ def render(divs):
             f'Polymarket {d["pp"]*100:.0f}% (cum vol ${d["pvol"]:,.0f}) | gap {d["gap"]*100:.0f}pp')
     user = (f"Today: {now_utc().date()}. Render these {len(divs)} cross-venue divergences:\n\n"
             + "\n".join(blocks)
-            + '\n\nReturn {"items":[{"div_index":int,"headline":str,"bullets":[str],"interp":str}]}')
+            + '\n\nReturn {"items":[{"div_index":int,"semantic_title":str,"headline":str,"bullets":[str],"interp":str}]}')
     res = claude_json(SYS, user)
     return {it["div_index"]: it for it in res.get("items", [])}
 
@@ -115,6 +127,13 @@ def build_md(d, it, sig_id, slug, date):
     fm = [
         f"signal_id: {yz(sig_id)}", f"signal_slug: {yz(slug)}",
         f"headline: {yz(no_dash(it['headline']))}",
+    ]
+    # Title split (2026-06-04): semantic_title (durable) + telemetry (both venue prices, as-of)
+    if it.get("semantic_title"):
+        fm.append(f"semantic_title: {yz(no_dash(it['semantic_title']))}")
+    _cv_telemetry = f"{venue_label(pplat)} {pct(primp)} vs {venue_label(rplat)} {pct(relp)}"
+    fm.append(f"telemetry: {yz(_cv_telemetry)}")
+    fm += [
         'category_tag: "CROSS_VENUE_DIVERGENCE"', 'detection_path: "cross_venue_divergence"',
         'pre_news_classification: "concurrent"', f"published_at: {yz(now)}",
         f"event_id: {yz(ev.get('event_id') or prim.get('event_id'))}",

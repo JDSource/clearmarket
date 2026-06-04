@@ -7,9 +7,10 @@
  */
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
+import { displayTitle, composeTelemetry, dedupeActiveWires } from '../lib/signal-display';
 
 export const GET: APIRoute = async () => {
-  const signals = await getCollection('signals');
+  const signals = dedupeActiveWires(await getCollection('signals'));
   const items = signals
     .map((s) => s.data)
     .sort((a: any, b: any) => (a.published_at < b.published_at ? 1 : -1))
@@ -21,6 +22,8 @@ export const GET: APIRoute = async () => {
         record_id: d.signal_id,
         record_slug: d.signal_slug,
         published_at: d.published_at,
+        semantic_title: displayTitle(d),
+        telemetry: composeTelemetry(d),
         headline: d.headline,
         category_tag: d.category_tag,
         detection_path: d.detection_path,

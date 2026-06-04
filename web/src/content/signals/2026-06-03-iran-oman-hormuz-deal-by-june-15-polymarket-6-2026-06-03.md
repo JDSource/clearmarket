@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060305"
 signal_slug: "iran-oman-hormuz-deal-by-june-15-polymarket-6-2026-06-03"
 headline: "Iran-Oman Hormuz deal by June 15: Polymarket 6%"
+semantic_title: "Iran-Oman Hormuz deal by June 15 priced near-impossible"
+telemetry: "Polymarket 6%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

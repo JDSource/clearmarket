@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603DV01"
 signal_slug: "anthropic-ipo-k76-p70"
 headline: "Anthropic IPO before 2027: Kalshi 76% vs Polymarket 70%"
+semantic_title: "Anthropic IPO before 2027 pricing splits across venues"
+telemetry: "Polymarket 70% vs Kalshi 76%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"

@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS01"
 signal_slug: "will-the-margin-of-victory-for-ken-paxto-vol-668229"
 headline: "Paxton TX Senate runoff margin: 99% on $668K"
+semantic_title: "Paxton Texas runoff margin above 20 percent near-certain on big flows"
+telemetry: "99% · $668K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

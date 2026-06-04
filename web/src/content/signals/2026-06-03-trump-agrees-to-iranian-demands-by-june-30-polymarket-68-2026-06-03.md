@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060306"
 signal_slug: "trump-agrees-to-iranian-demands-by-june-30-polymarket-68-2026-06-03"
 headline: "Trump agrees to Iranian demands by June 30: Polymarket 68%"
+semantic_title: "Consensus tilts toward Trump unfreezing Iranian assets by June 30"
+telemetry: "Polymarket 68%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

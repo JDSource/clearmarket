@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604BD25"
 signal_slug: "inflation-surge-in-2026-vs-bench"
 headline: "Inflation Surge 2026: 97%; CPI now 3.9%"
+semantic_title: "Inflation surge pricing outruns FRED 3.9 percent CPI reading"
+telemetry: "97% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
 pre_news_classification: "concurrent"

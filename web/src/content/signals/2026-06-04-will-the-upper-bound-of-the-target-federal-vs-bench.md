@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604BD10"
 signal_slug: "will-the-upper-bound-of-the-target-federal-vs-bench"
 headline: "Fed Funds ≥4.5% End-2026: 3%; rate at 3.75%"
+semantic_title: "Fed funds at 4.5 percent end-2026 lags far below FRED rate"
+telemetry: "3% · Fed funds target rate, upper bound (FRED) 3.75%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
 pre_news_classification: "concurrent"

@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060204"
 signal_slug: "may-2026-nonfarm-payrolls-implied-70k-80k-kalshi-2026-06-02"
 headline: "May 2026 nonfarm payrolls implied 70k-80k: Kalshi"
+semantic_title: "May payrolls above 80K sits near a coin flip in pricing"
+telemetry: "Kalshi 45%"
 category_tag: "PRE_EVENT_PRICING"
 detection_path: "news_cycle"
 pre_news_classification: "pre_news"

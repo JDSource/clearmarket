@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060202"
 signal_slug: "fed-holds-with-dissent-at-june-fomc-kalshi-66-2026-06-02"
 headline: "Fed holds with dissent at June FOMC: Kalshi 66%"
+semantic_title: "Consensus leans toward Fed hold with dissent in June"
+telemetry: "Kalshi 66%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

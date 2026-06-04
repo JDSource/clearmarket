@@ -14,13 +14,14 @@
  */
 import { getCollection } from 'astro:content';
 import Site from '../../layouts/Site.astro';
+import { displayTitle, composeTelemetry, dedupeActiveWires } from '../../lib/signal-display';
 import '../../styles/tokens.css';
 
 const allSignals = await getCollection('signals');
 
-// Active-only filter: for now, all 8 specimens are unresolved.
-// When wire items track resolution state, add: .filter(s => s.data.status !== 'resolved')
-const activeSignals = allSignals
+// Feed dedupe: collapse same-market day-over-day duplicates to the newest wire per (type + market).
+// Older dated wires keep their own /signals/[slug]/ URLs (archive) — only the active feed dedupes.
+const activeSignals = dedupeActiveWires(allSignals)
   .sort((a, b) => new Date(b.data.published_at).getTime() - new Date(a.data.published_at).getTime());
 
 // ---------- helpers ----------
@@ -116,7 +117,7 @@ const dataCatalogJsonLd = {
   dataset: activeSignals.slice(0, 50).map((s) => ({
     '@type': 'Dataset',
     '@id': `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
-    name: s.data.headline,
+    name: displayTitle(s.data),
     identifier: s.data.signal_id,
     url: `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
     datePublished: s.data.published_at,
@@ -238,7 +239,8 @@ const dataCatalogJsonLd = {
                     <td class="cm-ledger-id">{s.data.signal_id}</td>
                     <td class={`cm-ledger-type cm-type-${s.data.detection_path}`}>{(wireTypeLabel[s.data.detection_path] ?? s.data.detection_path).toUpperCase()}</td>
                     <td class="cm-ledger-headline">
-                      <a href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
+                      <a href={`/signals/${s.data.signal_slug}/`}>{displayTitle(s.data)}</a>
+                      {composeTelemetry(s.data) && <span class="cm-ledger-telem">{composeTelemetry(s.data)}</span>}
                     </td>
                     <td class="cm-ledger-venues">{venues.display}</td>
                     <td class="cm-ledger-formats">
@@ -627,6 +629,17 @@ const dataCatalogJsonLd = {
     @media (hover: hover) {
       .cm-ledger-headline a:hover { color: var(--cm-fg-link); }
       .cm-ledger-headline a:hover::after { content: " \2192"; color: var(--cm-fg-link); }
+    }
+    /* As-of telemetry track — muted, secondary to the semantic title. Wraps after the title. */
+    .cm-ledger-telem {
+      display: inline;
+      margin-left: 0.6em;
+      color: var(--cm-fg-tertiary, var(--cm-fg-secondary));
+      font-family: var(--cm-font-mono);
+      font-size: 10.5px;
+      letter-spacing: 0.02em;
+      opacity: 0.72;
+      white-space: nowrap;
     }
     .cm-ledger-venues {
       color: var(--cm-fg-secondary);

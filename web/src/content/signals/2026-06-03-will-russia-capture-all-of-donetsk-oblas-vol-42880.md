@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS08"
 signal_slug: "will-russia-capture-all-of-donetsk-oblas-vol-42880"
 headline: "Russia captures all Donetsk by Dec 31: 5% on $43K"
+semantic_title: "Traders write off Russia capturing all Donetsk by Dec 31"
+telemetry: "5% · $43K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

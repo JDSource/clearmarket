@@ -11,7 +11,7 @@ Usage: python3 gen_volume_spike.py [--dry] [--min-24h 10000] [--min-intensity 0.
 """
 import json, sys, re
 from pathlib import Path
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
 
 ROOT = Path(__file__).parent
 SITE = "https://clearmarket.fyi"
@@ -59,7 +59,20 @@ def find_spikes():
 SYS = (
     "You write CM Signal VOLUME-SPIKE wire items: a prediction market drawing a surge of fresh "
     "24h trading volume. Newswire/terminal style. Return ONLY JSON.\n"
-    "Per spike return {idx:int, headline:str, bullets:[str], interp:str}.\n"
+    "Per spike return {idx:int, semantic_title:str, headline:str, bullets:[str], interp:str}.\n"
+    "- SEMANTIC_TITLE (durable, indexed title — price + volume are added deterministically as telemetry, not "
+    "by you): a MARKET-STANCE line, wire-service register, characterizing the HIGH CAPITAL DEPLOYMENT — what "
+    "the money is attempting to defend, attack, or discount. Do NOT predict the outcome and do NOT pose a "
+    "question. Register: liquidity conviction + capital deployment + risk absorption. Palette (inspiration, "
+    "NOT a lookup): traders pile into, write off, defend, target, heavy flows test, hedge, stack, fade. MAX 62 "
+    "characters (hard limit — count them; keep the stance tail to 2-3 words). NO probability, NO raw volume "
+    "number, NO venue names, NO math symbols; claim-defining figures (the "
+    "level/date in the question) may be spelled out ('$150K', 'by June 30'). NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only. Do NOT invent a "
+    "date/horizon absent from the question. VARIATION (whole batch in one call): alternate Subject-first and "
+    "Market-first; do NOT reuse an opening verb/noun across items. GOOD: 'Traders write off a near-term "
+    "MicroStrategy Bitcoin sale'; 'A $150K Bitcoin by June sits deep in tail-risk territory'; 'Heavy flows "
+    "test the Paxton runoff margin'. BAD (predicts/asks/has metrics): 'Bitcoin to reach $150K by June 30'; "
+    "'BTC $150K: 1% on $5.8M surge'.\n"
     "- HEADLINE: terse Bloomberg-wire style. <=58 chars, 6-9 words. Format 'Subject: X%' — a COLON before "
     "the probability, never the bare 'at X%' — then a SHORT volume hook. Drop articles and filler verbs "
     "('prices', 'holds', 'despite'). Use '%'. NOT 'Polymarket prices Culotti California governor at 0% "
@@ -88,7 +101,7 @@ def render(spikes):
             f'price={(m.get("last_price") or 0)*100:.0f}%{cat}')
     user = (f"Today: {now_utc().date()}. Render these {len(spikes)} volume spikes:\n\n"
             + "\n".join(blocks)
-            + '\n\nReturn {"items":[{"idx":int,"headline":str,"bullets":[str],"interp":str}]}')
+            + '\n\nReturn {"items":[{"idx":int,"semantic_title":str,"headline":str,"bullets":[str],"interp":str}]}')
     res = claude_json(SYS, user)
     return {it["idx"]: it for it in res.get("items", [])}
 
@@ -101,6 +114,13 @@ def build_md(d, it, sig_id, slug, date):
     fm = [
         f"signal_id: {yz(sig_id)}", f"signal_slug: {yz(slug)}",
         f"headline: {yz(no_dash(it['headline']))}",
+    ]
+    # Title split (2026-06-04): semantic_title (durable) + telemetry (price · 24h volume, as-of)
+    if it.get("semantic_title"):
+        fm.append(f"semantic_title: {yz(no_dash(it['semantic_title']))}")
+    _vs_telemetry = f"{pct(m.get('last_price'))} · {compact_usd(d['v24'])} 24h"
+    fm.append(f"telemetry: {yz(_vs_telemetry)}")
+    fm += [
         'category_tag: "VOLUME_SPIKE"', 'detection_path: "volume_spike"',
         'pre_news_classification: "pre_news"', f"published_at: {yz(now)}",
         f"event_id: {yz(ev.get('event_id') or m.get('event_id'))}",

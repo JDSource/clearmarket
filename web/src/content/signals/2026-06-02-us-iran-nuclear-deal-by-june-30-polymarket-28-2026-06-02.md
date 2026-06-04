@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060208"
 signal_slug: "us-iran-nuclear-deal-by-june-30-polymarket-28-2026-06-02"
 headline: "US-Iran nuclear deal by June 30: Polymarket 28%"
+semantic_title: "US-Iran nuclear deal by June 30 priced a long shot"
+telemetry: "Polymarket 28%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

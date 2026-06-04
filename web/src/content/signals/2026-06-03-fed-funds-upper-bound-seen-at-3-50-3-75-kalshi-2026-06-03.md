@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060305"
 signal_slug: "fed-funds-upper-bound-seen-at-3-50-3-75-kalshi-2026-06-03"
 headline: "Fed funds upper bound seen at 3.50-3.75%: Kalshi"
+semantic_title: "Funds rate staying at 3.50-3.75 percent commands pricing"
+telemetry: "Kalshi 34%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

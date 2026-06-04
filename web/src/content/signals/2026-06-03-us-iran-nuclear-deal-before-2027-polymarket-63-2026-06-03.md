@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060301"
 signal_slug: "us-iran-nuclear-deal-before-2027-polymarket-63-2026-06-03"
 headline: "US-Iran nuclear deal before 2027: Polymarket 63%"
+semantic_title: "US-Iran nuclear deal before 2027 leans likely in pricing"
+telemetry: "Polymarket 63%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

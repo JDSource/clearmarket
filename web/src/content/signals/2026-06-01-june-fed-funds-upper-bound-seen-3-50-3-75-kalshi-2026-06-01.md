@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060101"
 signal_slug: "june-fed-funds-upper-bound-seen-3-50-3-75-kalshi-2026-06-01"
 headline: "June Fed funds upper bound seen 3.50-3.75%: Kalshi"
+semantic_title: "Funds rate above 3.75 percent post-June FOMC a long shot"
+telemetry: "Kalshi 34%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

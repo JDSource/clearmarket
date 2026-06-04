@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS07"
 signal_slug: "will-karen-bass-and-spencer-pratt-be-the-vol-258144"
 headline: "Bass vs. Pratt LA mayor ticket confirmed: 79% on $258K"
+semantic_title: "Bass-Pratt LA mayoral ticket solidifies on strong flows"
+telemetry: "79% · $258K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

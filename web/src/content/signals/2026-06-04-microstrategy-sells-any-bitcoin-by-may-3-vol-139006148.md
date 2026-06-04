@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS00"
 signal_slug: "microstrategy-sells-any-bitcoin-by-may-3-vol-139006148"
 headline: "MicroStrategy BTC sale by May 31: 0% on $139M"
+semantic_title: "Traders write off any MicroStrategy Bitcoin sale by May 31"
+telemetry: "0% · $139M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

@@ -7,6 +7,7 @@
  */
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
+import { displayTitle, composeTelemetry } from '../../../lib/signal-display';
 
 function refersTo(data: any, id: string): boolean {
   return data.event_id === id || (data.linked_event_ids ?? []).includes(id);
@@ -33,6 +34,8 @@ export const GET: APIRoute = async ({ params }) => {
       record_id: d.signal_id,
       record_slug: d.signal_slug,
       published_at: d.published_at,
+      semantic_title: displayTitle(d),
+      telemetry: composeTelemetry(d),
       headline: d.headline,
       category_tag: d.category_tag,
       detection_path: d.detection_path,

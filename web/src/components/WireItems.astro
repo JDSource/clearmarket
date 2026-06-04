@@ -5,6 +5,7 @@
  */
 import { getCollection } from 'astro:content';
 import type { Event } from '../lib/universe';
+import { displayTitle, composeTelemetry } from '../lib/signal-display';
 const { event } = Astro.props as { event: Event };
 
 const allSignals = await getCollection('signals');
@@ -33,7 +34,8 @@ const linked = allSignals
             <span class="cm-wire-time">{s.data.published_at}</span>
             <span class="cm-wire-tag">{s.data.category_tag.toLowerCase().replace(/_/g, '-')}</span>
           </div>
-          <a class="cm-wire-head" href={`/signals/${s.data.signal_slug}/`}>{s.data.headline}</a>
+          <a class="cm-wire-head" href={`/signals/${s.data.signal_slug}/`}>{displayTitle(s.data)}</a>
+          {composeTelemetry(s.data) && <span class="cm-wire-telem">{composeTelemetry(s.data)}</span>}
           <ul class="cm-wire-bullets">{s.data.bullets.map((b: string) => <li>{b}</li>)}</ul>
         </li>
       ))}

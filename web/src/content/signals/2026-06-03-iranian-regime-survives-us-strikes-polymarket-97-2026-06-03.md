@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060304"
 signal_slug: "iranian-regime-survives-us-strikes-polymarket-97-2026-06-03"
 headline: "Iranian regime survives US strikes: Polymarket 97%"
+semantic_title: "Iranian regime surviving US strikes priced near-certain"
+telemetry: "Polymarket 97%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

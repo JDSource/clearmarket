@@ -298,6 +298,7 @@ def main():
     )
     schema_hint = (
         '{"items":[{"story_index":int,"event_id":"<one of the candidates>",'
+        '"semantic_title":"<see SEMANTIC_TITLE rule: market-stance line, NO probability/venue/symbols, MAX 62 chars>",'
         '"headline":"<<=90 chars; LEAD with the market+probability, news is the as/after clause>",'
         '"story_summary":"<one sentence: the news catalyst>",'
         '"classification":"pre_news|concurrent|lagging",'
@@ -321,6 +322,22 @@ def main():
         "'May CPI below 3%: Kalshi 20%'; 'Strait of Hormuz reopens by year-end: Polymarket 62%'. "
         "BAD (too long / filler verb / catalyst clause): 'Polymarket holds 77% on US-Iran nuclear deal before "
         "2027 as ceasefire reports emerge'. BAD (news headline): 'Fed's Jefferson flags upside inflation risks'.\n"
+        "- SEMANTIC_TITLE (durable, indexed title — telemetry is added deterministically, not by you): a "
+        "MARKET-STANCE line, written like a wire-service desk editor, capturing the CURRENT consensus pricing "
+        "stance on this event. Do NOT predict the real-world outcome and do NOT pose a question — report how "
+        "the market is pricing/positioning the claim. Register: consensus shifts + narrative alignment. "
+        "Palette (inspiration, NOT a lookup table): commands, hardens, solidifies, fractures, wavers, breaks "
+        "away, absorbs, anchors, nears full pricing, holds. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). NO probability, NO volume, NO venue "
+        "names, NO math symbols (≥, ≤, ~, %). Claim-defining figures that DEFINE the market (a strike, level, "
+        "or date in the question) ARE allowed — spell them out ('4 percent', '$150K', 'by June 30'); only the "
+        "PROBABILITY and VOLUME are forbidden. NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only: frame the current pricing state, never a "
+        "permanent/final real-world consequence. Do NOT invent a date/horizon absent from the question. "
+        "VARIATION (you write the whole batch in one call): alternate Subject-first ('Bass commands...') and "
+        "Market-first ('Consensus hardens...') constructions; do NOT reuse the same opening verb/noun across "
+        "items; never stack three identical grammar orders in a row. "
+        "GOOD: 'Bass commands the LA mayoral race in prediction pricing'; 'Fed pause consensus solidifies "
+        "after macro commentary'; 'CPI above 4 percent nears full pricing'. BAD (predicts/asks/has metrics): "
+        "'Karen Bass to win LA mayor race'; 'Will CPI exceed 4%?'; 'Kalshi 99% on Fed hold'.\n"
         "- Identify PEOPLE by full name and role on first reference, as the source gives them (e.g. 'Fed "
         "Governor Lisa Cook', 'Treasury Secretary Scott Bessent', 'Vice Chair Philip Jefferson'), never a bare "
         "surname like 'Cook'.\n"
@@ -415,11 +432,42 @@ def no_dash(s):
     return re.sub(r",\s*,", ",", s).strip()
 
 
+# ---- Telemetry composition (deterministic; NEVER LLM) ------------------
+# The `telemetry` frontmatter field is the terse as-of read rendered as a muted track after
+# the semantic_title. Composed in Python from the same structured values the wire already
+# carries, so there is zero fabrication risk. Mirrors composeTelemetry() in
+# web/src/lib/signal-display.ts so old (fallback) and new (authored) wires render identically.
+def pct(p):
+    try:
+        return f"{round(float(p) * 100)}%"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def compact_usd(n):
+    try:
+        n = float(n)
+    except (TypeError, ValueError):
+        return ""
+    if n >= 1e9:
+        return f"${n / 1e9:.1f}".rstrip("0").rstrip(".") + "B"
+    if n >= 1e6:
+        return f"${n / 1e6:.1f}".rstrip("0").rstrip(".") + "M"
+    if n >= 1e3:
+        return f"${round(n / 1e3)}K"
+    return f"${round(n)}"
+
+
+def venue_label(v):
+    return {"polymarket": "Polymarket", "kalshi": "Kalshi"}.get(v, v or "")
+
+
 def build_md(it, story, ev, pm, sig_id, slug, date):
     now = now_utc().isoformat(timespec="seconds")
     venue = pm.get("platform") or "polymarket"
     it = {**it,
           "headline": no_dash(it.get("headline", "")),
+          "semantic_title": no_dash(it.get("semantic_title", "")),
           "story_summary": no_dash(it.get("story_summary", "")),
           "pm_note": no_dash(it.get("pm_note", "")),
           "bullets": [no_dash(b) for b in it.get("bullets", [])]}
@@ -431,6 +479,13 @@ def build_md(it, story, ev, pm, sig_id, slug, date):
     fm.append(f"signal_id: {yz(sig_id)}")
     fm.append(f"signal_slug: {yz(slug)}")
     fm.append(f"headline: {yz(it['headline'])}")
+    # Title split (2026-06-04): semantic_title = durable indexed anchor; telemetry = as-of read.
+    is_ladder = bool(it.get("event_label")) or ev.get("event_type") == "LADDER"
+    if it.get("semantic_title"):
+        fm.append(f"semantic_title: {yz(it['semantic_title'])}")
+    telemetry = (f"{venue_label(venue)} ladder" if is_ladder
+                 else f"{venue_label(venue)} {pct(pm.get('last_price'))}")
+    fm.append(f"telemetry: {yz(telemetry.strip())}")
     fm.append('category_tag: "PRE_NEWS_PRICING"' if it.get("classification") == "pre_news" else 'category_tag: "MOMENTUM_REPRICING"')
     fm.append('detection_path: "news_cycle"')
     cls = it.get("classification") if it.get("classification") in ("pre_news", "concurrent", "lagging") else "concurrent"

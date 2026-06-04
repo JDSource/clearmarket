@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060404"
 signal_slug: "aug-2026-cpi-monthly-change-seen-0-3-0-4-kalshi-2026-06-04"
 headline: "Aug 2026 CPI monthly change seen 0.3-0.4%: Kalshi"
+semantic_title: "August CPI rise above 0.4 percent priced near a coin flip"
+telemetry: "Kalshi 45%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

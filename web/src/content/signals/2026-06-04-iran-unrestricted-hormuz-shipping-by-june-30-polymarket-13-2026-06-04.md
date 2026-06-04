@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060403"
 signal_slug: "iran-unrestricted-hormuz-shipping-by-june-30-polymarket-13-2026-06-04"
 headline: "Iran unrestricted Hormuz shipping by June 30: Polymarket 13%"
+semantic_title: "Iran agreeing to open Hormuz by June 30 priced a long shot"
+telemetry: "Polymarket 13%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"

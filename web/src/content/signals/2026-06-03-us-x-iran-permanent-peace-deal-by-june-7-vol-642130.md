@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260603VS02"
 signal_slug: "us-x-iran-permanent-peace-deal-by-june-7-vol-642130"
 headline: "US-Iran permanent peace by June 7: 29% on $642K"
+semantic_title: "Traders target US-Iran peace by June 7 as a long shot"
+telemetry: "29% · $642K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

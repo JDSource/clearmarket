@@ -2,6 +2,8 @@
 signal_id: "CMSIG20260604VS02"
 signal_slug: "will-zach-lahn-be-the-republican-nominee-vol-557073"
 headline: "Lahn IA GOP governor nominee: 100% on $557K"
+semantic_title: "Lahn Iowa GOP governor nod priced certain on heavy flows"
+telemetry: "100% · $557K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"

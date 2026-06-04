@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060306"
 signal_slug: "may-2026-payrolls-implied-90k-100k-kalshi-ladder-2026-06-03"
 headline: "May 2026 payrolls implied ~90K-100K: Kalshi ladder"
+semantic_title: "May ADP payrolls above 100K priced near a coin flip"
+telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "lagging"

@@ -2,6 +2,8 @@
 signal_id: "CMSIG2026060103"
 signal_slug: "us-inflation-surge-in-2026-kalshi-implied-4-5-5-0-2026-06-01"
 headline: "US inflation surge in 2026: Kalshi implied 4.5-5.0%"
+semantic_title: "US inflation surge in 2026 skeptically priced"
+telemetry: "Kalshi 37%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"
