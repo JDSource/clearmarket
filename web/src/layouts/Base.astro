@@ -5,10 +5,16 @@ export interface Props {
   canonical?: string;
   noindex?: boolean;
   bare?: boolean;
+  ogTitle?: string;
+  ogDescription?: string;
 }
 
-const { title, description, canonical, noindex, bare } = Astro.props;
+const { title, description, canonical, noindex, bare, ogTitle, ogDescription } = Astro.props;
 const canonicalURL = canonical ?? new URL(Astro.url.pathname, Astro.site).toString();
+// Social share copy: drop the brand from the title (og:site_name carries it) and
+// use a click-tuned description distinct from the SEO meta. Falls back to title/description.
+const socialTitle = ogTitle ?? title;
+const socialDescription = ogDescription ?? description;
 
 const websiteJsonLd = {
   "@context": "https://schema.org",
@@ -36,8 +42,8 @@ const websiteJsonLd = {
     <link rel="canonical" href={canonicalURL} />
 
     <meta property="og:type" content="website" />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
+    <meta property="og:title" content={socialTitle} />
+    <meta property="og:description" content={socialDescription} />
     <meta property="og:url" content={canonicalURL} />
     <meta property="og:site_name" content="ClearMarket" />
     <meta property="og:image" content="https://clearmarket.fyi/og.png" />
@@ -45,8 +51,8 @@ const websiteJsonLd = {
     <meta property="og:image:height" content="630" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
+    <meta name="twitter:title" content={socialTitle} />
+    <meta name="twitter:description" content={socialDescription} />
     <meta name="twitter:image" content="https://clearmarket.fyi/og.png" />
 
     <script type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
