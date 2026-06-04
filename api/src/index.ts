@@ -63,10 +63,11 @@ export function logCall(
     const key = h?.startsWith('Bearer ') ? h.slice(7).trim() : null;
     const requester = key ? `key:${key}` : `ip:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}`;
     const country = (req as any).cf?.country ?? null;
+    const ua = req.headers.get('User-Agent') ?? null; // crawlers self-identify here (GPTBot, ClaudeBot, …)
     const tgt = target == null ? null : typeof target === 'string' ? target : JSON.stringify(target);
     ctx.waitUntil(
-      env.DB.prepare('INSERT INTO call_log (ts, surface, action, target, requester, country) VALUES (?,?,?,?,?,?)')
-        .bind(new Date().toISOString(), surface, action, tgt, requester, country).run(),
+      env.DB.prepare('INSERT INTO call_log (ts, surface, action, target, requester, country, user_agent) VALUES (?,?,?,?,?,?,?)')
+        .bind(new Date().toISOString(), surface, action, tgt, requester, country, ua).run(),
     );
   } catch { /* logging must never break a request */ }
 }

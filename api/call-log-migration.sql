@@ -6,6 +6,10 @@ CREATE TABLE IF NOT EXISTS call_log (
   action TEXT NOT NULL,       -- endpoint or MCP tool name
   target TEXT,                -- the key argument: slug / market_id / JSON of filters
   requester TEXT,             -- 'key:<key>' if authenticated, else 'ip:<addr>'
-  country TEXT                -- Cloudflare-resolved country of the caller
+  country TEXT,               -- Cloudflare-resolved country of the caller
+  user_agent TEXT             -- request UA — crawlers self-identify (GPTBot, ClaudeBot, …)
 );
 CREATE INDEX IF NOT EXISTS idx_call_log_ts ON call_log(ts);
+
+-- For DBs created before user_agent existed: add the column (errors harmlessly if present).
+ALTER TABLE call_log ADD COLUMN user_agent TEXT;
