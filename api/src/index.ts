@@ -46,6 +46,31 @@ export const parseJson = (v: unknown, fallback: unknown) => {
   try { return JSON.parse(v as string); } catch { return fallback; }
 };
 
+// ---- call logging ------------------------------------------------------
+// One row per data request (REST or MCP): WHAT was queried (endpoint/tool + key arg),
+// WHO (api key or ip), and from WHERE (country). Fire-and-forget via waitUntil so it
+// never adds latency; wrapped in try/catch so a logging failure can never break a request.
+export function logCall(
+  env: Env,
+  ctx: { waitUntil(p: Promise<any>): void },
+  req: Request,
+  surface: 'rest' | 'mcp',
+  action: string,
+  target?: unknown,
+): void {
+  try {
+    const h = req.headers.get('Authorization');
+    const key = h?.startsWith('Bearer ') ? h.slice(7).trim() : null;
+    const requester = key ? `key:${key}` : `ip:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}`;
+    const country = (req as any).cf?.country ?? null;
+    const tgt = target == null ? null : typeof target === 'string' ? target : JSON.stringify(target);
+    ctx.waitUntil(
+      env.DB.prepare('INSERT INTO call_log (ts, surface, action, target, requester, country) VALUES (?,?,?,?,?,?)')
+        .bind(new Date().toISOString(), surface, action, tgt, requester, country).run(),
+    );
+  } catch { /* logging must never break a request */ }
+}
+
 export function marketOut(m: any) {
   return {
     market_id: m.market_id,
@@ -482,7 +507,7 @@ async function snapshotDaily(env: Env): Promise<void> {
 
 // ---- router ------------------------------------------------------------
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
@@ -502,17 +527,22 @@ export default {
     }
 
     if (path === '/v1/spot') {
+      logCall(env, ctx, req, 'rest', 'spot');
       const { results } = await env.DB.prepare('SELECT coin, price_usd, as_of FROM spot ORDER BY coin').all();
       return json({ source: 'coingecko', vs_currency: 'usd', spot: results });
     }
 
-    if (path === '/v1/catalysts/upcoming') return upcomingCatalysts(env, url);
+    if (path === '/v1/catalysts/upcoming') {
+      logCall(env, ctx, req, 'rest', 'upcoming_catalysts', { days: url.searchParams.get('days') });
+      return upcomingCatalysts(env, url);
+    }
 
     // CM Signal wire is served as static JSON by Pages (it's content, not D1). Proxy it here so the
     // obvious REST path resolves for agents (an external agent hit /v1/signals and got a 404).
     // /v1/signals -> wire index; /v1/signals/:slug -> one bulletin.
     if (path === '/v1/signals' || path.startsWith('/v1/signals/')) {
       const slug = path === '/v1/signals' ? '' : path.slice('/v1/signals/'.length).replace(/\/+$/, '');
+      logCall(env, ctx, req, 'rest', 'signals', slug || 'index');
       const target = slug
         ? `https://clearmarket.fyi/signals/${encodeURIComponent(slug)}.json`
         : 'https://clearmarket.fyi/signals.json';
@@ -524,7 +554,7 @@ export default {
       });
     }
 
-    if (path === '/mcp') return handleMcp(req, env);
+    if (path === '/mcp') return handleMcp(req, env, ctx);
 
     if (path === '/v1/keys' && req.method === 'POST') return createKey(env, req);
 
@@ -533,12 +563,18 @@ export default {
     const auth = await authenticate(env, req, url);
     if (auth instanceof Response) return auth;
 
-    if (path === '/v1/events') return listEvents(env, url, auth);
-    if (path === '/v1/markets/movers') return listMovers(env, url);
+    if (path === '/v1/events') {
+      logCall(env, ctx, req, 'rest', 'list_events', {
+        q: url.searchParams.get('q'), category: url.searchParams.get('category'),
+        platform: url.searchParams.get('platform'), grade: url.searchParams.get('grade'),
+      });
+      return listEvents(env, url, auth);
+    }
+    if (path === '/v1/markets/movers') { logCall(env, ctx, req, 'rest', 'list_movers'); return listMovers(env, url); }
     const evMatch = path.match(/^\/v1\/events\/([^/]+)$/);
-    if (evMatch) return getEvent(env, decodeURIComponent(evMatch[1]), auth);
+    if (evMatch) { const slug = decodeURIComponent(evMatch[1]); logCall(env, ctx, req, 'rest', 'get_event', slug); return getEvent(env, slug, auth); }
     const mkMatch = path.match(/^\/v1\/markets\/([^/]+)$/);
-    if (mkMatch) return getMarket(env, decodeURIComponent(mkMatch[1]), auth);
+    if (mkMatch) { const id = decodeURIComponent(mkMatch[1]); logCall(env, ctx, req, 'rest', 'get_market', id); return getMarket(env, id, auth); }
 
     return err(404, 'Not found', 'Try /health or /v1/events');
   },

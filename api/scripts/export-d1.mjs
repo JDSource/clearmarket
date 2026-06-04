@@ -126,6 +126,19 @@ CREATE TABLE IF NOT EXISTS spot (
   as_of TEXT
 );
 
+-- Per-call audit log: one row per data request to the REST API or MCP. Records WHAT was
+-- queried (which endpoint/tool + the key argument), WHO (api key or ip), and from WHERE.
+-- Operational table — IF NOT EXISTS so it persists across reseeds (like api_keys/usage).
+CREATE TABLE IF NOT EXISTS call_log (
+  ts TEXT NOT NULL,           -- ISO timestamp of the call
+  surface TEXT NOT NULL,      -- 'rest' | 'mcp'
+  action TEXT NOT NULL,       -- endpoint or MCP tool name (e.g. 'get_event', 'list_events')
+  target TEXT,                -- the key argument: slug / market_id / JSON of filters
+  requester TEXT,             -- 'key:<key>' if authenticated, else 'ip:<addr>'
+  country TEXT                -- Cloudflare-resolved country of the caller
+);
+CREATE INDEX IF NOT EXISTS idx_call_log_ts ON call_log(ts);
+
 -- End-of-day price/volume history (one row per market per day). Hourly cron keeps
 -- markets.last_price fresh in place; this table is the daily time-series captured at the
 -- EOD cron hour, so wires can report multi-day moves + volume-spike baselines. Scoped to

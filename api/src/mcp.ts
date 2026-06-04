@@ -13,7 +13,7 @@
  * differentiators (graded resolution clarity, cross-venue links, provenance).
  * These are solid drafts pending the copy-optimization pass.
  */
-import { Env, num, parseJson, marketOut, eventSummary, loadCalendar, windowCatalysts } from './index';
+import { Env, num, parseJson, marketOut, eventSummary, loadCalendar, windowCatalysts, logCall } from './index';
 
 const PROTOCOL_VERSION = '2025-06-18';
 const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
@@ -233,7 +233,7 @@ async function callTool(env: Env, name: string, a: Record<string, any>): Promise
 const rpcResult = (id: any, result: any) => ({ jsonrpc: '2.0', id, result });
 const rpcError = (id: any, code: number, message: string) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-export async function handleMcp(req: Request, env: Env): Promise<Response> {
+export async function handleMcp(req: Request, env: Env, ctx: { waitUntil(p: Promise<any>): void }): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method !== 'POST') {
     return new Response(JSON.stringify(rpcError(null, -32600, 'Use POST with a JSON-RPC 2.0 body.')), {
@@ -262,6 +262,7 @@ export async function handleMcp(req: Request, env: Env): Promise<Response> {
     if (method === 'tools/list') return json(rpcResult(id, { tools: TOOLS }));
     if (method === 'tools/call') {
       const name = params?.name;
+      logCall(env, ctx, req, 'mcp', String(name ?? 'unknown'), params?.arguments ?? {});
       const data = await callTool(env, name, params?.arguments ?? {});
       return json(rpcResult(id, {
         content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
