@@ -355,6 +355,9 @@ const canonicalURL = 'https://clearmarket.fyi/events/';
   }
   /* strip the native search-cancel cross so it stays flat-terminal */
   .evl-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+  /* iOS auto-zooms any focused input under 16px and never zooms back — pin to 16px on touch
+     so focusing the search box doesn't zoom the whole page. */
+  @media (pointer: coarse) { .evl-search input { font-size: 16px; } }
   .evl-api { font-family: var(--cm-font-mono); font-size: 11.5px; color: var(--cm-fg-muted); margin-bottom: 10px; }
   .evl-api a { color: var(--cm-fg-link); text-decoration: none; }
   .evl-api a:hover { text-decoration: underline; }

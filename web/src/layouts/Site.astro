@@ -247,6 +247,8 @@ const isEventsIndex = path === '/events';
     }
     .va-nav-search input::placeholder { color: var(--va-fg-faint); }
     .va-nav-search input:focus { border-color: var(--va-fg); width: 190px; }
+    /* iOS auto-zooms focused inputs under 16px and never zooms back — pin to 16px on touch. */
+    @media (pointer: coarse) { .va-nav-search input { font-size: 16px; } }
     .va-nav-search { position: relative; }
 
     /* Global status bar — institutional running header, zero-radius, hard rule */

@@ -262,7 +262,7 @@ const dataCatalogJsonLd = {
     {/* ===== API SURFACES ===== */}
     <section id="api" class="cm-section cm-section-machine">
       <div class="cm-section-h">programmatic access &middot; one payload, every surface</div>
-      <p class="cm-section-summary">AI grounded search reads the embedded JSON-LD DataCatalog. Developers fetch the JSON list or any single wire. Agents call the MCP tools. Indexers (Perplexity etc.) auto-discover via RSS. AI crawlers discover via <code class="cm-inline-code">/llms.txt</code>. Same canonical wire records at every surface.</p>
+      <p class="cm-section-summary">One canonical wire record at every surface — embedded JSON-LD, the JSON feed, MCP tools, RSS, and <code class="cm-inline-code">/llms.txt</code>.</p>
       <table class="cm-endpoints-table">
         <tbody>
           <tr><td class="cm-fmt">HTML</td><td>this page &mdash; embedded JSON-LD <code class="cm-inline-code">@type: DataCatalog</code></td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
@@ -586,7 +586,7 @@ const dataCatalogJsonLd = {
     /* Data row affordance — Bloomberg/Reuters pattern: subtle hover bg + pointer cursor
        signals row is clickable. No animation (we're not a SaaS), just a clean state flip. */
     .cm-ledger-row { cursor: pointer; }
-    .cm-ledger-row:hover { background: var(--cm-bg-surface); }
+    @media (hover: hover) { .cm-ledger-row:hover { background: var(--cm-bg-surface); } }
     .cm-ledger-row.cm-hidden-by-filter { display: none; }
 
     .cm-ledger-time {
@@ -622,10 +622,12 @@ const dataCatalogJsonLd = {
       line-height: 1.35;
       letter-spacing: 0;
     }
-    .cm-ledger-headline a:hover { color: var(--cm-fg-link); }
-    /* Explicit click affordance — a trailing arrow on hover signals the row opens the
-       deep-dive wire page (we stripped SaaS buttons, so the cue must be native-terminal). */
-    .cm-ledger-headline a:hover::after { content: " \2192"; color: var(--cm-fg-link); }
+    /* hover-only — touch "sticks" :hover after a tap, which left one headline blue on mobile.
+       Explicit click affordance: a trailing arrow on hover signals the row opens the wire page. */
+    @media (hover: hover) {
+      .cm-ledger-headline a:hover { color: var(--cm-fg-link); }
+      .cm-ledger-headline a:hover::after { content: " \2192"; color: var(--cm-fg-link); }
+    }
     .cm-ledger-venues {
       color: var(--cm-fg-secondary);
       font-size: 10.5px;
@@ -738,7 +740,10 @@ const dataCatalogJsonLd = {
 
       .cm-ledger, .cm-ledger tbody, .cm-ledger-row { display: block; width: 100%; box-sizing: border-box; }
       .cm-ledger colgroup { display: none; }
-      .cm-ledger-cap td { display: block; }
+      /* Align the date-divider text with the card column: cards inset ~13px (1px border + 12px
+         pad), so the cap row needs matching horizontal padding instead of the desktop's pad-left:0,
+         otherwise the divider sits left of the cards and reads as askew. */
+      .cm-ledger-cap td { display: block; padding: 6px 13px; }
       .cm-ledger-row {
         border: 1px solid var(--cm-border-hairline); padding: 11px 12px; margin-bottom: 8px;
       }

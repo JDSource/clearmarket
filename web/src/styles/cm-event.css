@@ -2163,15 +2163,16 @@
          reflow drops the <thead>. Left = distinguisher (strike/date); right = P(YES) + RCG,
          flush right so RCG sits over the grade chips. */
       .cm-mkt-legend {
-        display: grid; grid-template-columns: 1fr 54px 30px; column-gap: 10px;
+        display: grid; grid-template-columns: 1fr 50px 64px 28px; column-gap: 8px;
         align-items: baseline; padding: 8px 2px 6px;
         border-bottom: 1px solid var(--cm-border-rule);
         font-family: var(--cm-font-mono); font-size: 9px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.13em;
+        text-transform: uppercase; letter-spacing: 0.12em;
         color: var(--cm-fg-faint); user-select: none;
       }
       .cm-mkt-legend-axis { justify-self: start; }
       .cm-mkt-legend-p { justify-self: end; }
+      .cm-mkt-legend-cum { justify-self: end; }
       .cm-mkt-legend-rcg { justify-self: center; }
       /* Drop the venue-head divider on mobile so the legend's border is the SINGLE header/data
          separator — otherwise the head-bottom + legend-bottom rules sit ~24px apart and read as
@@ -2186,47 +2187,49 @@
       .cm-mkt-table .cm-td-bar { display: none; }
       .cm-mkt-table[data-date-axis="true"]  .cm-td-q    { display: none; }
       .cm-mkt-table[data-date-axis="false"] .cm-td-date { display: none; }
+      /* ONE dense line: distinguisher · P(YES) · CUM vol · RCG. Fixed metric columns so the
+         micro-header legend sits dead-on. CUM is promoted onto the main line (fills the old
+         gap); 24h vol + the decorative bars + the contract id are dropped on phones (all still
+         in JSON / API / desktop). */
       .cm-mkt-table tr {
         display: grid;
-        grid-template-columns: 1fr 54px 30px;   /* fixed metric cols → legend headers sit dead-on */
+        grid-template-columns: 1fr 50px 64px 28px;
         align-items: baseline;
-        column-gap: 10px;
-        row-gap: 3px;
-        padding: 10px 2px;
+        column-gap: 8px;
+        padding: 9px 2px;
         border-bottom: 1px solid var(--cm-border-hairline);
       }
       .cm-mkt-table tr:last-child { border-bottom: 0; }
-      /* height:auto is critical — the desktop rule pins every td to a fixed 24px row height,
-         which on the 2-line grid padded each line to 24px (the airy gap between lines + the
-         empty space below a short single-row table). Collapse to content height. */
+      /* height:auto — the desktop rule pins every td to a fixed 24px row height, which padded
+         each cell and produced the airy gaps. Collapse to content height. */
       .cm-mkt-table td { padding: 0; border: none; white-space: nowrap; height: auto; line-height: 1.3; }
-      /* Line 1 — the clear core state */
+      /* col 1 — distinguisher (strike / date / outcome). Flexes + ellipsizes so long outcome
+         labels ("Hike rates by >25bps") still read without overflowing. */
       .cm-mkt-table .cm-td-q,
       .cm-mkt-table .cm-td-date {
-        grid-row: 1; grid-column: 1; justify-self: start;
-        min-width: 0; max-width: 100%; overflow: hidden;   /* allow the 1fr cell to shrink so the label can ellipsize */
+        grid-column: 1; justify-self: start;
+        min-width: 0; max-width: 100%; overflow: hidden;
         font-weight: 700; color: var(--cm-fg-link); font-size: 12.5px;
       }
-      /* strike rungs (≤1%) stay short; a lone binary's full question ellipsizes instead of
-         overflowing the grid column. width:auto defeats the desktop fixed 96px label width. */
       .cm-mkt-table .cm-td-q .cm-td-label-text {
         display: block; width: auto; max-width: 100%;
         overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
       }
+      /* col 2 — P(YES), the dominant number */
       .cm-mkt-table .cm-td-p {
-        grid-row: 1; grid-column: 2; justify-self: end;
+        grid-column: 2; justify-self: end;
         font-weight: 700; color: var(--cm-fg-primary); font-size: 12.5px;
-        font-variant-numeric: tabular-nums;   /* percent signs stack (Gemini: right-align price vault) */
+        font-variant-numeric: tabular-nums;
       }
-      .cm-mkt-table .cm-td-rcg { grid-row: 1; grid-column: 3; justify-self: center; }
-      /* Line 2 — muted telemetry: 24H at left, CUM aligned under the P(YES) column. The contract id
-         is dropped on phones (lowest value; it bloated col 3 and broke header alignment) — it stays
-         in the JSON / API / MCP / desktop surfaces. */
-      .cm-mkt-table .cm-td-num[data-sort-key="v24"]  { grid-row: 2; grid-column: 1; justify-self: start; }
-      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] { grid-row: 2; grid-column: 2 / 4; justify-self: end; }
-      .cm-mkt-table .cm-td-id { display: none; }
+      /* col 3 — cumulative volume, muted so P(YES) stays dominant. The legend header labels it,
+         so no inline "CUM " prefix. */
+      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] {
+        grid-column: 3; justify-self: end;
+        font-size: 11px; color: var(--cm-fg-muted); font-variant-numeric: tabular-nums;
+      }
+      /* col 4 — RCG chip */
+      .cm-mkt-table .cm-td-rcg { grid-column: 4; justify-self: center; }
+      /* dropped on phones */
       .cm-mkt-table .cm-td-num[data-sort-key="v24"],
-      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] { font-size: 10px; color: var(--cm-fg-faint); font-variant-numeric: tabular-nums; }
-      .cm-mkt-table .cm-td-num[data-sort-key="v24"] .cm-num::before  { content: "24H "; color: var(--cm-fg-faint); }
-      .cm-mkt-table .cm-td-num[data-sort-key="vcum"] .cm-num::before { content: "CUM "; color: var(--cm-fg-faint); }
+      .cm-mkt-table .cm-td-id { display: none; }
     }
