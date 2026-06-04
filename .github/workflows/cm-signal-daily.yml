@@ -52,6 +52,8 @@ jobs:
           echo "bundle: $(du -h web/data/universe-enriched-linked.json | cut -f1)"
           # canon-pairs.json drives cross_venue_divergence; if absent, that one generator skips gracefully
           curl -fsSL "$BASE/canon-pairs.json" -o web/data/canon-pairs.json || echo "canon-pairs.json unavailable — divergence will skip"
+          # resolution-log.json feeds the event-page resolution-history ledger; absent → renders empty
+          curl -fsSL "$BASE/resolution-log.json" -o web/data/resolution-log.json || echo "resolution-log.json unavailable — resolution history will be empty"
 
       - name: Generate wires (all four types; one failing never blocks the rest)
         env:

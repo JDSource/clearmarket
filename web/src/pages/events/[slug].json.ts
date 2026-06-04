@@ -7,7 +7,7 @@
  * build time; the Cloudflare Worker's /v1/events/:slug is the dynamic equivalent.
  */
 import type { APIRoute } from 'astro';
-import { getAllEvents, getEventBySlug, getMarketsForEvent, getMarksForEvent, SCHEMA_VERSION } from '../../lib/universe';
+import { getAllEvents, getEventBySlug, getMarketsForEvent, getMarksForEvent, getResolutionLogForEvent, SCHEMA_VERSION } from '../../lib/universe';
 
 export async function getStaticPaths() {
   return getAllEvents().map((e) => ({ params: { slug: e.slug } }));
@@ -65,6 +65,16 @@ export const GET: APIRoute = ({ params }) => {
         volume_total_usd: m.volume_total_usd ?? null,
       };
     }),
+    resolution_log: getResolutionLogForEvent(event.event_id).map((r) => ({
+      market_id: r.market_id,
+      platform: r.platform,
+      outcome: r.to_value,
+      resolved_at: r.occurred_at,
+      final_price: r.final_price,
+      recorded_at: r.recorded_at,
+      source: r.source,
+      source_ref: r.source_ref,
+    })),
     canonical_urls: {
       html: `https://clearmarket.fyi/events/${event.slug}/`,
       json: `https://clearmarket.fyi/events/${event.slug}.json`,

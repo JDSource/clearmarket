@@ -5,9 +5,16 @@
  *   2. VERBATIM RULES — the platform's exact resolution-rules text per venue.
  * The grid is the structured-governance differentiator; the verbatim text is the proof.
  */
-import type { Event, Market } from '../lib/universe';
+import type { Event, Market, ResolutionLogEntry } from '../lib/universe';
 import { arbiterLabel, proposerLabel, isPlaceholderCitation } from '../lib/labels';
-const { event, markets } = Astro.props as { event: Event; markets: Market[] };
+const { event, markets, resolutionLog = [] } = Astro.props as { event: Event; markets: Market[]; resolutionLog?: ResolutionLogEntry[] };
+
+// Resolved-history ledger: one row per settled market. The distinguisher comes from the market's
+// own question; venue + date + final price are verbatim from the price/date snapshot. Outcome is
+// YES/NO when the final price was decisive, PENDING when the snapshot predates settlement.
+const mByIdVR = new Map(markets.map((m) => [m.market_id, m]));
+function fmtDay(s: string | null | undefined): string { return s ? s.slice(0, 10) : '—'; }
+function fmtPrice(p: number | null): string { return p === null || p === undefined ? '—' : `${Math.round(p * 100)}%`; }
 
 const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
 const blocks = VENUES.map((v) => {
@@ -109,6 +116,37 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
       ); })()}
     </div>
   ))}
+
+  {resolutionLog.length > 0 && (
+    <div class="rl-wrap">
+      <div class="vr-rules-h">resolution history</div>
+      <div class="cm-table-wrap">
+        <table class="cm-res-table rl-table">
+          <thead>
+            <tr>
+              <th scope="col">outcome</th>
+              <th scope="col">market</th>
+              <th scope="col">venue</th>
+              <th scope="col">resolved</th>
+              <th scope="col" class="cm-tt cm-th-help" data-tt="Final price observed at/after settlement. YES near 100%, NO near 0%. PENDING = the snapshot predates settlement; the next refresh upgrades it to a real outcome.">final price</th>
+            </tr>
+          </thead>
+          <tbody>
+            {resolutionLog.map((r) => (
+              <tr>
+                <td><span class={`rl-badge rl-${(r.to_value || 'pending').toLowerCase()}`}>{r.to_value}</span></td>
+                <td class="rl-mkt">{mByIdVR.get(r.market_id)?.question_raw ?? r.market_id}</td>
+                <td class="cm-res-td-venue">{r.platform}</td>
+                <td><code class="rl-date">{fmtDay(r.occurred_at)}</code></td>
+                <td><code class="rl-date">{fmtPrice(r.final_price)}</code></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="rl-note">Derived from the platform price + resolution-date snapshot ({resolutionLog.length} resolved {resolutionLog.length === 1 ? 'market' : 'markets'}). PENDING upgrades to a final outcome on the next refresh.</div>
+    </div>
+  )}
 </section>
 
 <style>
@@ -135,4 +173,17 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
     white-space: pre-wrap; padding-left: 12px; border-left: 2px solid var(--cm-border-rule);
   }
   .vr-empty { color: var(--cm-fg-faint); font-style: italic; }
+  /* resolution history ledger */
+  .rl-wrap { margin-top: 22px; }
+  .rl-table .rl-mkt { font-family: var(--cm-font-sans); font-size: 11.5px; color: var(--cm-fg-secondary); }
+  .rl-date { font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary); }
+  .rl-badge {
+    font-family: var(--cm-font-mono); font-size: 9.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; padding: 1px 6px; border-radius: 2px;
+    border: 1px solid var(--cm-border-hairline);
+  }
+  .rl-yes { color: var(--cm-dot-positive, #36c08a); border-color: color-mix(in srgb, currentColor 45%, transparent); }
+  .rl-no { color: var(--cm-fg-muted); }
+  .rl-pending { color: var(--cm-accent, #c8a24a); border-color: color-mix(in srgb, currentColor 45%, transparent); }
+  .rl-note { font-family: var(--cm-font-mono); font-size: 9.5px; color: var(--cm-fg-faint); margin-top: 8px; }
 </style>

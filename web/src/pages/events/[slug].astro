@@ -18,7 +18,7 @@ import WireItems from '../../components/WireItems.astro';
 import ProgrammaticAccess from '../../components/ProgrammaticAccess.astro';
 import { eventDisplayQuestion } from '../../lib/labels';
 import {
-  getAllEvents, getEventBySlug, getMarketsForEvent, getMarkByMarketId,
+  getAllEvents, getEventBySlug, getMarketsForEvent, getMarkByMarketId, getResolutionLogForEvent,
   SPECIMEN_GENERATED_AT, SCHEMA_VERSION, type Event, type Market,
 } from '../../lib/universe';
 
@@ -27,6 +27,7 @@ export async function getStaticPaths() {
 }
 const { event } = Astro.props as { event: Event };
 const markets = getMarketsForEvent(event.event_id);
+const resolutionLog = getResolutionLogForEvent(event.event_id);
 
 // Display title: substitute the real strike range for the "___" placeholder that a handful of
 // grouped (ladder/option-chain) events carry in their Polymarket template question. Raw
@@ -119,7 +120,7 @@ const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
     <MarketsTable groups={marketGroups} sectionLabel={marketsLabel} />
 
     {/* verbatim rules — the #resolution section */}
-    <VerbatimRules event={event} markets={markets} />
+    <VerbatimRules event={event} markets={markets} resolutionLog={resolutionLog} />
 
     <WireItems event={event} />
     <ProgrammaticAccess event={event} markets={markets} />

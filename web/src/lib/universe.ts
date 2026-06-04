@@ -183,6 +183,36 @@ try {
 export function getCanonPairs(): CanonPair[] {
   return canonPairs;
 }
+
+// Resolution log: append-only `resolved` events (built by build_resolution_log.py from the
+// price+date snapshot — outcome YES/NO when the final price is extreme, PENDING when the snapshot
+// predates settlement). The resolved-history surface for a reference product. Loaded like canon-pairs;
+// gracefully empty if the file is absent (e.g. a build before the file is fetched from R2).
+export type ResolutionLogEntry = {
+  market_id: string;
+  event_id: string;
+  platform: 'kalshi' | 'polymarket' | string;
+  event_type: string;            // 'resolved'
+  occurred_at: string;           // when it settled
+  recorded_at: string;           // pull date that observed it
+  to_value: 'YES' | 'NO' | 'PENDING' | string;
+  final_price: number | null;
+  source: string;
+  source_ref: string;
+  actor: string;
+};
+let resolutionLog: ResolutionLogEntry[] = [];
+try {
+  resolutionLog = JSON.parse(readFileSync(resolve(process.cwd(), 'data/resolution-log.json'), 'utf-8'));
+} catch { resolutionLog = []; }
+const resolutionLogByEvent = new Map<string, ResolutionLogEntry[]>();
+for (const r of resolutionLog) {
+  if (!r.event_id) continue;
+  const list = resolutionLogByEvent.get(r.event_id);
+  if (list) list.push(r);
+  else resolutionLogByEvent.set(r.event_id, [r]);
+}
+
 export function getMarkByMarketId(id: string): Mark | undefined {
   return synthMarkByMarketId.get(id);
 }
@@ -204,8 +234,11 @@ export function getMarksForEvent(event_id: string): Mark[] {
     .map((m) => synthMarkByMarketId.get(m.market_id))
     .filter((x): x is Mark => Boolean(x));
 }
-export function getResolutionLogForEvent(_event_id: string): never[] {
-  return [];
+// Resolved-market history for an event, newest settlement first.
+export function getResolutionLogForEvent(event_id: string): ResolutionLogEntry[] {
+  return (resolutionLogByEvent.get(event_id) ?? [])
+    .slice()
+    .sort((a, b) => (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''));
 }
 
 // Build-date "today" — the static site rebuilds daily (CM Signal cron), so this re-filters daily.

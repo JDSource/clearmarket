@@ -268,6 +268,21 @@ async function getEvent(env: Env, slug: string, auth: Auth): Promise<Response> {
     parseJson(e.catalyst_dates, []) as any[],
   );
 
+  // Resolved-market history. Defensive: returns [] if the table hasn't been seeded yet, so the
+  // Worker can ship ahead of the D1 reseed without 500-ing every event.
+  let resolutionLog: any[] = [];
+  try {
+    const { results } = await env.DB.prepare(
+      `SELECT market_id, platform, to_value, occurred_at, final_price, recorded_at, source, source_ref
+         FROM resolution_log WHERE event_id = ? ORDER BY occurred_at DESC`
+    ).bind(e.event_id).all<any>();
+    resolutionLog = results.map((r) => ({
+      market_id: r.market_id, platform: r.platform, outcome: r.to_value,
+      resolved_at: r.occurred_at, final_price: num(r.final_price), recorded_at: r.recorded_at,
+      source: r.source, source_ref: r.source_ref,
+    }));
+  } catch { resolutionLog = []; }
+
   return json({
     event_id: e.event_id,
     slug: e.slug,
@@ -285,6 +300,7 @@ async function getEvent(env: Env, slug: string, auth: Auth): Promise<Response> {
     created_at: e.created_at,
     updated_at: e.updated_at,
     markets: mkts.map(marketOut),
+    resolution_log: resolutionLog,
   });
 }
 
