@@ -28,6 +28,7 @@ const websiteJsonLd = {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0e1116" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <meta name="description" content={description} />
@@ -54,15 +55,17 @@ const websiteJsonLd = {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <style is:global>
+      /* ClearMarket is a dark-only terminal product — default the theme dark so html/overscroll
+         (the iOS rubber-band area) is dark, not white, regardless of OS light/dark setting. */
       :root {
-        --bg: #ffffff;
-        --fg: #111418;
-        --fg-muted: #555c66;
-        --fg-faint: #8b929a;
-        --border: #e3e6ea;
-        --border-strong: #c8ccd1;
-        --accent: #1a1a1a;
-        --code-bg: #f6f7f9;
+        --bg: #0e1116;
+        --fg: #e6e8eb;
+        --fg-muted: #9aa1aa;
+        --fg-faint: #6c727a;
+        --border: #232830;
+        --border-strong: #3a414b;
+        --accent: #76b8ff;
+        --code-bg: #161b22;
         --max-width: 720px;
         --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

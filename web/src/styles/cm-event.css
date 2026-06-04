@@ -2174,6 +2174,10 @@
       .cm-mkt-legend-p { justify-self: end; }
       .cm-mkt-legend-cum { justify-self: end; }
       .cm-mkt-legend-rcg { justify-self: center; }
+      /* Wire-page metadata (record · category · target · published): stack each field on its own
+         line on phones instead of an inline run that wraps mid-pair (target | published). */
+      .cm-v2[data-cm-signal-id] .cm-horizon { flex-direction: column; align-items: flex-start; gap: 4px; }
+      .cm-v2[data-cm-signal-id] .cm-horizon-pipe { display: none; }
       /* Drop the venue-head divider on mobile so the legend's border is the SINGLE header/data
          separator — otherwise the head-bottom + legend-bottom rules sit ~24px apart and read as
          one double-thick line bracketing the micro-header (Gemini). */
@@ -2211,9 +2215,13 @@
         min-width: 0; max-width: 100%; overflow: hidden;
         font-weight: 700; color: var(--cm-fg-link); font-size: 12.5px;
       }
+      /* Long outcome labels ("The Fed decrease interest rates by …") wrap to 2 lines instead of
+         truncating — readability beats compactness for a reference product, and it avoids the
+         finicky horizontal-scroll-inside-a-row pattern. Strikes/dates are short and stay 1 line. */
       .cm-mkt-table .cm-td-q .cm-td-label-text {
-        display: block; width: auto; max-width: 100%;
-        overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        width: auto; max-width: 100%; overflow: hidden;
+        white-space: normal; line-height: 1.25;
       }
       /* col 2 — P(YES), the dominant number */
       .cm-mkt-table .cm-td-p {
