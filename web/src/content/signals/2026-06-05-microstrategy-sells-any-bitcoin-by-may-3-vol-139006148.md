@@ -2,12 +2,12 @@
 signal_id: "CMSIG20260605VS00"
 signal_slug: "microstrategy-sells-any-bitcoin-by-may-3-vol-139006148"
 headline: "MicroStrategy BTC sale: 0% on $139M surge"
-semantic_title: "Traders write off any MicroStrategy Bitcoin sale by May 31"
+semantic_title: "Traders write off a MicroStrategy Bitcoin sale by May 31"
 telemetry: "0% · $139M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-05T11:24:46+00:00"
+published_at: "2026-06-05T12:03:57+00:00"
 event_id: "CM-EVT-QW6P6GZ8N4"
 event_slug: "microstrategy-sell-any-bitcoin-in-2025"
 event_question: "MicroStrategy sells any Bitcoin? (multi-deadline series, 2025-2027)"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-07-01T04:00:00Z"
 bullets:
-  - "Market prices zero probability MicroStrategy liquidated any Bitcoin through May 31 deadline."
+  - "Market prices zero probability MicroStrategy liquidated any BTC before May 31 deadline."
   - "Polymarket logged $139M in 24h volume, 60% of the contract's entire all-time handle."
-  - "Surge likely driven by contract nearing resolution; capital rushing to lock in near-certain 'No' payout."
-  - "Contract resolves imminently; today's date of June 5 places this just past the May 31 cutoff."
+  - "Resolution window has passed; capital rushing in to collect on a settled near-certain 'No'."
+  - "Contract likely in final settlement phase; flows reflect arbitrage, not fresh directional conviction."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: MicroStrategy sells any Bitcoin? (multi-deadline series"
     url: "https://clearmarket.fyi/events/microstrategy-sell-any-bitcoin-in-2025"
-    retrieved_at: "2026-06-05T11:24:46+00:00"
+    retrieved_at: "2026-06-05T12:03:57+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-An enormous terminal flush into a resolved-or-resolving 'No' signals desks are harvesting remaining edge before settlement, not a live directional bet on MicroStrategy treasury policy.
+The extreme volume at 0% on an expired window signals institutional arbitrage harvesting residual settlement value, not a new macro view on MicroStrategy's treasury policy.

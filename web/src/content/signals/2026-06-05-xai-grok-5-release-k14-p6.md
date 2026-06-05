@@ -7,7 +7,7 @@ telemetry: "Polymarket 6% vs Kalshi 14%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-06-05T11:24:54+00:00"
+published_at: "2026-06-05T12:04:05+00:00"
 event_id: "CM-EVT-CW5RM996H4"
 event_slug: "kxgrok-grok5"
 event_question: "Will xAI release Grok 5 before Jul 1, 2026?"
@@ -24,10 +24,10 @@ related_markets:
     question_raw: "Will xAI release Grok 5 before Jul 1, 2026?"
     current_price: 0.14
 bullets:
-  - "Kalshi prices 14%, Polymarket 6%, an 8pp gap on an imminent binary with under four weeks to resolution."
-  - "Kalshi is the higher side; Polymarket carries roughly 15x more cumulative volume, suggesting deeper market consensus on the low end."
-  - "Thin Kalshi liquidity may be amplifying noise; Polymarket's larger pool likely reflects a more efficiently aggregated signal on this short-horizon tech call."
-  - "Contract resolves on any confirmed xAI public release of Grok 5 on or before Jun 30, 2026."
+  - "Kalshi prices 14%, Polymarket 6%, an 8pp gap on identical near-term release claim."
+  - "Kalshi is the higher-conviction desk; Polymarket carries dominant liquidity at roughly 15x cumulative volume."
+  - "Thin Kalshi volume suggests idiosyncratic positioning rather than informed consensus; Polymarket's deeper book is likelier to reflect aggregated trader belief."
+  - "Resolution hinges on a verifiable xAI product release announcement before Jul 1, 2026, a bright-line mechanic."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (claim_sig CMX-967EBBB3FC); prices direct from venue APIs"
@@ -48,10 +48,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will xAI release Grok 5 before Jul 1, 2026?"
     url: "https://clearmarket.fyi/compare/xai-grok-5-release-m-2026-06"
-    retrieved_at: "2026-06-05T11:24:54+00:00"
+    retrieved_at: "2026-06-05T12:04:05+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 8pp spread, running against a heavily liquidity-weighted lower price on Polymarket, signals that Kalshi's thin book is carrying idiosyncratic noise rather than genuine information, a desk should weight Polymarket's six-cent handle as the more credible anchor here.
+A desk should weight the Polymarket price as the more liquid and likely more reliable signal, treating Kalshi's elevated print as a thin-book artifact rather than a genuine edge on timing.

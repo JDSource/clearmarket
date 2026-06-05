@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20260605VS07"
 signal_slug: "will-karen-bass-and-spencer-pratt-be-the-vol-258144"
-headline: "Bass-Pratt LA nominee pair: 79% on $258K"
-semantic_title: "Bass-Pratt LA mayoral ticket locked in at near-full market conviction"
+headline: "Bass & Pratt LA nominees: 79% on $258K surge"
+semantic_title: "Bass-Pratt LA mayoral ticket locked in at market consensus"
 telemetry: "79% · $258K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-05T11:24:46+00:00"
+published_at: "2026-06-05T12:03:57+00:00"
 event_id: "CM-EVT-5D13MHJ4R8"
 event_slug: "kxlamayormatchup-26jun"
 event_question: "Will there be a Los Angeles mayoral election by the specified date?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-06-02T14:00:00Z"
 bullets:
-  - "Kalshi prices Bass and Pratt as the confirmed 2026 LA mayoral general-election nominees at 79%."
-  - "24h volume of $258K equals 51% of all-time contract handle, a majority of lifetime liquidity in one session."
-  - "Surge reflects the same information catalyst driving the broader LA mayoral market: a field-narrowing or official qualifying event."
-  - "Residual 21% discount likely prices legal, procedural, or candidate-withdrawal tail risk before ballot finalization."
+  - "Market prices 79% odds Bass and Pratt are the confirmed major-party nominees in the LA mayoral race."
+  - "$258K in 24h volume is 51% of all-time handle, majority of the contract's history compressed into one session."
+  - "Aligns with the standalone LA mayoral winner market also at 79%, suggesting a coherent, consistent book."
+  - "Nomination confirmation or ballot certification event likely triggered the surge in settling activity."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will there be a Los Angeles mayoral election by the spe"
     url: "https://clearmarket.fyi/events/kxlamayormatchup-26jun"
-    retrieved_at: "2026-06-05T11:24:46+00:00"
+    retrieved_at: "2026-06-05T12:03:57+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Paired nominee contracts moving in lockstep with the winner market on heavy single-day volume confirms a shared catalyst, desks should cross-reference both Kalshi lines to assess whether the discount between them prices idiosyncratic ballot risk or simple liquidity lag.
+The 79% nominee-pairing price matching the winner market's frontrunner probability indicates the Kalshi book is internally consistent, desks can treat the Bass-Pratt general election matchup as the consensus scenario for LA 2026.

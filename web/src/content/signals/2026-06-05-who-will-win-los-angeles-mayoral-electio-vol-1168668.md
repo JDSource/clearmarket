@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20260605VS03"
 signal_slug: "who-will-win-los-angeles-mayoral-electio-vol-1168668"
-headline: "LA mayor winner: 79% on $1.2M inflow"
-semantic_title: "Heavy flows defend Karen Bass at 79% in the LA mayoral race"
+headline: "LA mayoral race: 79% on $1.2M inflow"
+semantic_title: "Heavy flows defend Karen Bass as LA mayor frontrunner at 79%"
 telemetry: "79% · $1.2M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-06-05T11:24:46+00:00"
+published_at: "2026-06-05T12:03:57+00:00"
 event_id: "CM-EVT-X27NWLJN20"
 event_slug: "kxmayorla-26"
 event_question: "Will there be a Los Angeles Mayor winner?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-06-02T14:00:00Z"
 bullets:
-  - "Kalshi prices the leading LA mayoral candidate at 79%, a strong but not certain favorite."
-  - "24h volume of $1.2M is 26% of the contract's all-time total, reflecting a notable single-session surge."
-  - "Fresh capital at elevated probability suggests new polling, endorsement data, or a narrowing field is reinforcing the frontrunner position."
-  - "Election outcome resolution approaches; compressed time horizon amplifies each new data point's price impact."
+  - "Frontrunner priced at 79%, market assigns strong but not conclusive edge to the leading candidate."
+  - "$1.17M in 24h volume equals 26% of all-time contract activity, a meaningful single-session spike."
+  - "Polling releases or debate outcomes likely refreshing conviction in the current probability structure."
+  - "Election resolution will determine whether the 79% consensus held or overpriced the incumbent."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will there be a Los Angeles Mayor winner?"
     url: "https://clearmarket.fyi/events/kxmayorla-26"
-    retrieved_at: "2026-06-05T11:24:46+00:00"
+    retrieved_at: "2026-06-05T12:03:57+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Sustained high-probability pricing absorbing fresh volume indicates the LA mayoral market is entering a conviction phase, desks covering local political risk or adjacent real-estate/policy exposures should note the near-lock pricing.
+Substantial fresh volume at an unchanged-looking 79% suggests the LA mayoral race is attracting institutional attention, possibly tied to new polling or endorsement news that either confirmed or challenged the frontrunner's lead.
