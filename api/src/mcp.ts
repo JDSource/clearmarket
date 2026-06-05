@@ -100,7 +100,11 @@ const TOOLS = [
       type: 'object',
       properties: {
         event_id: { type: 'string', description: 'Return only wires that target or link to this CM event_id.' },
-        category: { type: 'string', enum: CATEGORIES },
+        // Filters the wire's category_tag (the signal-type classification) — NOT the 9 thematic
+        // event categories. Free string (case-insensitive) because the tag set drifts with the
+        // generators; common values listed below. (Was wrongly enum'd to the thematic CATEGORIES,
+        // which never matches category_tag -> the filter always returned empty.)
+        category: { type: 'string', description: 'Signal category tag (case-insensitive): VS_BENCHMARK_DRIFT | CROSS_VENUE_DIVERGENCE | VOLUME_SPIKE | MOMENTUM_REPRICING | PRE_EVENT_PRICING. For thematic filtering use list_events.' },
         venue: { type: 'string', enum: ['kalshi', 'polymarket'] },
         detection_path: { type: 'string', enum: ['news_cycle', 'cross_venue_divergence', 'benchmark_drift', 'volume_spike'] },
         limit: { type: 'integer', minimum: 1, maximum: 100, default: 30 },
@@ -194,7 +198,7 @@ async function buildSignalsList(env: Env, p: Record<string, any>): Promise<any> 
   const feed = await res.json<any>();
   let items: any[] = feed.signals ?? [];
   if (p.event_id) items = items.filter((s) => s.target_event_id === p.event_id || (s.linked_event_ids ?? []).includes(p.event_id));
-  if (p.category) items = items.filter((s) => s.category_tag === p.category);
+  if (p.category) { const c = String(p.category).toUpperCase(); items = items.filter((s) => (s.category_tag ?? '').toUpperCase() === c); }
   if (p.venue) items = items.filter((s) => (s.venues ?? []).includes(p.venue));
   if (p.detection_path) items = items.filter((s) => s.detection_path === p.detection_path);
   const limit = Math.min(Math.max(Number(p.limit ?? 30) || 30, 1), 100);

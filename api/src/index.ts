@@ -39,6 +39,9 @@ const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =
 const err = (status: number, message: string, hint?: string) =>
   json({ error: message, ...(hint ? { hint } : {}) }, status);
 
+// The 9 thematic event categories (stored lowercase). Used to validate + hint on /v1/events?category=.
+const KNOWN_CATEGORIES = ['economics', 'financials', 'crypto', 'companies', 'technology', 'politics', 'geopolitics', 'health', 'climate'];
+
 // ---- serving shapes ----------------------------------------------------
 export const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 export const parseJson = (v: unknown, fallback: unknown) => {
@@ -253,7 +256,14 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const status = (p.get('status') || 'all').toLowerCase();
   if (status === 'active') where.push(liveExpr);
   else if (status === 'resolved') where.push(`NOT (${liveExpr})`);
-  if (p.get('category')) { where.push('e.category = ?'); args.push(p.get('category')); }
+  // category match is CASE-INSENSITIVE (stored values are lowercase); an unrecognized value still
+  // queries (returns []) but we hand back the valid set so a caller isn't left guessing on an empty result.
+  let categoryNotice: string | undefined;
+  if (p.get('category')) {
+    const c = p.get('category')!.toLowerCase();
+    where.push('LOWER(e.category) = ?'); args.push(c);
+    if (!KNOWN_CATEGORIES.includes(c)) categoryNotice = `Unknown category "${p.get('category')}". Valid: ${KNOWN_CATEGORIES.join(', ')}.`;
+  }
   if (p.get('q')) { where.push('e.question LIKE ?'); args.push(`%${p.get('q')}%`); }
 
   const limit = Math.min(Number(p.get('limit') ?? 50) || 50, 200);
@@ -262,7 +272,8 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const sql = `SELECT *, (${liveExpr}) AS is_live FROM events e WHERE ${where.join(' AND ')} ORDER BY is_live DESC, e.updated_at DESC LIMIT ? OFFSET ?`;
   const { results: evs } = await env.DB.prepare(sql).bind(...args, limit, offset).all<any>();
 
-  if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed, events: [] });
+  if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed,
+    ...(categoryNotice ? { category_notice: categoryNotice, valid_categories: KNOWN_CATEGORIES } : {}), events: [] });
 
   // pull markets for this page in one query
   const ids = evs.map((e) => e.event_id);
@@ -283,6 +294,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
     limit,
     offset,
     keyed: auth.keyed,
+    ...(categoryNotice ? { category_notice: categoryNotice, valid_categories: KNOWN_CATEGORIES } : {}),
     ...(auth.keyed ? {} : { notice: `Anonymous access (full universe, ${ANON_DAILY_LIMIT}/day per IP). Free key for ${KEY_DAILY_LIMIT}/day: POST /v1/keys.` }),
     events: out,
   });
