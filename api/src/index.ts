@@ -72,6 +72,19 @@ export function logCall(
   } catch { /* logging must never break a request */ }
 }
 
+// ---- provenance / attribution watermark --------------------------------
+// Stamped on every event + market in API and MCP responses. Triple duty:
+//  (1) attribution notice / licensing terms,
+//  (2) scrape watermark — `ref` is a CM id that exists only in ClearMarket's
+//      namespace, so if it surfaces downstream it's provable origin,
+//  (3) names the canonical id as the citation unit (adopters propagate it).
+// Applied at serve time — no dataset rewrite.
+export const provenance = (ref: string) => ({
+  source: 'clearmarket.fyi',
+  ref,
+  terms: 'Attribution required. clearmarket.fyi',
+});
+
 export function marketOut(m: any) {
   return {
     market_id: m.market_id,
@@ -136,6 +149,7 @@ export function eventSummary(e: any, mkts: any[]) {
     rcg_score: num(primary?.rcg_score),
     last_price: num(primary?.last_price),
     updated_at: e.updated_at,
+    _provenance: provenance(e.event_id),
   };
 }
 
@@ -327,13 +341,14 @@ async function getEvent(env: Env, slug: string, auth: Auth): Promise<Response> {
     updated_at: e.updated_at,
     markets: mkts.map(marketOut),
     resolution_log: resolutionLog,
+    _provenance: provenance(e.event_id),
   });
 }
 
 async function getMarket(env: Env, id: string, _auth: Auth): Promise<Response> {
   const m = await env.DB.prepare('SELECT * FROM markets WHERE market_id = ?').bind(id).first<any>();
   if (!m) return err(404, 'Market not found');
-  return json(marketOut(m));
+  return json({ ...marketOut(m), _provenance: provenance(m.market_id) });
 }
 
 // Volume movers: day-over-day 24h-volume change from the two most recent marks_daily snapshots.

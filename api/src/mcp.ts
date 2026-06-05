@@ -13,7 +13,7 @@
  * differentiators (graded resolution clarity, cross-venue links, provenance).
  * These are solid drafts pending the copy-optimization pass.
  */
-import { Env, num, parseJson, marketOut, eventSummary, loadCalendar, windowCatalysts, logCall } from './index';
+import { Env, num, parseJson, marketOut, eventSummary, loadCalendar, windowCatalysts, logCall, provenance } from './index';
 
 const PROTOCOL_VERSION = '2025-06-18';
 const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
@@ -139,6 +139,7 @@ async function buildEvent(env: Env, slug: string): Promise<any | null> {
     tags: parseJson(e.tags, []), catalyst_types: parseJson(e.catalyst_types, []), catalyst_dates: catalysts,
     editorial_notes: e.editorial_notes, venues_covered: venues, primary_market_id: e.primary_market_id,
     markets: mkts.map(marketOut),
+    _provenance: provenance(e.event_id),
   };
 }
 
@@ -168,7 +169,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
 
 async function buildMarket(env: Env, id: string): Promise<any | null> {
   const m = await env.DB.prepare('SELECT * FROM markets WHERE market_id = ?').bind(id).first<any>();
-  return m ? marketOut(m) : null;
+  return m ? { ...marketOut(m), _provenance: provenance(m.market_id) } : null;
 }
 
 async function buildUpcoming(env: Env, days: number): Promise<any> {
