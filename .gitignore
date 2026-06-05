@@ -38,3 +38,12 @@ api/node_modules/
 _*
 marks.jsonl
 .kalshi-series-cache/
+
+# scratch logs / wrangler state / backups — declutter `git status` for fresh terminals
+.fetch-universe-*.log
+.g.html
+.wrangler/
+*.bak.json
+*-bak.json
+web/.backup/
+web/.retired-routes/
