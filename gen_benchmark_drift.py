@@ -76,6 +76,25 @@ def coingecko_spot(coin):
         val = None
     _cache[k] = val; return val
 
+# ---------- shape gate: only LEVEL/THRESHOLD markets are benchmarkable against a spot value ----------
+# A spot macro value (FRED rate/CPI) is a meaningful anchor ONLY for markets that name a numeric LEVEL
+# of that metric ("CPI above 4%", "fed funds reach 5.25%"). Forward DECISION/COUNT markets ("will the
+# Fed cut", "how many cuts in 2026") have no comparison to a spot level — pricing the *odds of an action*
+# against the *current rate* is a unit mismatch, which is what produced the nonsense wires. The SYS
+# prompt already says to skip these, but the LLM judge enforces it unreliably (skipped them one day,
+# wired them the next), so enforce it deterministically here before anything reaches the judge.
+_DECISION_RX = re.compile(
+    r"\bhow many\b|\bnumber of\b|\brate (?:cut|cuts|hike|hikes)\b|\bcut rates\b|\bhike rates\b"
+    r"|\braise rates\b|\blower rates\b|\b(?:no|zero|\d+)\s+(?:rate\s+)?(?:cut|cuts|hike|hikes)\b"
+    r"|\bcut\s+\d+\s+times\b|\bwill the fed\s+(?:cut|hike|raise|lower)\b", re.I)
+_LEVEL_RX = re.compile(r"\d+(?:\.\d+)?\s*(?:%|percent|bps|basis points)", re.I)
+
+def is_levelthreshold_market(q):
+    q = q or ""
+    if _DECISION_RX.search(q):
+        return False              # forward decision/count — no spot-level comparison exists
+    return bool(_LEVEL_RX.search(q))  # must name a numeric level to anchor against the benchmark
+
 # ---------- benchmark map: question keywords -> (label, current-value str, source url) ----------
 def benchmark_for(q, entity):
     s = (q or "").lower() + " " + (entity or "").lower()
@@ -118,6 +137,8 @@ def find_candidates():
             continue
         ev = evs.get(m.get("event_id")) or {}
         q = m.get("question_raw") or ev.get("question") or ""
+        if not is_levelthreshold_market(q):
+            continue  # drop forward decision/count markets — they have no spot-level benchmark
         bench = benchmark_for(q, m.get("underlying_reference") or "")
         if not bench:
             continue
@@ -193,6 +214,21 @@ def slugify(s):
     import re
     return (re.sub(r"[^a-z0-9]+", "-", (s or "").lower()).strip("-")[:70]) or "benchmark-drift"
 
+def strip_bench_value(title, cur):
+    """Remove the benchmark's OWN numeric value from the stance title — it belongs in the telemetry
+    line, not the headline. Targets the exact benchmark value only (e.g. '3.75'), so the market's own
+    claim level (e.g. 'above 4 percent') is preserved. Falls back to the original if stripping would
+    gut the title, so we never ship a mangled headline."""
+    if not title or not cur:
+        return title
+    num = re.escape(cur.rstrip("%").strip())
+    pat = re.compile(
+        r"\s*\b(?:against|at|vs\.?|versus|to|from|above|below|behind|near|over|under)?\s*"
+        + num + r"\s*(?:%|percent)\b\s*(?:ceiling|baseline|reading|level|mark|rate|target|line)?",
+        re.I)
+    out = re.sub(r"\s{2,}", " ", pat.sub("", title)).strip(" ,;:-—")
+    return out if len(out.split()) >= 4 else title
+
 def build_md(d, it, sig_id, slug, date):
     now = now_utc().isoformat(timespec="seconds")
     m, ev = d["m"], d["ev"]
@@ -206,7 +242,7 @@ def build_md(d, it, sig_id, slug, date):
     ]
     # Title split (2026-06-04): semantic_title (durable) + telemetry (as-of: price · benchmark anchor)
     if it.get("semantic_title"):
-        fm.append(f"semantic_title: {yz(no_dash(it['semantic_title']))}")
+        fm.append(f"semantic_title: {yz(strip_bench_value(no_dash(it['semantic_title']), cur))}")
     _bench_telemetry = f"{pct(m.get('last_price'))} · {label} {cur}"
     fm.append(f"telemetry: {yz(_bench_telemetry)}")
     fm += [
