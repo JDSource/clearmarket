@@ -486,7 +486,7 @@ def build_md(it, story, ev, pm, sig_id, slug, date):
     telemetry = (f"{venue_label(venue)} ladder" if is_ladder
                  else f"{venue_label(venue)} {pct(pm.get('last_price'))}")
     fm.append(f"telemetry: {yz(telemetry.strip())}")
-    fm.append('category_tag: "PRE_NEWS_PRICING"' if it.get("classification") == "pre_news" else 'category_tag: "MOMENTUM_REPRICING"')
+    fm.append('category_tag: "PRE_EVENT_PRICING"' if it.get("classification") == "pre_news" else 'category_tag: "MOMENTUM_REPRICING"')
     fm.append('detection_path: "news_cycle"')
     cls = it.get("classification") if it.get("classification") in ("pre_news", "concurrent", "lagging") else "concurrent"
     fm.append(f"pre_news_classification: {yz(cls)}")
