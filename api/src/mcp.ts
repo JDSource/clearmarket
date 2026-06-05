@@ -159,10 +159,13 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   if (p.q) { for (const t of String(p.q).trim().split(/\s+/).filter(Boolean).slice(0, 6)) { where.push('(e.question LIKE ? OR e.tags LIKE ?)'); args.push(`%${t}%`, `%${t}%`); } }
   const limit = Math.min(Math.max(Number(p.limit ?? 50) || 50, 1), 100); // D1 binds <=100 params (one per event in the markets query)
   const offset = Math.max(Number(p.offset ?? 0) || 0, 0);
+  // total = full count under the filters (count below is just this page), so the agent knows the
+  // real universe size and when to stop paging instead of reading a 100-row page as "100 total".
+  const total = (await env.DB.prepare(`SELECT COUNT(*) AS n FROM events e WHERE ${where.join(' AND ')}`).bind(...args).first<{ n: number }>())?.n ?? 0;
   const { results: evs } = await env.DB.prepare(
     `SELECT * FROM events e WHERE ${where.join(' AND ')} ORDER BY e.updated_at DESC LIMIT ? OFFSET ?`
   ).bind(...args, limit, offset).all<any>();
-  if (!evs.length) return { count: 0, limit, offset, events: [] };
+  if (!evs.length) return { count: 0, total, limit, offset, events: [] };
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
@@ -171,7 +174,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
   const out = evs.map((e) => eventSummary(e, byEvent.get(e.event_id) ?? []));
-  return { count: out.length, limit, offset, events: out };
+  return { count: out.length, total, limit, offset, events: out };
 }
 
 async function buildMarket(env: Env, id: string): Promise<any | null> {

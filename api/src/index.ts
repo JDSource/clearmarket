@@ -295,11 +295,15 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const limit = Math.min(Number(p.get('limit') ?? 50) || 50, MAX_PAGE);
   if (Number(p.get('limit')) > MAX_PAGE) notices.limit_notice = `limit capped at ${MAX_PAGE} (page-size ceiling); use offset to page.`;
   const offset = Math.max(Number(p.get('offset') ?? 0) || 0, 0);
+  // total = full count under the active filters (count below is just this page) so an agent knows
+  // the real universe size and when to stop paging, instead of mistaking a 100-row page for "100 total".
+  const totalRow = await env.DB.prepare(`SELECT COUNT(*) AS n FROM events e WHERE ${where.join(' AND ')}`).bind(...args).first<{ n: number }>();
+  const total = totalRow?.n ?? 0;
   // Active events first (is_live DESC), resolved subordinate to the bottom but still returned.
   const sql = `SELECT *, (${liveExpr}) AS is_live FROM events e WHERE ${where.join(' AND ')} ORDER BY is_live DESC, e.updated_at DESC LIMIT ? OFFSET ?`;
   const { results: evs } = await env.DB.prepare(sql).bind(...args, limit, offset).all<any>();
 
-  if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed, ...notices, events: [] });
+  if (!evs.length) return json({ count: 0, total, limit, offset, keyed: auth.keyed, ...notices, events: [] });
 
   // pull markets for this page in one query
   const ids = evs.map((e) => e.event_id);
@@ -314,6 +318,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
 
   return json({
     count: out.length,
+    total,
     limit,
     offset,
     keyed: auth.keyed,
