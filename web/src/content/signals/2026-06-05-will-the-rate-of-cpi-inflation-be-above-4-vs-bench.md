@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20260605BD14"
+signal_id: "CMSIG20260605BD01"
 signal_slug: "will-the-rate-of-cpi-inflation-be-above-4-vs-bench"
-headline: "CPI above 4% May YoY: 99%; FRED currently 3.9%"
-semantic_title: "CPI above 4% for May gaps sharply from the FRED print"
+headline: "CPI above 4% thru May 2026: 99%; FRED at 3.9%"
+semantic_title: "Capital piles into CPI topping 4% for the May year-end read"
 telemetry: "99% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
 pre_news_classification: "concurrent"
-published_at: "2026-06-05T12:04:45+00:00"
+published_at: "2026-06-05T13:57:02+00:00"
 event_id: "CM-EVT-5F0G9L6HV6"
 event_slug: "kxcpiyoy-26may"
 event_question: "CPI year-over-year, May 2026"
@@ -19,10 +19,10 @@ primary_market:
   volume_cumulative_usd: 37236.05
   resolves_at: "2026-06-10T14:00:00Z"
 bullets:
-  - "Kalshi prices 99% probability that May 2026 CPI YoY exceeds 4.0%."
-  - "Current FRED CPI YoY reads 3.9%, sitting just one tenth below the resolution threshold."
-  - "Near-certain pricing implies market expects the May print to cross above 4.0% with virtual certainty."
-  - "Resolution on the May BLS CPI release; a single-tenth uptick resolves the contract yes."
+  - "Kalshi prices CPI above 4% for the year ending May 2026 at 99% probability."
+  - "FRED CPI year-over-year currently reads 3.9%, one tenth below the trigger."
+  - "Near-100% pricing implies traders treat a 4% breach as already done, yet the official print disagrees."
+  - "Resolves against the May 2026 official CPI year-over-year release."
 atomic_claims:
   - type: "benchmark_divergence"
     provenance: "PM price direct from kalshi API; benchmark CPI inflation, year-over-year (FRED) = 3.9%"
@@ -34,15 +34,15 @@ atomic_claims:
         tier: "mediated"
         method: "CPI inflation, year-over-year (FRED)"
         source_url: "https://fred.stlouisfed.org/series/CPIAUCSL"
-        retrieved_at: "2026-06-05T12:04:45+00:00"
+        retrieved_at: "2026-06-05T13:57:02+00:00"
 sources:
   - label: "CPI inflation, year-over-year (FRED): 3.9%"
     url: "https://fred.stlouisfed.org/series/CPIAUCSL"
-    retrieved_at: "2026-06-05T12:04:45+00:00"
+    retrieved_at: "2026-06-05T13:57:02+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   news_context: "benchmark_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-At 99% for a threshold that is currently 10 bps away, Kalshi pricing implies the desk is treating the May CPI cross above 4% as essentially locked in, a meaningful overextension relative to a benchmark that sits only a rounding error below the trigger, leaving almost no probability weight for a flat or lower May print.
+Kalshi is essentially fully sold on a above-4% CPI print through May 2026, yet the current FRED read sits at 3.9%, creating a stark divergence between market conviction and the official data in hand.

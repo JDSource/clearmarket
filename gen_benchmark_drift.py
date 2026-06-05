@@ -95,15 +95,51 @@ def is_levelthreshold_market(q):
         return False              # forward decision/count — no spot-level comparison exists
     return bool(_LEVEL_RX.search(q))  # must name a numeric level to anchor against the benchmark
 
+# A benchmark wire only earns its place when the market DECISIVELY prices an outcome the current benchmark
+# does NOT already reflect — that's the only time "the market disagrees with the data" is actually true.
+# A ~50% market has no stance; a confident market that merely agrees with where the benchmark already sits
+# is not drift either. So: divergence = (benchmark hasn't reached the level AND market is confident it WILL)
+# or (benchmark is already there AND market is confident it WON'T hold).
+_UP_RX = re.compile(r"\b(above|over|more than|greater than|at least|exceeds?|or higher|higher)\b|≥|>=", re.I)
+_DOWN_RX = re.compile(r"\b(below|under|less than|fewer than|at most|or lower|lower)\b|≤|<=", re.I)
+DRIFT_HI, DRIFT_LO = 0.75, 0.25
+
+def _num(s):
+    # the CLAIM threshold is a PERCENT; match 'X%'/'X percent' so bare ints ('10-year', '2026', '25 bps') don't masquerade as the level
+    mt = re.search(r"(\d+(?:\.\d+)?)\s*(?:%|percent)", s or "")
+    return float(mt.group(1)) if mt else None
+
+def is_divergence(q, cur_str, price):
+    thr, bench = _num(q), _num(cur_str)
+    if thr is None or bench is None or price is None:
+        return False
+    up, down = bool(_UP_RX.search(q or "")), bool(_DOWN_RX.search(q or ""))
+    if up == down:
+        return False  # need an explicit above/below claim — point-bucket markets ('CPI at 4.2%') aren't drift
+    satisfied = (up and bench >= thr) or (down and bench <= thr)
+    return price >= DRIFT_HI if not satisfied else price <= DRIFT_LO
+
+# The macro benchmarks below are all US series (FRED). A market about a foreign metric/central bank must
+# NOT be scored against them (e.g. "BoJ hikes 25bps" or "India inflation" vs US Fed/CPI is a false compare).
+_FOREIGN_RX = re.compile(
+    r"\b(japan|boj|india|russia|china|pboc|ecb|euro(?:zone)?|brazil|mexico|canada|boc|britain|uk|england"
+    r"|spain|france|germany|italy|korea|turkey|argentina|nigeria|australia|nikkei|yen|rupee|ruble|yuan|peso"
+    r"|bank of (?:japan|england|russia|canada|korea|mexico|brazil|india|spain))\b", re.I)
+
 # ---------- benchmark map: question keywords -> (label, current-value str, source url) ----------
 def benchmark_for(q, entity):
     s = (q or "").lower() + " " + (entity or "").lower()
+    if _FOREIGN_RX.search(s):
+        return None  # US FRED benchmarks don't apply to non-US metrics/central banks
     # letter-boundary match so 'eth' doesn't fire on 'Hegseth', 'btc' not inside a word, etc.
     def has(*ws): return any(re.search(r"(?<![a-z])" + w + r"(?![a-z])", s) for w in ws)
     if has("federal funds", "fed funds", "fomc", "interest rate", "rate decision", "rate hike", "rate cut", "fed rate"):
         v = fred_value("DFEDTARU")
         if v: return ("Fed funds target rate, upper bound (FRED)", f"{v['value']:.2f}%", "https://fred.stlouisfed.org/series/DFEDTARU")
     if has("cpi", "inflation", "consumer price"):
+        thr = _num(q)
+        if thr is not None and thr < 1.5:
+            return None  # sub-1.5% threshold vs a YoY-CPI benchmark = a monthly-change market; skip the MoM-vs-YoY mismatch
         v = fred_value("CPIAUCSL")
         if v and v.get("yago"):
             yoy = (v["value"] / v["yago"] - 1) * 100
@@ -142,6 +178,8 @@ def find_candidates():
         bench = benchmark_for(q, m.get("underlying_reference") or "")
         if not bench:
             continue
+        if not is_divergence(q, bench[1], m.get("last_price")):
+            continue  # market either agrees with the benchmark or is undecided — no drift story
         cands.append({"m": m, "ev": ev, "q": q, "bench": bench})
     # cap the candidate set passed to the judge (highest-volume, dedup similar questions)
     cands.sort(key=lambda d: d["m"].get("volume_total_usd") or 0, reverse=True)
@@ -159,19 +197,23 @@ SYS = (
     "Per candidate return {idx:int, drift:bool, semantic_title:str, headline:str, bullets:[str], interp:str}. "
     "Set drift=false and OMIT from items if the PM pricing is broadly consistent with where the benchmark sits.\n"
     "- SEMANTIC_TITLE (durable, indexed title — telemetry is added deterministically, not by you): a "
-    "MARKET-STANCE line, wire-service register, framing the market's pricing RELATIVE TO the hard macro "
-    "benchmark it resolves against. Do NOT predict the outcome and do NOT pose a question — report the "
-    "divergence or tracking velocity vs the baseline data. Register: macro friction + deviation from FRED/BLS "
-    "baselines. Palette (inspiration, NOT a lookup): outruns, paces ahead, gaps, lags, overshoots, tracks "
-    "tight, challenges, detaches, nears full pricing. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). NO probability, NO venue names, NO comparison "
+    "MARKET-STANCE line, wire-service register, characterizing what TRADERS / CAPITAL are doing about the "
+    "claim — how hard the market backs or discounts a level the official data has not reached. Do NOT "
+    "predict the outcome and do NOT pose a question. The divergence is shown by the telemetry line below the "
+    "title (price + benchmark value), so do NOT cram a 'vs FRED / vs baseline' tail into the title — describe "
+    "the market's conviction and let the data point sit underneath. Avoid chart-speak ('gaps', 'detaches', "
+    "'tracks tight') — that describes a line on a graph, not what money is doing. Register: capital conviction "
+    "+ departure from the official print. Palette (inspiration, NOT a lookup; mix agent-led and market-led "
+    "openings): traders fully price, pile into, lean hard on, back, write off, fade, shrug off, stay "
+    "unconvinced by, barely price, discount. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). NO probability, NO venue names, NO comparison "
     "symbols (≥, ≤, ~) — use words ('above'/'below'). Claim-defining figures (the level/threshold/date in "
     "the question) USE THE % SYMBOL, Bloomberg-wire style ('above 4%', 'to 5.25%', 'by end-2026') — do NOT "
     "spell out 'percent'; the PROBABILITY and the benchmark NUMBER are still forbidden in the title. "
     "NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only — no permanence. Do NOT invent a date/horizon absent from the question. VARIATION (whole "
     "batch in one call): alternate Subject-first and Market-first; do NOT reuse an opening verb/noun across "
-    "items. GOOD: 'CPI above 4% nears full pricing in inflation markets'; 'Rate expectations detach "
-    "from historical target trend'; 'Jobs pricing outruns the baseline policy path'. BAD (predicts/asks/has "
-    "metrics): 'Fed funds will exceed 4.5%' (predicts); 'Inflation above 4%: 98%; CPI at 3.9%' (probability + benchmark number).\n"
+    "items. GOOD: 'Traders fully price CPI breaking above 4%'; 'A 10-year yield at 5% stays written off'; "
+    "'Capital leans hard on inflation topping 4%'. BAD: chart-speak ('CPI gaps from the FRED print', 'yield "
+    "detaches from the baseline'); predicts ('CPI will hit 4%'); has metrics ('Inflation above 4%: 98%; CPI 3.9%').\n"
     "- ONLY wire markets about a LEVEL or THRESHOLD of the metric the benchmark measures (e.g. 'CPI above "
     "3%', 'unemployment below 5%', 'fed funds above 4.5%') where the current actual gives real context vs "
     "the threshold. SKIP markets about a forward DECISION or COUNT (will the Fed hike/cut, how many cuts in "
