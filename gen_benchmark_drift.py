@@ -226,7 +226,7 @@ def strip_bench_value(title, cur):
         r"\s*\b(?:against|at|vs\.?|versus|to|from|above|below|behind|near|over|under)?\s*"
         + num + r"\s*(?:%|percent)\b\s*(?:ceiling|baseline|reading|level|mark|rate|target|line)?",
         re.I)
-    out = re.sub(r"\s{2,}", " ", pat.sub("", title)).strip(" ,;:-—")
+    out = re.sub(r"\s{2,}", " ", pat.sub(" ", title)).strip(" ,;:-—")  # sub with a SPACE so 'the 3.9 percent FRED' -> 'the FRED', never 'theFRED'
     return out if len(out.split()) >= 4 else title
 
 def build_md(d, it, sig_id, slug, date):

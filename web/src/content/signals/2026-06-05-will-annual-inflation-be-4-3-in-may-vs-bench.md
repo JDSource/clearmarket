@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD10"
 signal_slug: "will-annual-inflation-be-4-3-in-may-vs-bench"
 headline: "Annual CPI at 4.3% in May: 40%; FRED now 3.9%"
-semantic_title: "May CPI at 4.3 percent outruns the currentFRED baseline"
+semantic_title: "May CPI at 4.3 percent outruns the current FRED baseline"
 telemetry: "40% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD22"
 signal_slug: "will-the-fed-s-lower-bound-reach-2-75-or-vs-bench"
 headline: "FFR lower bound at 2.75% before 2027: 5%; now at 3.75%"
-semantic_title: "Lower bound to 2.75 percent lags sharply against 3.75 percent ceiling"
+semantic_title: "Lower bound to 2.75 percent lags sharply"
 telemetry: "5% · Fed funds target rate, upper bound (FRED) 3.75%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

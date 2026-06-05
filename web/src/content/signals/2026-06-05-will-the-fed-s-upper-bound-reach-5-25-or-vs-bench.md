@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD28"
 signal_slug: "will-the-fed-s-upper-bound-reach-5-25-or-vs-bench"
 headline: "FFR upper bound at 5.25% before 2027: 3%; now at 3.75%"
-semantic_title: "Upper bound to 5.25 percent detaches from 3.75 percent baseline"
+semantic_title: "Upper bound to 5.25 percent detaches"
 telemetry: "3% · Fed funds target rate, upper bound (FRED) 3.75%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

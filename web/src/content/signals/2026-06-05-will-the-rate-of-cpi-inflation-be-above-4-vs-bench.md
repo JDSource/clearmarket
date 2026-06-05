@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD14"
 signal_slug: "will-the-rate-of-cpi-inflation-be-above-4-vs-bench"
 headline: "CPI above 4% May YoY: 99%; FRED currently 3.9%"
-semantic_title: "CPI above 4 percent for May gaps sharply from theFRED print"
+semantic_title: "CPI above 4 percent for May gaps sharply from the FRED print"
 telemetry: "99% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
