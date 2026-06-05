@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD07"
 signal_slug: "will-the-unemployment-rate-u-3-be-above-vs-bench"
 headline: "U-3 above 4.1% in May: 94%; FRED rate at 4.3%"
-semantic_title: "Unemployment above 4.1 percent lags the FRED baseline already at 4.3"
+semantic_title: "Unemployment above 4.1% lags the FRED baseline already at 4.3"
 telemetry: "94% · Unemployment rate (FRED) 4.3%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

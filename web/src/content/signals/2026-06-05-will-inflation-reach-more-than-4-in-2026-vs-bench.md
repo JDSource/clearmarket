@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD04"
 signal_slug: "will-inflation-reach-more-than-4-in-2026-vs-bench"
 headline: "CPI above 4% in 2026: 98%; current YoY at 3.9%"
-semantic_title: "Inflation above 4 percent nears full pricing despite sub-4 CPI read"
+semantic_title: "Inflation above 4% nears full pricing despite sub-4 CPI read"
 telemetry: "98% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

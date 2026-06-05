@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD12"
 signal_slug: "will-annual-inflation-be-4-2-in-may-vs-bench"
 headline: "Annual CPI at 4.2% in May: 41%; FRED now 3.9%"
-semantic_title: "May CPI at 4.2 percent challenges the FRED anchor"
+semantic_title: "May CPI at 4.2% challenges the FRED anchor"
 telemetry: "41% · CPI inflation, year-over-year (FRED) 3.9%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

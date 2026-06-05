@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD10"
 signal_slug: "will-the-upper-bound-of-the-target-federal-vs-bench"
 headline: "FFR upper bound above 4.5% end-2026: 3%; now at 3.75%"
-semantic_title: "Rate hike path to 4.5 percent detaches"
+semantic_title: "Rate hike path to 4.5% detaches"
 telemetry: "3% · Fed funds target rate, upper bound (FRED) 3.75%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"

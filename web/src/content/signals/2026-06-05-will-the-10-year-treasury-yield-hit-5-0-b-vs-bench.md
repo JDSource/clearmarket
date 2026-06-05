@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260605BD09"
 signal_slug: "will-the-10-year-treasury-yield-hit-5-0-b-vs-bench"
 headline: "10-yr yield hits 5% before 2027: 15%; now at 4.49%"
-semantic_title: "Ten-year yield at 5 percent detaches from the FRED baseline"
+semantic_title: "Ten-year yield at 5% detaches from the FRED baseline"
 telemetry: "15% · 10-year Treasury yield (FRED) 4.49%"
 category_tag: "VS_BENCHMARK_DRIFT"
 detection_path: "benchmark_drift"
