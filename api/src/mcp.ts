@@ -153,7 +153,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   if (p.category) { where.push('LOWER(e.category) = ?'); args.push(String(p.category).toLowerCase()); }
   // platform + grade filter IN SQL (was post-pagination -> silently empty when the first page was
   // one venue / no A-grades; an agent then wrongly concluded "no Polymarket / no A-grade data").
-  if (p.platform) { where.push('EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND m.platform = ?)'); args.push(String(p.platform).toLowerCase()); }
+  if (p.platform) { where.push('e.venue = ?'); args.push(String(p.platform).toLowerCase()); } // direct column, not a correlated EXISTS (which 500'd on the late-sorted Polymarket rows)
   if (p.grade) { where.push('EXISTS (SELECT 1 FROM markets m WHERE m.market_id = e.primary_market_id AND m.resolution_clarity_grade = ?)'); args.push(String(p.grade).toUpperCase()); }
   // q = token-AND across question + tags (was single contiguous-substring -> "us recession" -> []).
   if (p.q) { for (const t of String(p.q).trim().split(/\s+/).filter(Boolean).slice(0, 6)) { where.push('(e.question LIKE ? OR e.tags LIKE ?)'); args.push(`%${t}%`, `%${t}%`); } }

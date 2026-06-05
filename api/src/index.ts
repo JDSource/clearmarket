@@ -273,7 +273,10 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   // page happened to be one venue / no A-grades). EXISTS-subquery so it filters the whole universe.
   if (p.get('platform')) {
     const v = p.get('platform')!.toLowerCase();
-    where.push('EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND m.platform = ?)'); args.push(v);
+    // Filter the DIRECT events.venue column, NOT a correlated EXISTS on markets. The EXISTS version
+    // 500'd (D1 1101): Polymarket events sort last by updated_at, so the subquery ran against ~800
+    // rows before the first match and blew D1's CPU budget. A single-table column compare is cheap.
+    where.push('e.venue = ?'); args.push(v);
     if (!KNOWN_PLATFORMS.includes(v)) { notices.platform_notice = `Unknown platform "${p.get('platform')}". Valid: ${KNOWN_PLATFORMS.join(', ')}.`; notices.valid_platforms = KNOWN_PLATFORMS; }
   }
   if (p.get('grade')) {
