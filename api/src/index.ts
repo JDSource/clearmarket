@@ -39,8 +39,13 @@ const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =
 const err = (status: number, message: string, hint?: string) =>
   json({ error: message, ...(hint ? { hint } : {}) }, status);
 
-// The 9 thematic event categories (stored lowercase). Used to validate + hint on /v1/events?category=.
+// Valid filter values — used to validate + hint on /v1/events, and surfaced in /health for discovery.
 const KNOWN_CATEGORIES = ['economics', 'financials', 'crypto', 'companies', 'technology', 'politics', 'geopolitics', 'health', 'climate'];
+const KNOWN_PLATFORMS = ['kalshi', 'polymarket'];
+const KNOWN_GRADES = ['A', 'B', 'C'];
+// D1 caps bound parameters at 100; the per-page markets query binds one per event, so the page
+// size ceiling is 100 (a larger limit overflows the IN-clause and 500s).
+const MAX_PAGE = 100;
 
 // ---- serving shapes ----------------------------------------------------
 export const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
@@ -258,22 +263,40 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   else if (status === 'resolved') where.push(`NOT (${liveExpr})`);
   // category match is CASE-INSENSITIVE (stored values are lowercase); an unrecognized value still
   // queries (returns []) but we hand back the valid set so a caller isn't left guessing on an empty result.
-  let categoryNotice: string | undefined;
+  const notices: Record<string, unknown> = {};
   if (p.get('category')) {
     const c = p.get('category')!.toLowerCase();
     where.push('LOWER(e.category) = ?'); args.push(c);
-    if (!KNOWN_CATEGORIES.includes(c)) categoryNotice = `Unknown category "${p.get('category')}". Valid: ${KNOWN_CATEGORIES.join(', ')}.`;
+    if (!KNOWN_CATEGORIES.includes(c)) { notices.category_notice = `Unknown category "${p.get('category')}". Valid: ${KNOWN_CATEGORIES.join(', ')}.`; notices.valid_categories = KNOWN_CATEGORIES; }
   }
-  if (p.get('q')) { where.push('e.question LIKE ?'); args.push(`%${p.get('q')}%`); }
+  // platform + grade filter IN SQL (was post-pagination, which silently returned [] when the first
+  // page happened to be one venue / no A-grades). EXISTS-subquery so it filters the whole universe.
+  if (p.get('platform')) {
+    const v = p.get('platform')!.toLowerCase();
+    where.push('EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND m.platform = ?)'); args.push(v);
+    if (!KNOWN_PLATFORMS.includes(v)) { notices.platform_notice = `Unknown platform "${p.get('platform')}". Valid: ${KNOWN_PLATFORMS.join(', ')}.`; notices.valid_platforms = KNOWN_PLATFORMS; }
+  }
+  if (p.get('grade')) {
+    const g = p.get('grade')!.toUpperCase();
+    where.push('EXISTS (SELECT 1 FROM markets m WHERE m.market_id = e.primary_market_id AND m.resolution_clarity_grade = ?)'); args.push(g);
+    if (!KNOWN_GRADES.includes(g)) { notices.grade_notice = `Unknown grade "${p.get('grade')}". Valid: ${KNOWN_GRADES.join(', ')}.`; notices.valid_grades = KNOWN_GRADES; }
+  }
+  // q = token-AND across question + tags (was a single contiguous-substring LIKE, so natural
+  // multi-word queries like "us recession" silently returned nothing). Each whitespace token must appear.
+  if (p.get('q')) {
+    for (const t of p.get('q')!.trim().split(/\s+/).filter(Boolean).slice(0, 6)) {
+      where.push('(e.question LIKE ? OR e.tags LIKE ?)'); args.push(`%${t}%`, `%${t}%`);
+    }
+  }
 
-  const limit = Math.min(Number(p.get('limit') ?? 50) || 50, 200);
+  const limit = Math.min(Number(p.get('limit') ?? 50) || 50, MAX_PAGE);
+  if (Number(p.get('limit')) > MAX_PAGE) notices.limit_notice = `limit capped at ${MAX_PAGE} (page-size ceiling); use offset to page.`;
   const offset = Math.max(Number(p.get('offset') ?? 0) || 0, 0);
   // Active events first (is_live DESC), resolved subordinate to the bottom but still returned.
   const sql = `SELECT *, (${liveExpr}) AS is_live FROM events e WHERE ${where.join(' AND ')} ORDER BY is_live DESC, e.updated_at DESC LIMIT ? OFFSET ?`;
   const { results: evs } = await env.DB.prepare(sql).bind(...args, limit, offset).all<any>();
 
-  if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed,
-    ...(categoryNotice ? { category_notice: categoryNotice, valid_categories: KNOWN_CATEGORIES } : {}), events: [] });
+  if (!evs.length) return json({ count: 0, limit, offset, keyed: auth.keyed, ...notices, events: [] });
 
   // pull markets for this page in one query
   const ids = evs.map((e) => e.event_id);
@@ -284,17 +307,14 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
 
-  // optional platform/grade filters applied post-rollup
-  let out = evs.map((e) => ({ ...eventSummary(e, byEvent.get(e.event_id) ?? []), resolved: !e.is_live }));
-  if (p.get('platform')) out = out.filter((e) => e.venues_covered.includes(p.get('platform')!));
-  if (p.get('grade')) out = out.filter((e) => e.grade === p.get('grade'));
+  const out = evs.map((e) => ({ ...eventSummary(e, byEvent.get(e.event_id) ?? []), resolved: !e.is_live }));
 
   return json({
     count: out.length,
     limit,
     offset,
     keyed: auth.keyed,
-    ...(categoryNotice ? { category_notice: categoryNotice, valid_categories: KNOWN_CATEGORIES } : {}),
+    ...notices,
     ...(auth.keyed ? {} : { notice: `Anonymous access (full universe, ${ANON_DAILY_LIMIT}/day per IP). Free key for ${KEY_DAILY_LIMIT}/day: POST /v1/keys.` }),
     events: out,
   });
@@ -550,7 +570,15 @@ export default {
         schema: 'v0.2.0',
         events: ev?.n ?? 0,
         markets: mk?.n ?? 0,
-        docs: '/v1/events (filters: category, platform, grade, q, limit, offset). Open access; optional free key (POST /v1/keys) for higher limits. MCP at /mcp.',
+        docs: '/v1/events (filters: category, platform, grade, q, limit, offset). q is token-AND across question+tags. Open access; optional free key (POST /v1/keys) for higher limits. MCP at /mcp.',
+        // Valid filter values, so an agent discovers them without guessing or a failed call.
+        filters: {
+          category: KNOWN_CATEGORIES,
+          platform: KNOWN_PLATFORMS,
+          grade: KNOWN_GRADES,
+          max_limit: MAX_PAGE,
+          signals_detection_path: ['news_cycle', 'cross_venue_divergence', 'benchmark_drift', 'volume_spike'],
+        },
       });
     }
 
@@ -576,6 +604,23 @@ export default {
         : 'https://clearmarket.fyi/signals.json';
       const upstream = await fetch(target, { cf: { cacheTtl: 300, cacheEverything: true } });
       if (!upstream.ok) return err(upstream.status === 404 ? 404 : 502, upstream.status === 404 ? 'Signal not found' : 'Upstream error', 'Try /v1/signals or /signals.json');
+      // The static signals.json takes no query params; apply the MCP list_signals filters here so
+      // REST agents can narrow the wire feed (?detection_path=, ?category=, ?venue=, ?event_id=, ?limit=)
+      // instead of pulling all 45 and filtering client-side. Single-signal (slug) path is passed through.
+      if (!slug) {
+        const feed: any = await upstream.json();
+        let items: any[] = Array.isArray(feed) ? feed : (feed.signals ?? []);
+        const dp = url.searchParams.get('detection_path');
+        const cat = url.searchParams.get('category');
+        const ven = url.searchParams.get('venue');
+        const eid = url.searchParams.get('event_id');
+        if (dp) items = items.filter((s) => s.detection_path === dp);
+        if (cat) { const c = cat.toUpperCase(); items = items.filter((s) => (s.category_tag ?? '').toUpperCase() === c); }
+        if (ven) items = items.filter((s) => (s.venues ?? []).includes(ven));
+        if (eid) items = items.filter((s) => s.target_event_id === eid || (s.linked_event_ids ?? []).includes(eid));
+        const lim = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 100) || 100, 1), 200);
+        return json({ count: items.length, signals: items.slice(0, lim) }, 200, { 'cache-control': 'public, max-age=300' });
+      }
       return new Response(await upstream.text(), {
         status: 200,
         headers: { ...CORS, 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=300' },

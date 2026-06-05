@@ -45,7 +45,7 @@ const TOOLS = [
         category: { type: 'string', enum: CATEGORIES },
         platform: { type: 'string', enum: ['kalshi', 'polymarket'] },
         grade: { type: 'string', enum: ['A', 'B', 'C'], description: 'Resolution Clarity Grade of the primary market.' },
-        limit: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+        limit: { type: 'integer', minimum: 1, maximum: 100, default: 50 },
         offset: { type: 'integer', minimum: 0, default: 0 },
       },
     },
@@ -150,9 +150,14 @@ async function buildEvent(env: Env, slug: string): Promise<any | null> {
 async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   const where = ['e.published = 1'];
   const args: unknown[] = [];
-  if (p.category) { where.push('e.category = ?'); args.push(p.category); }
-  if (p.q) { where.push('e.question LIKE ?'); args.push(`%${p.q}%`); }
-  const limit = Math.min(Math.max(Number(p.limit ?? 50) || 50, 1), 200);
+  if (p.category) { where.push('LOWER(e.category) = ?'); args.push(String(p.category).toLowerCase()); }
+  // platform + grade filter IN SQL (was post-pagination -> silently empty when the first page was
+  // one venue / no A-grades; an agent then wrongly concluded "no Polymarket / no A-grade data").
+  if (p.platform) { where.push('EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND m.platform = ?)'); args.push(String(p.platform).toLowerCase()); }
+  if (p.grade) { where.push('EXISTS (SELECT 1 FROM markets m WHERE m.market_id = e.primary_market_id AND m.resolution_clarity_grade = ?)'); args.push(String(p.grade).toUpperCase()); }
+  // q = token-AND across question + tags (was single contiguous-substring -> "us recession" -> []).
+  if (p.q) { for (const t of String(p.q).trim().split(/\s+/).filter(Boolean).slice(0, 6)) { where.push('(e.question LIKE ? OR e.tags LIKE ?)'); args.push(`%${t}%`, `%${t}%`); } }
+  const limit = Math.min(Math.max(Number(p.limit ?? 50) || 50, 1), 100); // D1 binds <=100 params (one per event in the markets query)
   const offset = Math.max(Number(p.offset ?? 0) || 0, 0);
   const { results: evs } = await env.DB.prepare(
     `SELECT * FROM events e WHERE ${where.join(' AND ')} ORDER BY e.updated_at DESC LIMIT ? OFFSET ?`
@@ -165,9 +170,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
-  let out = evs.map((e) => eventSummary(e, byEvent.get(e.event_id) ?? []));
-  if (p.platform) out = out.filter((e) => e.venues_covered.includes(p.platform));
-  if (p.grade) out = out.filter((e) => e.grade === p.grade);
+  const out = evs.map((e) => eventSummary(e, byEvent.get(e.event_id) ?? []));
   return { count: out.length, limit, offset, events: out };
 }
 
