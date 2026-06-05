@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from enhance import llm_call, LLM_MODEL_HAIKU
 
-RAW = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-05-27"
+RAW = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-03"
 ROOT = Path(__file__).parent
 CATEGORY = sys.argv[1] if len(sys.argv) > 1 else "crypto"
 
@@ -94,7 +94,10 @@ def poly_fields(m):
 
 # ---------- per-event LLM pass ----------
 SYS = ("You curate prediction-market reference data. For ONE venue event + its markets return JSON: "
-       "canonical_name (concise, neutral, correct year, NO venue tickers/jargon); "
+       "canonical_name (concise, neutral, correct year, NO venue tickers/jargon; if the markets span "
+       "MULTIPLE resolution dates — a deadline/date series — GENERALIZE the horizon: never title it "
+       "after one leg's specific day ('by March 31'), use the year or span + a '(... series)' "
+       "qualifier, e.g. 'Bitcoin all-time high in 2026? (quarterly series)'); "
        "shape ('ladder'=one subject at many thresholds/dates=one event; 'independent_basket'=many "
        "DISTINCT subjects each its own question; 'categorical_winner'=mutually-exclusive outcomes, one "
        "winner); and per-market fields keyed by the integer index i. settlement_style: 'touch' (ever "
