@@ -308,16 +308,9 @@ const datasetJsonLd = {
   isBasedOn: `https://clearmarket.fyi/events/${data.event_slug}/`,
 };
 
-const claimReviewJsonLd = {
-  '@context': 'https://schema.org',
-  '@type': 'ClaimReview',
-  url: canonicalURL,
-  datePublished: data.published_at,
-  claimReviewed: titleText,
-  reviewBody: data.bullets.join(' '),
-  author: { '@type': 'Organization', name: 'ClearMarket' },
-  itemReviewed: { '@type': 'CreativeWork', '@id': `https://clearmarket.fyi/events/${data.event_slug}/`, url: `https://clearmarket.fyi/events/${data.event_slug}/`, name: `ClearMarket event: ${data.event_question}` },
-};
+// ClaimReview intentionally NOT emitted: it's a fact-checker-only schema (rich results
+// render only for registered fact-checking orgs), it was invalid without reviewRating, and
+// the signal's substance is already in the Dataset + cm:atomicClaims. Removed 2026-06-06.
 
 // ----- visible JSON record (round-trip check for the four-format rule) =====
 // Mirrors the on-page atomic claims exactly — both surfaces read from
@@ -384,7 +377,6 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
 
 <Site title={`${titleText} · CM Signal`} description={`Atomic-claim wire item for ${data.event_question}`} canonical={canonicalURL}>
   <script type="application/ld+json" set:html={JSON.stringify(datasetJsonLd)} slot="head" />
-  <script type="application/ld+json" set:html={JSON.stringify(claimReviewJsonLd)} slot="head" />
 
   <nav class="cm-subnav" aria-label="Signal sections" slot="subnav">
     <a href="#briefs" data-section="briefs" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Briefs</a>
