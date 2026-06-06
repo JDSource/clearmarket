@@ -118,10 +118,13 @@ const dataCatalogJsonLd = {
     '@type': 'Dataset',
     '@id': `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
     name: displayTitle(s.data),
+    description: `CM Signal wire item: ${s.data.category_tag.toLowerCase().replace(/_/g, ' ')} on ${s.data.event_question ?? 'a tracked prediction-market event'}.`,
     identifier: s.data.signal_id,
     url: `https://clearmarket.fyi/signals/${s.data.signal_slug}/`,
     datePublished: s.data.published_at,
     keywords: [s.data.category_tag, s.data.detection_path],
+    creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+    license: 'https://creativecommons.org/licenses/by/4.0/',
   })),
 };
 ---
