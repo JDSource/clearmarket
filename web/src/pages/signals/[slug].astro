@@ -305,7 +305,7 @@ const datasetJsonLd = {
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
-  isBasedOn: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
+  isBasedOn: `https://clearmarket.fyi/events/${data.event_slug}/`,
 };
 
 const claimReviewJsonLd = {
@@ -316,7 +316,7 @@ const claimReviewJsonLd = {
   claimReviewed: titleText,
   reviewBody: data.bullets.join(' '),
   author: { '@type': 'Organization', name: 'ClearMarket' },
-  itemReviewed: { '@type': 'Dataset', '@id': `https://clearmarket.fyi/events/${data.event_slug}/` },
+  itemReviewed: { '@type': 'CreativeWork', '@id': `https://clearmarket.fyi/events/${data.event_slug}/`, url: `https://clearmarket.fyi/events/${data.event_slug}/`, name: `ClearMarket event: ${data.event_question}` },
 };
 
 // ----- visible JSON record (round-trip check for the four-format rule) =====
