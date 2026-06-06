@@ -99,8 +99,57 @@ const repMarket = markets.length > 2
   : (markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0]);
 const questionLine = (isLadder || isOutcomeSet) ? null : (repMarket?.question_raw ?? event.question);
 const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
+
+// Per-event Dataset JSON-LD (PRD §3.5.1 + four-format rule). Built from the same record the
+// .json / API / MCP surfaces serve, so the HTML carries a machine-readable, citable Dataset for
+// AI grounded search + Google Dataset Search. Mirrors the signal page's datasetJsonLd shape.
+// Read CM-specific fields via `ev` to stay decoupled from the declared Event type.
+const ev = event as any;
+// RCG grade/score/source/arbiter live on the MARKET, not the event. The visible page treats
+// `repMarket` (computed above) as the representative market for the event — mirror that here so
+// the structured grade matches what the page shows. Count + volume aggregate across all markets.
+const repGrade = repMarket?.resolution_clarity_grade ? String(repMarket.resolution_clarity_grade).toUpperCase() : null;
+const repScore = repMarket?.rcg_score ?? null;
+const marketCount = markets.length;
+const cumulativeVolumeUsd = Math.round(markets.reduce((s, m) => s + (Number(m.volume_total_usd) || 0), 0));
+const eventJsonLd: Record<string, unknown> = {
+  '@context': ['https://schema.org', { cm: 'https://clearmarket.fyi/schema/v1#' }],
+  '@type': 'Dataset',
+  '@id': canonicalURL,
+  name: displayQuestion,
+  description: `Cross-venue reference data and resolution-clarity grade (RCG ${repGrade ?? 'n/a'}) for "${displayQuestion}". Venues: ${event.venues_covered.join(' + ')}. ${marketCount} market${marketCount === 1 ? '' : 's'} tracked.`,
+  url: canonicalURL,
+  identifier: event.event_id,
+  keywords: ev.tags,
+  isAccessibleForFree: true,
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  publisher: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  dateModified: ev.updated_at,
+  measurementTechnique: 'ClearMarket RCG v2 — 7-factor weighted resolution-clarity model (trigger objectivity, contested reality, source clarity, arbiter incentive, source-conflict rule, temporal precision, source mutability) with hard caps. Grade reflects the representative market. Full methodology at https://clearmarket.fyi/methodology.',
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'resolution_clarity_grade', value: repGrade ?? undefined, description: 'ClearMarket RCG v2 grade (A/B/C) of the representative market — how unambiguously it resolves.' },
+    { '@type': 'PropertyValue', name: 'rcg_score', value: repScore ?? undefined, minValue: 0, maxValue: 100, description: 'Weighted 0-100 resolution-clarity score behind the grade.' },
+    { '@type': 'PropertyValue', name: 'market_count', value: marketCount },
+    { '@type': 'PropertyValue', name: 'cumulative_volume_usd', value: cumulativeVolumeUsd, unitText: 'USD' },
+  ],
+  distribution: [
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/events/${event.slug}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/api/v1/events/${event.slug}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
+  ],
+  isPartOf: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/' },
+  'cm:rcgCaps': repMarket?.rcg_caps ?? [],
+  'cm:arbitrationModel': repMarket?.arbitration_model ?? undefined,
+  'cm:resolutionProposer': repMarket?.resolution_proposer ?? undefined,
+  'cm:resolutionSource': repMarket?.resolution_source ?? undefined,
+  'cm:venuesCovered': event.venues_covered,
+};
+if (earliest && latest) eventJsonLd.temporalCoverage = earliest === latest ? earliest : `${earliest}/${latest}`;
+else if (earliest) eventJsonLd.temporalCoverage = earliest;
 ---
 <Site title={`${displayQuestion} · ClearMarket`} description={`Cross-venue reference data for "${displayQuestion}". ${event.venues_covered.join(' + ')}.`} canonical={canonicalURL}>
+  <script type="application/ld+json" set:html={JSON.stringify(eventJsonLd)} slot="head" />
   <nav class="cm-subnav" aria-label="Sections" slot="subnav">
     <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
     <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>

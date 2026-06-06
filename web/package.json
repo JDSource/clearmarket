@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "postbuild": "node scripts/check-jsonld.mjs",
+    "check:jsonld": "node scripts/check-jsonld.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
