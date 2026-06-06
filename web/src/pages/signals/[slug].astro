@@ -424,7 +424,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
     {/* ===== WIRE BODY — the 5-bullet prose summary (canonical PRD §4 + §6.5.5) =====
          Narrative layer. LinkedIn-shareable. Sits above the typed atomic claims so
          a first-time reader gets the human-readable read, then drills into the
-         structured fields below. The bullets here populate JSON-LD ClaimReview.reviewBody. */}
+         structured fields below. */}
     <section class="cm-wire-body" data-cm-field="bullets">
       <div class="cm-callout-label">{data.bullets.length}-bullet brief <span class="cm-callout-tag">| narrative</span></div>
       <ul class="cm-wire-bullets">
@@ -709,7 +709,7 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       <p class="cm-section-summary">AI grounded search reads embedded JSON-LD in HTML. Developers query REST. Agentic AI clients (Claude Desktop, Cursor) call MCP tools. AI crawlers index via <code class="cm-inline-code">/llms.txt</code>. Same canonical record at every surface.</p>
       <table class="cm-endpoints-table">
         <tbody>
-          <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (contains embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code> + <code class="cm-inline-code">ClaimReview</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
+          <tr><td class="cm-fmt">HTML</td><td>browsers, AI grounded search, crawlers (contains embedded JSON-LD <code class="cm-inline-code">@type: Dataset</code>)</td><td><code class="cm-endpoint-url">{canonicalURL}</code></td></tr>
           <tr><td class="cm-fmt">JSON</td><td>REST API for developers</td><td><a href={`${jsonURL}`}><code class="cm-endpoint-url">{jsonURL}</code></a></td></tr>
           <tr><td class="cm-fmt">MCP</td><td>agentic AI tool call (Claude Desktop, Cursor, Continue)</td><td><code class="cm-endpoint-url">clearmarket.get_signal("{data.signal_slug}")</code></td></tr>
           <tr><td class="cm-fmt">AGENT</td><td>AI crawler discovery index</td><td><a href="/llms.txt"><code class="cm-endpoint-url">/llms.txt</code></a></td></tr>
