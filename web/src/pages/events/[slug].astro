@@ -138,7 +138,7 @@ const eventJsonLd: Record<string, unknown> = {
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/api/v1/events/${event.slug}.json` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
-  isPartOf: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/' },
+  includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/', name: 'ClearMarket Events', url: 'https://clearmarket.fyi/events/' },
   'cm:rcgCaps': repMarket?.rcg_caps ?? [],
   'cm:arbitrationModel': repMarket?.arbitration_model ?? undefined,
   'cm:resolutionProposer': repMarket?.resolution_proposer ?? undefined,
