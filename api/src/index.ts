@@ -94,6 +94,14 @@ export const provenance = (ref: string) => ({
 });
 
 export function marketOut(m: any) {
+  // A bare null `source` reads as "ClearMarket is missing data" when it actually means the platform
+  // committed to no named source — which is the signal, not a gap. Surface that explicitly + briefly.
+  const hasNamed = m.resolution_source != null && String(m.resolution_source).trim() !== '';
+  const source_status = hasNamed
+    ? 'platform_named'                                              // venue committed to a concrete authority
+    : m.source_commitment === 'uncommitted' ? 'no_committed_source' // venue gestured at a source but hedged/placeholder
+    : m.source_commitment === 'none' ? 'no_source_stated'           // venue named no source at all
+    : 'unknown';
   return {
     market_id: m.market_id,
     event_id: m.event_id,
@@ -112,6 +120,7 @@ export function marketOut(m: any) {
       arbitration_model: m.arbitration_model,
       proposer: m.resolution_proposer,
       source: m.resolution_source,
+      source_status,   // always present: platform_named | no_committed_source | no_source_stated | unknown
       source_citation: m.source_citation,
       source_type: m.resolution_source_type,
       source_quality: m.resolution_source_quality,
@@ -135,7 +144,7 @@ export function marketOut(m: any) {
     settlement_style: m.settlement_style ?? null,
     direction: m.direction ?? null,
     threshold: num(m.threshold),
-    claim_sig: m.claim_sig ?? null,    // cross-venue link: markets sharing claim_sig are the same claim
+    cross_venue_id: m.claim_sig ?? null,  // cross-venue link: markets sharing this id are the same claim across venues
     tags: parseJson(m.tags, []),
   };
 }

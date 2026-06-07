@@ -193,10 +193,10 @@
       "enum": ["touch", "terminal", "relative", "occurrence", null],
       "description": "How the contract settles on the underlying: 'touch' (level ever reached in a window), 'terminal' (level at a single point in time), 'relative' (new high/low), 'occurrence' (a discrete event happens). Distinct from arbitration_model (who arbitrates). Part of the cross-venue event key."
     },
-    "claim_sig": {
+    "cross_venue_id": {
       "type": ["string", "null"],
       "pattern": "^CMX-[0-9A-F]{10}$",
-      "description": "Cross-venue claim signature. Markets sharing a claim_sig are the SAME resolvable claim across venues (subject + threshold + settlement_style, plus window for terminal). The stable join key CM Signal references for cross-venue divergence. Null if the market has no cross-venue counterpart."
+      "description": "Cross-venue link id. Markets sharing a cross_venue_id are the SAME resolvable claim across venues (subject + threshold + settlement_style, plus window for terminal). The stable join key CM Signal references for cross-venue divergence. Null if the market has no cross-venue counterpart."
     },
     "tags": {
       "type": "array",

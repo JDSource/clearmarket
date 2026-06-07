@@ -31,7 +31,7 @@ bullets:
   - "Resolves YES on completion of a public equity offering; private funding rounds or direct listings may introduce adjudication ambiguity across venues."
 atomic_claims:
   - type: "cross_venue_spread"
-    provenance: "CM cross-venue link (claim_sig CMX-4D70594555); prices direct from venue APIs"
+    provenance: "CM cross-venue link (cross_venue_id CMX-4D70594555); prices direct from venue APIs"
     field_provenance:
       kalshi_price:
         tier: "direct"
