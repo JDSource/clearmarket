@@ -112,6 +112,16 @@ const repGrade = repMarket?.resolution_clarity_grade ? String(repMarket.resoluti
 const repScore = repMarket?.rcg_score ?? null;
 const marketCount = markets.length;
 const cumulativeVolumeUsd = Math.round(markets.reduce((s, m) => s + (Number(m.volume_total_usd) || 0), 0));
+// cross_venue_id + source_status — the two differentiators, made machine-readable for crawlers.
+// cross_venue_id (public name for claim_sig): markets sharing it are the same claim across venues.
+// source_status mirrors the API derivation (api/src/index.ts marketOut) EXACTLY so HTML == JSON == MCP.
+const repCrossVenueId = (repMarket as any)?.claim_sig ?? null;
+const repHasNamedSource = repMarket?.resolution_source != null && String(repMarket.resolution_source).trim() !== '';
+const repSourceStatus = repHasNamedSource
+  ? 'platform_named'                                                          // venue committed to a concrete authority
+  : (repMarket as any)?.source_commitment === 'uncommitted' ? 'no_committed_source' // gestured at a source but hedged/placeholder
+  : (repMarket as any)?.source_commitment === 'none' ? 'no_source_stated'     // venue named no source at all
+  : 'unknown';
 const eventJsonLd: Record<string, unknown> = {
   '@context': ['https://schema.org', { cm: 'https://clearmarket.fyi/schema/v1#' }],
   '@type': 'Dataset',
@@ -132,6 +142,8 @@ const eventJsonLd: Record<string, unknown> = {
     { '@type': 'PropertyValue', name: 'rcg_score', value: repScore ?? undefined, minValue: 0, maxValue: 100, description: 'Weighted 0-100 resolution-clarity score behind the grade.' },
     { '@type': 'PropertyValue', name: 'market_count', value: marketCount },
     { '@type': 'PropertyValue', name: 'cumulative_volume_usd', value: cumulativeVolumeUsd, unitText: 'USD' },
+    { '@type': 'PropertyValue', name: 'source_status', value: repSourceStatus, description: 'Resolution-source commitment of the representative market: platform_named (a concrete authority is named), no_committed_source (a source is gestured at but hedged/placeholder), no_source_stated (no source named), or unknown.' },
+    ...(repCrossVenueId ? [{ '@type': 'PropertyValue', name: 'cross_venue_id', value: repCrossVenueId, description: 'ClearMarket cross-venue link id (CMX-…); markets sharing it are the same canonical claim priced across Kalshi and Polymarket.' }] : []),
   ],
   distribution: [
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/events/${event.slug}.json` },
@@ -139,6 +151,8 @@ const eventJsonLd: Record<string, unknown> = {
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
   includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/', name: 'ClearMarket Events', description: 'Cross-venue prediction-market events with resolution-clarity grades.', url: 'https://clearmarket.fyi/events/' },
+  'cm:crossVenueId': repCrossVenueId ?? undefined,
+  'cm:sourceStatus': repSourceStatus,
   'cm:rcgCaps': repMarket?.rcg_caps ?? [],
   'cm:arbitrationModel': repMarket?.arbitration_model ?? undefined,
   'cm:resolutionProposer': repMarket?.resolution_proposer ?? undefined,
