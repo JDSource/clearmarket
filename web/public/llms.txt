@@ -7,7 +7,7 @@ Reference data layer for prediction markets. Cross-venue event linking, graded r
 ClearMarket normalizes Kalshi and Polymarket markets into a single schema:
 - events: a venue's bundle of one or more markets under a canonical question, classified, with catalyst dates. Every event is single-venue.
 - markets: one row per venue listing, with a Resolution Clarity Grade (A/B/C), named resolution source, and provenance. Each market carries a question_id (the venue-independent identity of the bet) and also_on (the same question priced on other venues).
-- cross-venue link: markets sharing a question_id are the same bet across Kalshi and Polymarket; a market's also_on field gives the twin's venue, market_id, and price, or is null when the question trades on only one venue.
+- cross-venue link: markets sharing a question_id are the same bet across Kalshi and Polymarket; a market's also_on field gives an array of { venue, market_id, price } (one entry per other venue it trades on), or is null when it trades on only one venue.
 
 ~1,850 events / ~15,000 markets. Prices refresh hourly. Read-only.
 

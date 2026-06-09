@@ -79,13 +79,13 @@ const canonicalURL = 'https://clearmarket.fyi/events/';
     <div class="cm-horizon">
       <span class="cm-horizon-token"><span class="cm-horizon-label">events:</span> <span class="cm-horizon-value" id="ev-count">{rows.length.toLocaleString()}</span></span>
       <span class="cm-horizon-pipe">|</span>
-      <span class="cm-horizon-token"><span class="cm-horizon-label">markets:</span> <span class="cm-horizon-value">~18,000</span></span>
+      <span class="cm-horizon-token"><span class="cm-horizon-label">markets:</span> <span class="cm-horizon-value">~15,000</span></span>
       <span class="cm-horizon-pipe">|</span>
       <span class="cm-horizon-token"><span class="cm-horizon-label">query:</span> <a class="cm-horizon-value cm-horizon-link" href="/api/#rest">REST</a> · <a class="cm-horizon-value cm-horizon-link" href="/api/#mcp">MCP</a></span>
     </div>
 
     {/* Sticky control deck: search row + category filter row + column headers stay
-       pinned to the top of the viewport while the ~2,100-row grid scrolls beneath.
+       pinned to the top of the viewport while the ~1,850-row grid scrolls beneath.
        Solid --cm-bg-deep bg + z-index so data rows never bleed through. The thead
        top offset is set in JS to the live deck height (filter row can wrap). */}
     <div class="evl-deck" id="ev-deck">

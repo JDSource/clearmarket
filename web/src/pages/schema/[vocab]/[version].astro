@@ -102,7 +102,7 @@ export function getStaticPaths() {
 
 const { vocab, version } = Astro.params;
 const v = (VOCABS as any)[vocab as string];
-const canonicalURL = `https://clearmarket.fyi/schema/${vocab}/${version}`;
+const canonicalURL = `https://clearmarket.fyi/schema/${vocab}/${version}/`;
 
 const definedTermSet = {
   '@context': 'https://schema.org',
