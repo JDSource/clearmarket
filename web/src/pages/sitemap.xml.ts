@@ -15,6 +15,11 @@ export async function GET() {
     { loc: `${SITE}/signals/` },
     { loc: `${SITE}/methodology/` },
     { loc: `${SITE}/api/` },
+    { loc: `${SITE}/schema/` },
+    // Schema vocabulary pages — DefinedTermSet, versioned citation anchors (keep in sync
+    // with getStaticPaths in schema/[vocab]/[version].astro).
+    ...['arbitration-model', 'resolution-proposer', 'source-type', 'settlement-style', 'direction', 'field-provenance', 'category']
+      .map((v) => ({ loc: `${SITE}/schema/${v}/v1/` })),
     // Event pages — one per tradable event, each carrying Dataset JSON-LD.
     ...getAllEvents().map((e) => ({
       loc: `${SITE}/events/${e.slug}/`,
