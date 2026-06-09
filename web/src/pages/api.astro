@@ -30,18 +30,77 @@ const updated = '2026-05-29';
     <div class="doc-body">
       <header class="doc-head" id="overview">
         <h1>API <span class="dh-plus">+</span> MCP</h1>
-        <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. ~1,850 events / ~15,000 markets across Kalshi and Polymarket, each with a <a href="/methodology/">Resolution Clarity Grade</a>, named resolution source, and cross-venue links. No key required.</p>
+        <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. ~1,850 events / ~15,000 markets across Kalshi and Polymarket, each with a <a href="/methodology/">Resolution Clarity Grade</a> — the named resolution source where one is committed, and a graded <code>source_status</code> when it isn't. No key required.</p>
         <p class="doc-note">Every event is single-venue; the same question priced on both venues is linked by a shared <code>question_id</code>, and each market's <code>also_on</code> lists its cross-venue twins. Prices refresh hourly. Catalyst dates (CPI, FOMC, jobs, earnings) are joined per event. Read-only.</p>
       </header>
 
       <section class="surface" id="access">
         <div class="surface-tab">ACCESS</div>
-        <p><strong>Open by default.</strong> Full universe, no key, <code>1,000</code> requests/day per IP. A free key lifts you to <code>10,000</code>/day:</p>
-        <pre><code>{`curl -s -X POST ${API}/v1/keys \\
+        <p><strong>Open by default.</strong> Full universe, no key, <code>1,000</code> requests/day per IP. Drop your email for a free key and <code>10,000</code>/day — issued instantly, no confirmation step:</p>
+
+        <form class="keyform" id="keyform" novalidate>
+          <input type="email" id="keyemail" name="email" placeholder="you@firm.com" autocomplete="email" aria-label="Email address" required />
+          <button type="submit" id="keybtn">Get a free key</button>
+        </form>
+        <p class="keyerr" id="keyerr" hidden></p>
+
+        <div class="keyout" id="keyout" hidden>
+          <div class="keyout-l">YOUR API KEY</div>
+          <div class="keyout-row">
+            <input type="text" id="keyval" readonly aria-label="Your API key" />
+            <button type="button" id="keycopy">Copy</button>
+          </div>
+          <p class="doc-note">Send it as <code>Authorization: Bearer &lt;key&gt;</code> or <code>?key=&lt;key&gt;</code>. 10,000 requests/day, resets 00:00 UTC. Save it now — for your records; you can always request a new one.</p>
+        </div>
+
+        <details class="keycurl">
+          <summary>Prefer the API? Request a key with curl</summary>
+          <pre><code>{`curl -s -X POST ${API}/v1/keys \\
   -H 'content-type: application/json' \\
   -d '{"email":"you@firm.com"}'`}</code></pre>
-        <p class="doc-note">Send it as <code>Authorization: Bearer &lt;key&gt;</code> or <code>?key=&lt;key&gt;</code>. CORS open.</p>
+        </details>
+        <p class="doc-note">Anonymous access works too — just omit the key. CORS open.</p>
       </section>
+
+      <script is:inline define:vars={{ apiBase: API }}>
+        (function () {
+          var form = document.getElementById('keyform');
+          if (!form) return;
+          var btn = document.getElementById('keybtn');
+          var out = document.getElementById('keyout');
+          var val = document.getElementById('keyval');
+          var err = document.getElementById('keyerr');
+          var copy = document.getElementById('keycopy');
+          function fail(msg) { err.textContent = msg; err.hidden = false; btn.disabled = false; btn.textContent = 'Get a free key'; }
+          form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            err.hidden = true;
+            var email = document.getElementById('keyemail').value.trim();
+            if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) { fail('Enter a valid email address.'); return; }
+            btn.disabled = true; btn.textContent = 'Issuing…';
+            fetch(apiBase + '/v1/keys', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ email: email })
+            }).then(function (r) {
+              return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+            }).then(function (res) {
+              if (res.ok && res.data && res.data.key) {
+                val.value = res.data.key; out.hidden = false; form.hidden = true; err.hidden = true;
+              } else {
+                fail((res.data && (res.data.hint || res.data.error)) || 'Could not issue a key. Try the curl command below.');
+              }
+            }).catch(function () { fail('Network error. Try the curl command below.'); });
+          });
+          copy.addEventListener('click', function () {
+            val.select();
+            if (navigator.clipboard) { navigator.clipboard.writeText(val.value); }
+            else { document.execCommand('copy'); }
+            copy.textContent = 'Copied';
+            setTimeout(function () { copy.textContent = 'Copy'; }, 1500);
+          });
+        })();
+      </script>
 
       <section class="surface" id="rest">
         <div class="surface-tab">REST · THE WORKBENCH</div>
@@ -156,6 +215,24 @@ const updated = '2026-05-29';
     /* Surface sections — each data-ingress path as its own bordered block */
     .surface { border-top: 1px solid var(--va-border); padding-top: 22px; margin-top: 40px; scroll-margin-top: 130px; }
     .surface-tab { display: inline-block; font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: var(--va-bg); background: var(--va-accent); padding: 3px 9px; margin-bottom: 14px; }
+
+    /* Email -> key capture form */
+    .keyform { display: flex; gap: 8px; margin: 6px 0 4px; max-width: 460px; }
+    .keyform input { flex: 1 1 auto; font-family: var(--va-mono); font-size: 13px; background: var(--va-bg-2); border: 1px solid var(--va-border); color: var(--va-fg); padding: 9px 12px; border-radius: 0; }
+    .keyform input:focus { outline: none; border-color: var(--va-accent); }
+    .keyform button, .keyout-row button { font-family: var(--va-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; background: var(--va-accent); color: var(--va-bg); border: 1px solid var(--va-accent); padding: 9px 16px; border-radius: 0; white-space: nowrap; }
+    .keyform button:disabled { opacity: 0.6; cursor: default; }
+    .keyerr { color: var(--va-down, #d9534f); font-size: 13px; margin: 4px 0 0; }
+    .keyout { border: 1px solid var(--va-accent); background: var(--va-bg-2); padding: 14px 16px; margin: 12px 0 4px; max-width: 560px; }
+    .keyout-l { font-family: var(--va-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--va-fg-faint); margin-bottom: 8px; }
+    .keyout-row { display: flex; gap: 8px; }
+    .keyout-row input { flex: 1 1 auto; font-family: var(--va-mono); font-size: 13px; background: var(--va-bg); border: 1px solid var(--va-border); color: var(--va-fg); padding: 9px 12px; border-radius: 0; }
+    .keyout-row button { background: transparent; color: var(--va-accent); }
+    .keyout .doc-note { margin-top: 10px; }
+    .keycurl { margin: 10px 0 8px; }
+    .keycurl summary { font-size: 13px; color: var(--va-fg-muted); cursor: pointer; }
+    .keycurl summary:hover { color: var(--va-accent); }
+    .keycurl pre { margin-top: 10px; }
 
     /* REST endpoint lines */
     .ep { display: flex; align-items: baseline; gap: 10px; font-family: var(--va-mono); font-size: 13px; border: 1px solid var(--va-border); padding: 9px 12px; margin: 14px 0 6px; background: var(--va-bg-2); }

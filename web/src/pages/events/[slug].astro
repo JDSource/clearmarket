@@ -150,7 +150,7 @@ const eventJsonLd: Record<string, unknown> = {
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://api.clearmarket.fyi/v1/events/${event.slug}` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
-  includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/', name: 'ClearMarket Events', description: 'Cross-venue prediction-market events with resolution-clarity grades.', url: 'https://clearmarket.fyi/events/' },
+  includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/', name: 'ClearMarket Events', description: 'Single-venue prediction-market events with resolution-clarity grades; the same question is linked across venues by question_id.', url: 'https://clearmarket.fyi/events/' },
   'cm:questionId': repQuestionId ?? undefined,
   'cm:sourceStatus': repSourceStatus,
   'cm:rcgCaps': repMarket?.rcg_caps ?? [],

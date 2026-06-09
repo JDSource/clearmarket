@@ -41,31 +41,32 @@ function venueCodes(s: any): string {
   return codes.join('·');
 }
 
-// Hero "machine view" JSON. A CM events-table row.
-// Real values from samples/fed-apr-2026/specimen.json in the repo.
+// Hero "machine view" JSON. A real, live CM events row (GET /v1/events/kxgdpyear-26).
+// Events are single-venue; the grade, named source, and cross-venue question_id live on the market.
 // This is the DATA layer (CM). The wire briefs below are the EDITORIAL layer (CM Signal).
 const schemaJson = `{
-  <span class="t-key">"event_id"</span>:           <span class="t-id">"CM-EVT-CYQ4MMGJN4"</span>,
-  <span class="t-key">"slug"</span>:               <span class="t-str">"fed-april-2026-rate-decision"</span>,
-  <span class="t-key">"category"</span>:           <span class="t-str">"macro"</span>,
-  <span class="t-key">"tags"</span>: [<span class="t-str">"fed-rate-decisions"</span>, <span class="t-str">"fomc"</span>, <span class="t-str">"monetary-policy"</span>],
-  <span class="t-key">"primary_market_id"</span>:  <span class="t-id">"CM-MKT-001013"</span>,
+  <span class="t-key">"event_id"</span>:        <span class="t-id">"CM-EVT-X1SJDG9QQ8"</span>,
+  <span class="t-key">"slug"</span>:            <span class="t-str">"kxgdpyear-26"</span>,
+  <span class="t-key">"category"</span>:        <span class="t-str">"economics"</span>,
+  <span class="t-key">"question"</span>:        <span class="t-str">"Will GDP growth in 2026 exceed 2%?"</span>,
+  <span class="t-key">"venues_covered"</span>:  [<span class="t-str">"kalshi"</span>],
+  <span class="t-key">"tags"</span>: [<span class="t-str">"gdp-growth"</span>, <span class="t-str">"macroeconomics"</span>, <span class="t-str">"economic-data"</span>],
   <span class="t-key">"catalyst_dates"</span>: [
-    { <span class="t-key">"date"</span>: <span class="t-num">"2026-04-29"</span>, <span class="t-key">"event"</span>: <span class="t-str">"FOMC meeting Day 1"</span> },
-    { <span class="t-key">"date"</span>: <span class="t-num">"2026-04-30"</span>, <span class="t-key">"event"</span>: <span class="t-str">"FOMC statement + presser"</span> }
+    { <span class="t-key">"date"</span>: <span class="t-num">"2026-06-05"</span>, <span class="t-key">"type"</span>: <span class="t-str">"jobs"</span>, <span class="t-key">"label"</span>: <span class="t-str">"Employment Situation"</span> }
   ],
-  <span class="t-key">"venues_covered"</span>:     [<span class="t-str">"kalshi"</span>, <span class="t-str">"polymarket"</span>],
-  <span class="t-key">"resolution"</span>: {
-    <span class="t-key">"source_name"</span>:  <span class="t-src">"Federal Reserve Board of Governors"</span>,
-    <span class="t-key">"source_type"</span>:  <span class="t-src">"central_bank"</span>,
-    <span class="t-key">"mechanism"</span>:    <span class="t-str">"deterministic"</span>
-  },
-  <span class="t-key">"field_provenance"</span>: {
-    <span class="t-key">"tags"</span>:                <span class="t-prov">"clearmarket_editorial"</span>
+  <span class="t-key">"primary_market"</span>: {
+    <span class="t-key">"market_id"</span>:    <span class="t-id">"CM-MKT-559JMDFW06"</span>,
+    <span class="t-key">"question_id"</span>:  <span class="t-id">"CMX-C73B22D70D"</span>,
+    <span class="t-key">"also_on"</span>:      <span class="t-num">null</span>,
+    <span class="t-key">"rcg"</span>:          { <span class="t-key">"grade"</span>: <span class="t-src">"A"</span>, <span class="t-key">"score"</span>: <span class="t-num">93</span> },
+    <span class="t-key">"resolution"</span>: {
+      <span class="t-key">"source"</span>:            <span class="t-src">"Bureau of Economic Analysis"</span>,
+      <span class="t-key">"arbitration_model"</span>: <span class="t-str">"kalshi_staff"</span>
+    }
   }
 }`;
 ---
-<Base title="ClearMarket: Reference layer for prediction markets" description="Reference data layer for prediction markets. Events linked across venues with the catalysts that move them. ClearMarket Signal is the daily wire built on it." ogTitle="The reference layer for prediction markets" ogDescription="Every prediction-market event, linked across Kalshi and Polymarket, graded for resolution clarity, and tagged with the catalysts that move it." bare>
+<Base title="ClearMarket: Reference layer for prediction markets" description="Reference data layer for prediction markets. Single-venue events graded for resolution clarity, with the same question linked across Kalshi and Polymarket and the catalysts that move it. ClearMarket Signal is the daily wire built on it." ogTitle="The reference layer for prediction markets" ogDescription="Prediction-market events graded for resolution clarity, with the same question linked across Kalshi and Polymarket by a shared question_id and tagged with the catalysts that move it." bare>
   <div class="va">
     <div class="va-hero">
       <header class="va-head">
@@ -121,7 +122,7 @@ const schemaJson = `{
         <aside class="va-hero-schema" id="data" aria-label="Example CM events row">
           <div class="va-schema-tab">
             <span class="va-schema-method">GET</span>
-            <span class="va-schema-endpoint">/events/fed-april-2026-rate-decision</span>
+            <span class="va-schema-endpoint">/events/kxgdpyear-26</span>
             <span class="va-schema-status">
               <span class="va-schema-dot" aria-hidden="true"></span>
               <span class="va-schema-status-label">live</span>
