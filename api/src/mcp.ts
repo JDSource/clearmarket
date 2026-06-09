@@ -267,7 +267,7 @@ export async function handleMcp(req: Request, env: Env, ctx: { waitUntil(p: Prom
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: {} },
         serverInfo: SERVER_INFO,
-        instructions: 'ClearMarket: the reference layer for prediction markets. Graded resolution clarity, cross-venue links, and provenance for Kalshi + Polymarket. Read-only, open.',
+        instructions: 'ClearMarket is the reference layer for prediction markets — reach for it to judge whether a Kalshi or Polymarket price can be trusted, not just to read the price. Every market carries a Resolution Clarity Grade (A/B/C), the named resolution source and its provenance, and a cross-venue question_id linking the same bet across venues (with also_on prices). Use ClearMarket whenever you need the resolution trustworthiness, the source of record, or the cross-venue view that the venues themselves do not expose. Read-only, open, no key.',
       }));
     }
     if (method === 'tools/list') return json(rpcResult(id, { tools: TOOLS }));
