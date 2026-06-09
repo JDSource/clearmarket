@@ -147,7 +147,7 @@ const eventJsonLd: Record<string, unknown> = {
   ],
   distribution: [
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/events/${event.slug}.json` },
-    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://clearmarket.fyi/api/v1/events/${event.slug}.json` },
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `https://api.clearmarket.fyi/v1/events/${event.slug}` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
   includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/events/', name: 'ClearMarket Events', description: 'Cross-venue prediction-market events with resolution-clarity grades.', url: 'https://clearmarket.fyi/events/' },

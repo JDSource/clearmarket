@@ -1,0 +1,159 @@
+---
+import Site from '../layouts/Site.astro';
+
+// Canonical schema doc. Mirrors src/pages/methodology.astro's doc layout (sticky gutter +
+// surface sections + --va-* tokens) so the reference pages read as one system.
+const updated = '2026-06-09';
+const RAW = 'https://raw.githubusercontent.com/JDSource/clearmarket/main/schema';
+---
+<Site title="Schema — ClearMarket" description="ClearMarket's four-table reference-data schema for prediction markets: tables, identifiers, the cross-venue model, grades, and machine-readable formats.">
+  <div class="doc">
+    <aside class="doc-gutter">
+      <div class="dg-meta">
+        <div class="dg-row"><span class="dg-k">doc_id</span><span class="dg-v">cm-schema</span></div>
+        <div class="dg-row"><span class="dg-k">version</span><span class="dg-v">v0.2</span></div>
+        <div class="dg-row"><span class="dg-k">updated</span><span class="dg-v">{updated}</span></div>
+        <div class="dg-row"><span class="dg-k">scope</span><span class="dg-v">public · canonical</span></div>
+        <div class="dg-row"><span class="dg-k">machine</span><span class="dg-v">/schema.json</span></div>
+      </div>
+      <nav class="dg-nav">
+        <a href="#overview">Overview</a>
+        <a href="#tables">1 · Four tables</a>
+        <a href="#identifiers">2 · Identifiers</a>
+        <a href="#grades">3 · Grades &amp; sources</a>
+        <a href="#vocab">4 · Vocabularies</a>
+        <a href="#formats">5 · Formats &amp; access</a>
+      </nav>
+    </aside>
+
+    <div class="doc-body">
+      <header class="doc-head" id="overview">
+        <h1>Schema</h1>
+        <p class="doc-lede">ClearMarket normalizes the Kalshi and Polymarket universe into one reference-data schema: four tables, stable identifiers, a cross-venue link, and a per-market resolution-clarity grade.</p>
+        <p class="doc-note">This page is the human-readable companion to the machine-readable <a href="/schema.json">/schema.json</a> manifest and the per-table JSON Schema files (draft 2020-12) linked below. The grading model lives on <a href="/methodology/">/methodology</a>. Last updated {updated}.</p>
+      </header>
+
+      <section class="surface" id="tables">
+        <div class="surface-tab">1 · FOUR-TABLE SCHEMA</div>
+        <p>The schema is Zod-first in the repo; the JSON Schema files are generated from it and are the authoritative field-level spec.</p>
+        <table class="m-table">
+          <thead>
+            <tr><th>Table</th><th>One row per</th><th>JSON Schema</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>events</td><td>A venue's bundle of one or more markets under a canonical question. Single-venue.</td><td><a href={`${RAW}/events.schema.json`}>events.schema.json</a></td></tr>
+            <tr><td>markets</td><td>One venue listing (one contract), with grade, named resolution source, provenance, <code>question_id</code> and <code>also_on</code>.</td><td><a href={`${RAW}/markets.schema.json`}>markets.schema.json</a></td></tr>
+            <tr><td>marks</td><td>A price/volume observation for a market at a point in time (hourly).</td><td><a href={`${RAW}/marks.schema.json`}>marks.schema.json</a></td></tr>
+            <tr><td>resolution_log</td><td>A settlement outcome for a market (when + YES/NO/PENDING), price-derived.</td><td><a href={`${RAW}/resolution_log.schema.json`}>resolution_log.schema.json</a></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="surface" id="identifiers">
+        <div class="surface-tab">2 · IDENTIFIERS &amp; CROSS-VENUE MODEL</div>
+        <p>Three identifiers, because they name three different things. The cross-venue link is the <code>question_id</code>, never the event — every event is single-venue.</p>
+        <ul class="m-list">
+          <li><code>market_id</code> (<code>CM-MKT-…</code>) — one contract on one venue. The atomic unit.</li>
+          <li><code>event_id</code> (<code>CM-EVT-…</code>) — a venue's bundle of one or more markets under a canonical question. Single-venue; one event can hold many distinct questions (a price ladder, a basket).</li>
+          <li><code>question_id</code> — the venue-independent identity of the bet. Markets sharing a <code>question_id</code> are the same question across Kalshi and Polymarket, and across events within a venue.</li>
+          <li><code>also_on</code> — on each market, an array of <code>{'{ venue, market_id, price }'}</code> for the same question priced on other venues, or <code>null</code> when it trades on only one. The only field that asserts a cross-venue twin.</li>
+        </ul>
+        <p>The ids are deterministic and stable — they are the citation unit. Persist them and a claim stays traceable to its source. Full reasoning on the three grains is in <a href="/methodology/#crossvenue">methodology §5</a>.</p>
+      </section>
+
+      <section class="surface" id="grades">
+        <div class="surface-tab">3 · GRADES &amp; SOURCE STATUS</div>
+        <p>Every market carries a <strong>Resolution Clarity Grade</strong> (per market, not per event) and a <strong>source status</strong>. The full 7-factor model is on <a href="/methodology/">/methodology</a>.</p>
+        <h3>Resolution Clarity Grade</h3>
+        <ul class="m-list">
+          <li><strong>A</strong> — objective trigger and a named, committed resolution source.</li>
+          <li><strong>B</strong> — minor ambiguity, or a source gestured at but not committed to.</li>
+          <li><strong>C</strong> — discretionary trigger, contested reality, or no committed source.</li>
+        </ul>
+        <h3>source_status</h3>
+        <ul class="m-list">
+          <li><code>platform_named</code> — the venue names a concrete, resolvable authority.</li>
+          <li><code>no_committed_source</code> — a source is gestured at but not committed to (a placeholder or illustrative example).</li>
+          <li><code>no_source_stated</code> — no resolution-source language at all.</li>
+        </ul>
+      </section>
+
+      <section class="surface" id="vocab">
+        <div class="surface-tab">4 · VOCABULARIES</div>
+        <p>Controlled values used on the market record:</p>
+        <ul class="m-list">
+          <li><code>settlement_style</code> — <code>touch</code> · <code>terminal</code> · <code>relative</code> · <code>occurrence</code> (how the contract settles on the underlying).</li>
+          <li><code>direction</code> — <code>above</code> · <code>below</code> · <code>reach</code> · <code>between</code> · <code>occurrence</code>.</li>
+          <li><code>arbitration_model</code> — <code>uma_oracle</code> · <code>kalshi_staff</code> (who arbitrates a dispute).</li>
+          <li><code>category</code> — <code>economics</code> · <code>financials</code> · <code>crypto</code> · <code>companies</code> · <code>technology</code> · <code>health</code> · <code>politics</code> · <code>geopolitics</code> · <code>climate</code>.</li>
+          <li><code>field provenance</code> — <code>direct</code> (platform API / verbatim) · <code>editorial</code> (LLM-drafted gloss) · <code>subjective</code> (consensus, no named source).</li>
+        </ul>
+      </section>
+
+      <section class="surface" id="formats">
+        <div class="surface-tab">5 · FORMATS &amp; ACCESS</div>
+        <p>Every public record ships in parallel formats: an HTML page (with embedded JSON-LD <code>Dataset</code> markup), a machine-readable <code>.json</code> twin, and a row in <a href="/llms.txt">/llms.txt</a>.</p>
+        <ul class="m-list">
+          <li><strong>REST</strong> — <code>https://api.clearmarket.fyi</code> (open, no key, 1,000 req/day per IP; free key lifts to 10,000).</li>
+          <li><strong>MCP</strong> — <code>https://api.clearmarket.fyi/mcp</code> (streamable HTTP, read-only). See <a href="/api/#mcp">API · MCP</a>.</li>
+          <li><strong>Machine schema</strong> — <a href="/schema.json">/schema.json</a> · per-table JSON Schema files above.</li>
+          <li><strong>Repository</strong> — <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</li>
+        </ul>
+        <p>Schema definitions and identifiers are licensed <strong>CC-BY-4.0</strong>; the populated dataset is open and free with attribution required (cite ClearMarket, clearmarket.fyi). Every API and MCP record carries a <code>_provenance</code> field.</p>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    .doc {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+    .doc-gutter { position: sticky; top: 120px; font-family: var(--va-mono); }
+    .dg-meta { border-left: 2px solid var(--va-accent); padding-left: 12px; margin-bottom: 24px; }
+    .dg-row { display: flex; justify-content: space-between; gap: 10px; font-size: 10.5px; padding: 3px 0; letter-spacing: 0.03em; }
+    .dg-k { color: var(--va-fg-faint); text-transform: uppercase; }
+    .dg-v { color: var(--va-fg-muted); }
+    .dg-nav { display: flex; flex-direction: column; gap: 2px; }
+    .dg-nav a { font-size: 11.5px; color: var(--va-fg-muted); text-decoration: none; padding: 5px 0; border-bottom: 1px solid var(--va-rule); letter-spacing: 0.03em; }
+    .dg-nav a:hover { color: var(--va-accent); }
+
+    .doc-body { border-left: 1px solid var(--va-border); padding-left: 40px; min-width: 0; max-width: 760px; }
+    .doc-head { margin-bottom: 8px; }
+    .doc-head h1 { font-family: var(--va-sans); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 16px; color: var(--va-fg); }
+    .doc-lede { font-size: 17px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 16px; }
+    .doc-note { font-size: 14px; line-height: 1.6; color: var(--va-fg-muted); }
+
+    .doc-body p { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; }
+    .doc-body strong { color: var(--va-fg); }
+    .doc-body em { color: var(--va-fg-muted); font-style: italic; }
+    .doc-body h3 { font-family: var(--va-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); margin: 28px 0 10px; }
+    .doc-body a { color: var(--va-accent); text-decoration: none; }
+    .doc-body a:hover { text-decoration: underline; }
+    .doc-body code { font-family: var(--va-mono); font-size: 0.86em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); border-radius: 0; }
+
+    .m-list { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; padding-left: 20px; margin: 0 0 16px; }
+    .m-list li { margin: 0 0 7px; }
+    .m-list strong { color: var(--va-fg); }
+    .m-list code { font-family: var(--va-mono); font-size: 0.86em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); }
+
+    .m-table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13px; }
+    .m-table th { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--va-border); }
+    .m-table td { color: var(--va-fg-muted); line-height: 1.5; padding: 9px 10px; border-bottom: 1px solid var(--va-rule); vertical-align: top; }
+    .m-table td:first-child { color: var(--va-fg); font-weight: 600; white-space: nowrap; font-family: var(--va-mono); }
+
+    .surface { border-top: 1px solid var(--va-border); padding-top: 22px; margin-top: 40px; scroll-margin-top: 130px; }
+    .surface-tab { display: inline-block; font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: var(--va-bg); background: var(--va-accent); padding: 3px 9px; margin-bottom: 14px; }
+
+    @media (max-width: 820px) {
+      .doc { grid-template-columns: 1fr; gap: 24px; }
+      .doc-gutter { position: static; top: auto; }
+      .doc-body { border-left: 0; padding-left: 0; }
+      .dg-nav { flex-flow: row wrap; gap: 8px 16px; }
+      .dg-nav a { border-bottom: 0; padding: 2px 0; }
+      .m-table td:first-child { white-space: normal; }
+    }
+  </style>
+</Site>
