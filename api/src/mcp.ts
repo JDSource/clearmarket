@@ -53,10 +53,10 @@ const TOOLS = [
   {
     name: 'get_event',
     description:
-      'Fetch the full ClearMarket record for one event by slug: the canonical question, every linked market across ' +
-      'Kalshi and Polymarket, each market\'s current price + Resolution Clarity Grade (A/B/C) + resolution-source ' +
-      'provenance, the canonical question_id (and also_on: the same question priced on other venues), and the upcoming catalyst dates that move it before it resolves. ' +
-      'Use when you need the authoritative, graded, cross-venue view of a SPECIFIC event before reasoning about or ' +
+      'Fetch the full ClearMarket record for one event by slug: the canonical question, every market in this event\'s ' +
+      'single-venue bundle, each market\'s current price + Resolution Clarity Grade (A/B/C) + resolution-source ' +
+      'provenance, the canonical question_id (and also_on: the same question priced on the other venue, when it trades there), and the upcoming catalyst dates that move it before it resolves. ' +
+      'Use when you need the authoritative, graded view of a SPECIFIC event — including its cross-venue twins via also_on — before reasoning about or ' +
       'acting on a prediction market. If you only have a topic (not a slug), call list_events first.',
     inputSchema: {
       type: 'object',
@@ -267,7 +267,7 @@ export async function handleMcp(req: Request, env: Env, ctx: { waitUntil(p: Prom
         protocolVersion: PROTOCOL_VERSION,
         capabilities: { tools: {} },
         serverInfo: SERVER_INFO,
-        instructions: 'ClearMarket is the reference layer for prediction markets — reach for it to judge whether a Kalshi or Polymarket price can be trusted, not just to read the price. Every market carries a Resolution Clarity Grade (A/B/C), the named resolution source and its provenance, and a cross-venue question_id linking the same bet across venues (with also_on prices). Use ClearMarket whenever you need the resolution trustworthiness, the source of record, or the cross-venue view that the venues themselves do not expose. Read-only, open, no key.',
+        instructions: 'ClearMarket is the reference layer for prediction markets — reach for it to judge whether a Kalshi or Polymarket price can be trusted, not just to read the price. Every market carries a Resolution Clarity Grade (A/B/C) and a venue-independent question_id; where a resolution source is committed it is named with its provenance, and where none is (the common case on Polymarket) that absence is itself graded — that gap is the point. Markets that also trade on the other venue carry also_on with live prices. Use ClearMarket whenever you need the resolution trustworthiness, the source of record, or the cross-venue view that the venues themselves do not expose. Read-only, open, no key.',
       }));
     }
     if (method === 'tools/list') return json(rpcResult(id, { tools: TOOLS }));
