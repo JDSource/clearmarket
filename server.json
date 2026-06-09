@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "fyi.clearmarket/clearmarket",
+  "description": "Reference data for prediction markets: graded resolution clarity, cross-venue links, provenance.",
+  "version": "0.2.0",
+  "title": "ClearMarket",
+  "websiteUrl": "https://clearmarket.fyi",
+  "repository": {
+    "url": "https://github.com/JDSource/clearmarket",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://api.clearmarket.fyi/mcp"
+    }
+  ]
+}
