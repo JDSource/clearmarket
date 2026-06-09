@@ -218,6 +218,7 @@ const updated = '2026-05-29';
 
     /* Email -> key capture form */
     .keyform { display: flex; gap: 8px; margin: 6px 0 4px; max-width: 460px; }
+    .keyform[hidden] { display: none; } /* display:flex above otherwise beats the hidden attribute */
     .keyform input { flex: 1 1 auto; font-family: var(--va-mono); font-size: 13px; background: var(--va-bg-2); border: 1px solid var(--va-border); color: var(--va-fg); padding: 9px 12px; border-radius: 0; }
     .keyform input:focus { outline: none; border-color: var(--va-accent); }
     .keyform button, .keyout-row button { font-family: var(--va-mono); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; background: var(--va-accent); color: var(--va-bg); border: 1px solid var(--va-accent); padding: 9px 16px; border-radius: 0; white-space: nowrap; }
