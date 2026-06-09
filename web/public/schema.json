@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ClearMarket reference-data schema",
+  "description": "Machine-readable index of ClearMarket's schema. ClearMarket is the reference-data layer for prediction markets (Kalshi + Polymarket): graded resolution clarity, cross-venue linking, named resolution sources, and provenance. Authoritative per-table JSON Schema files are linked under `tables`.",
+  "version": "0.2.0",
+  "homepage": "https://clearmarket.fyi",
+  "methodology": "https://clearmarket.fyi/methodology",
+  "llms_txt": "https://clearmarket.fyi/llms.txt",
+  "license": "Open and free to use. Attribution required: cite ClearMarket (clearmarket.fyi).",
+  "identifiers": {
+    "market_id": "CM-MKT-… — one contract on one venue. The atomic unit.",
+    "event_id": "CM-EVT-… — a single-venue bundle of one or more markets under a canonical question. Every event is single-venue.",
+    "question_id": "The venue-independent identity of the bet. Markets sharing a question_id are the same question across Kalshi and Polymarket, and across events within a venue. This is the cross-venue link.",
+    "also_on": "On each market: an array of { venue, market_id, price } for the same question priced on other venues; null when the question trades on only one venue. The only field that asserts a cross-venue twin."
+  },
+  "resolution_clarity_grade": {
+    "scale": "A | B | C (per market, not per event)",
+    "A": "Highest clarity — objective trigger and a named, committed resolution source.",
+    "B": "Mid — minor ambiguity, or a source gestured at but not committed to.",
+    "C": "Lowest — discretionary trigger, contested reality, or no committed source.",
+    "model": "RCG v2 — 7 weighted factors. Full model: https://clearmarket.fyi/methodology"
+  },
+  "source_status": {
+    "platform_named": "The venue names a concrete, resolvable authority.",
+    "no_committed_source": "A source is gestured at but not committed to (a placeholder or illustrative example).",
+    "no_source_stated": "No resolution-source language at all."
+  },
+  "tables": {
+    "events": "https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/events.schema.json",
+    "markets": "https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/markets.schema.json",
+    "marks": "https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/marks.schema.json",
+    "resolution_log": "https://raw.githubusercontent.com/JDSource/clearmarket/main/schema/resolution_log.schema.json"
+  },
+  "access": {
+    "rest": "https://api.clearmarket.fyi",
+    "mcp": "https://api.clearmarket.fyi/mcp",
+    "repository": "https://github.com/JDSource/clearmarket"
+  }
+}

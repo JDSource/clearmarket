@@ -215,9 +215,9 @@ function buildVariablesMeasured(claims: any[]) {
   for (const claim of claims) {
     const fp = claim.field_provenance ?? {};
     for (const fieldName of Object.keys(fp)) {
-      const value = claim[fieldName];
-      if (value === undefined || value === null) continue;
       const prov = fp[fieldName];
+      if (!prov || typeof prov !== 'object') continue;
+      const value = claim[fieldName];
       const pv: any = {
         '@type': 'PropertyValue',
         '@id': `#${claim.type}/${fieldName}`,
@@ -227,10 +227,12 @@ function buildVariablesMeasured(claims: any[]) {
         'cm:tier': prov.tier,
         'cm:method': prov.method,
       };
-      if (typeof value === 'number' || typeof value === 'string') {
-        pv.value = value;
-      } else if (typeof value === 'object') {
-        pv.valueReference = value;
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'number' || typeof value === 'string') {
+          pv.value = value;
+        } else if (typeof value === 'object') {
+          pv.valueReference = value;
+        }
       }
       const unit = unitFor(fieldName);
       if (unit) pv.unitText = unit;

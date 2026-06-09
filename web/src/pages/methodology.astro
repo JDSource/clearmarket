@@ -21,6 +21,7 @@ const updated = '2026-05-26';
         <a href="#sources">2 · Verified sources</a>
         <a href="#rcg">3 · Clarity Grade</a>
         <a href="#editorial">4 · Editorial</a>
+        <a href="#crossvenue">5 · Cross-venue linking</a>
       </nav>
     </aside>
 
@@ -120,6 +121,23 @@ const updated = '2026-05-26';
       <section class="surface" id="editorial">
         <div class="surface-tab">4 · EDITORIAL ENRICHMENT</div>
         <p>On top of the verified-source layer, ClearMarket adds editorial fields (<code>editorial_notes</code>, <code>underlying_reference</code>, <code>tags</code>, canonical question) drafted by an LLM and tagged <code>editorial</code>. These <em>interpret and gloss</em> the verified data — e.g. naming the authoritative publisher (S&amp;P Dow Jones Indices) where a venue cites only a placeholder (Google Finance) — but never serve as the source of record. Enrichment is per-event (shared across a market's strike ladder), not per-strike.</p>
+      </section>
+
+      <section class="surface" id="crossvenue">
+        <div class="surface-tab">5 · CROSS-VENUE LINKING</div>
+        <p>The same bet often trades on both venues under different wording. ClearMarket links them at the <strong>market grain</strong>, not the event grain, because the two are different things.</p>
+
+        <h3>Three grains</h3>
+        <ul class="m-list">
+          <li><code>market_id</code> (<code>CM-MKT-…</code>) — one contract on one venue. The atomic unit.</li>
+          <li><code>event_id</code> (<code>CM-EVT-…</code>) — a venue's bundle of one or more markets under a canonical question. <strong>Every event is single-venue</strong>, and one event can hold many distinct questions (a price ladder, a basket).</li>
+          <li><code>question_id</code> — the <strong>venue-independent identity of the bet</strong>. Markets sharing a <code>question_id</code> are the same question across Kalshi and Polymarket, and across events within a venue.</li>
+        </ul>
+
+        <p>Because every event is single-venue and the cross-venue groups span <em>different</em> event_ids, the link cannot be the event — it is the <code>question_id</code>. The matching key is <code>subject + threshold + settlement_style + window</code>; polarity is normalized, so an "above" and a "below" on the same threshold are the same question with complements flipped.</p>
+
+        <h3>also_on — the cross-venue surface</h3>
+        <p>Each market carries an <code>also_on</code> field: an array of <code>{'{ venue, market_id, price }'}</code> for the same question priced on other venues, or <code>null</code> when the question trades on only one. It is the <strong>only</strong> field that asserts a cross-venue twin — a market advertises one only when it genuinely has one. The linker is deliberately high-precision, low-recall: a missing link is preferred to a wrong one.</p>
       </section>
     </div>
   </div>

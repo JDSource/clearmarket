@@ -1,0 +1,170 @@
+---
+import Site from '../../../layouts/Site.astro';
+
+// Canonical DefinedTermSet pages. Each vocabulary is a controlled enum from the
+// repo schema (schema/*.json — the Zod-first source of truth). VALUES here must
+// match the schema exactly; these URLs are citation anchors. Definitions are
+// grounded in /methodology + the cross-venue decision doc.
+const RAW = 'https://raw.githubusercontent.com/JDSource/clearmarket/main/schema';
+
+const VOCABS = {
+  'arbitration-model': {
+    field: 'arbitration_model', title: 'Arbitration model', schema: 'markets',
+    desc: 'Who arbitrates a disputed resolution — the entity with final say if the outcome is contested. A distinct axis from the resolution source and from how the contract settles.',
+    terms: [
+      ['uma_oracle', "UMA's Optimistic Oracle: permissionless proposer and disputer, economic bonding."],
+      ['kalshi_staff', 'Kalshi exchange staff, under CFTC-regulated rules.'],
+      ['polymarket_staff', 'Polymarket staff or internal process.'],
+      ['platform_auto', 'Automated settlement against a data feed; no human arbiter.'],
+      ['determinations_committee', 'A standing committee adjudicates (ISDA-style).'],
+      ['other', 'A mechanism not covered by the above.'],
+    ],
+  },
+  'resolution-proposer': {
+    field: 'resolution_proposer', title: 'Resolution proposer', schema: 'markets',
+    desc: 'Who may propose the resolution outcome that arbitration then accepts or disputes.',
+    terms: [
+      ['permissionless', 'Anyone may propose, backed by an economic bond.'],
+      ['managed_whitelist', 'Only vetted, whitelisted proposers.'],
+      ['platform_staff', 'The venue itself proposes the outcome.'],
+      ['gov_agency', 'A government-agency release is the proposing authority.'],
+    ],
+  },
+  'source-type': {
+    field: 'source_type', title: 'Resolution source type', schema: 'markets',
+    desc: 'The class of authority a market resolves against. Source commitment (named vs. placeholder) is graded separately — see /methodology.',
+    terms: [
+      ['gov_stat_agency', 'Government statistical agency (BLS, BEA, Census).'],
+      ['central_bank', 'A central bank (Federal Reserve, ECB, Bank of Canada).'],
+      ['regulated_data_vendor', 'A regulated benchmark or data vendor (CF Benchmarks, ICE).'],
+      ['media_consensus', 'A consensus of credible reporting.'],
+      ['court_filing', 'A court filing or ruling.'],
+      ['issuer_announcement', 'An official announcement by the issuer or subject.'],
+      ['scheduled_event', 'A scheduled event whose occurrence is the resolution.'],
+      ['subjective', 'No named data source; resolution is judgment or consensus.'],
+      ['other', 'A source type not covered by the above.'],
+    ],
+  },
+  'settlement-style': {
+    field: 'settlement_style', title: 'Settlement style', schema: 'markets',
+    desc: 'How a contract settles on its underlying. Distinct from who arbitrates (arbitration_model) and from the resolution source.',
+    terms: [
+      ['touch', 'Resolves YES if the level is touched at any time before expiry.'],
+      ['terminal', 'Resolves on the underlying value at a fixed date or time.'],
+      ['relative', 'Resolves on a change measured relative to a baseline.'],
+      ['occurrence', 'Resolves on whether a discrete event happened.'],
+    ],
+  },
+  'direction': {
+    field: 'direction', title: 'Direction', schema: 'markets',
+    desc: 'The polarity of a market threshold, normalized so cross-venue twins match (an "above" and a "below" on the same threshold are the same question, complements flipped).',
+    terms: [
+      ['above', 'Resolves YES if the underlying is at or above the threshold.'],
+      ['below', 'Resolves YES if the underlying is at or below the threshold.'],
+      ['reach', 'Resolves YES if the underlying reaches the threshold.'],
+      ['between', 'Resolves YES if the underlying falls within a range.'],
+      ['occurrence', 'Non-numeric: resolves on whether the event occurred.'],
+    ],
+  },
+  'field-provenance': {
+    field: 'field_provenance', title: 'Field provenance', schema: 'markets',
+    desc: 'The origin of each editable field on a record — how ClearMarket obtained that value. Any verifiable identifier traces to platform data; the LLM is confined to editorial glosses.',
+    terms: [
+      ['platform_api', 'Read directly from the venue API (a structured field).'],
+      ['clearmarket_editorial', 'LLM-drafted interpretation or gloss; never a source of record.'],
+      ['derived', 'Computed deterministically from other fields.'],
+      ['imputed', 'Inferred where the venue does not state it.'],
+      ['null_by_venue_limitation', 'Unavailable because the venue does not expose it.'],
+    ],
+  },
+  'category': {
+    field: 'category', title: 'Category', schema: 'events',
+    desc: 'The institutional category an event is filtered into. Sports and entertainment are out of scope by design.',
+    terms: [
+      ['economics', 'Macro data and indicators (CPI, GDP, jobs, rates).'],
+      ['financials', 'Markets, equities, IPOs, corporate finance.'],
+      ['crypto', 'Digital assets and crypto infrastructure.'],
+      ['companies', 'Company-specific events (M&A, milestones, leadership).'],
+      ['technology', 'Technology and AI.'],
+      ['health', 'Health, biotech, and FDA actions.'],
+      ['politics', 'Elections and domestic politics.'],
+      ['geopolitics', 'International relations, conflict, and sovereign or central-bank policy.'],
+      ['climate', 'Climate and weather.'],
+    ],
+  },
+};
+
+export function getStaticPaths() {
+  // mirror of VOCABS keys; one page per vocabulary at version v1
+  const SLUGS = ['arbitration-model','resolution-proposer','source-type','settlement-style','direction','field-provenance','category'];
+  return SLUGS.map((slug) => ({ params: { vocab: slug, version: 'v1' } }));
+}
+
+const { vocab, version } = Astro.params;
+const v = (VOCABS as any)[vocab as string];
+const canonicalURL = `https://clearmarket.fyi/schema/${vocab}/${version}`;
+
+const definedTermSet = {
+  '@context': 'https://schema.org',
+  '@type': 'DefinedTermSet',
+  '@id': canonicalURL,
+  name: `ClearMarket — ${v.title} (${version})`,
+  description: v.desc,
+  url: canonicalURL,
+  version,
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  hasDefinedTerm: v.terms.map(([code, def]: [string, string]) => ({
+    '@type': 'DefinedTerm',
+    '@id': `${canonicalURL}#${code}`,
+    termCode: code,
+    name: code,
+    description: def,
+    inDefinedTermSet: canonicalURL,
+  })),
+};
+---
+<Site title={`${v.title} (${version}) — ClearMarket schema`} description={v.desc}>
+  <script type="application/ld+json" set:html={JSON.stringify(definedTermSet)} />
+  <div class="vocab">
+    <div class="v-meta">
+      <a href="/schema/" class="v-back">← Schema</a>
+      <span class="v-id">DefinedTermSet · {version}</span>
+    </div>
+    <h1>{v.title}</h1>
+    <p class="v-field">schema field <code>{v.field}</code> · table <code>{v.schema}</code> · <a href={`${RAW}/${v.schema}.schema.json`}>{v.schema}.schema.json</a></p>
+    <p class="v-desc">{v.desc}</p>
+
+    <table class="v-table">
+      <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+      <tbody>
+        {v.terms.map(([code, def]: [string, string]) => (
+          <tr id={code}><td><code>{code}</code></td><td>{def}</td></tr>
+        ))}
+      </tbody>
+    </table>
+
+    <p class="v-foot">Values match the canonical schema exactly. Definitions are licensed CC-BY-4.0. Old versions remain canonical at their URL; a deprecated term is marked but kept for at least 12 months. See the full <a href="/schema/">schema</a> and <a href="/methodology/">methodology</a>.</p>
+  </div>
+
+  <style>
+    .vocab { max-width: 720px; margin: 0 auto; }
+    .v-meta { display: flex; justify-content: space-between; align-items: baseline; font-family: var(--va-mono); font-size: 11px; letter-spacing: 0.04em; margin-bottom: 18px; }
+    .v-back { color: var(--va-accent); text-decoration: none; }
+    .v-back:hover { text-decoration: underline; }
+    .v-id { color: var(--va-fg-faint); text-transform: uppercase; }
+    .vocab h1 { font-family: var(--va-sans); font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; color: var(--va-fg); }
+    .v-field { font-family: var(--va-mono); font-size: 12px; color: var(--va-fg-faint); margin: 0 0 18px; }
+    .v-field a { color: var(--va-accent); text-decoration: none; }
+    .v-desc { font-size: 16px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 24px; }
+    .v-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .v-table th { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--va-border); }
+    .v-table td { color: var(--va-fg-muted); line-height: 1.5; padding: 10px 10px; border-bottom: 1px solid var(--va-rule); vertical-align: top; }
+    .v-table td:first-child { white-space: nowrap; }
+    .v-table code { font-family: var(--va-mono); font-size: 0.9em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 6px; color: var(--va-fg); }
+    .v-table tr:target td { background: var(--va-bg-2); }
+    .v-foot { font-size: 13px; line-height: 1.6; color: var(--va-fg-faint); margin: 24px 0 0; }
+    .v-foot a { color: var(--va-accent); text-decoration: none; }
+    .v-field code, .v-desc code { font-family: var(--va-mono); font-size: 0.88em; background: var(--va-bg-2); border: 1px solid var(--va-rule); padding: 1px 5px; color: var(--va-fg); }
+  </style>
+</Site>
