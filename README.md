@@ -82,29 +82,41 @@ Empty `resolutionSource`. Rules buried in prose. No catalyst calendar. And nothi
 
 ```json
 {
-  "event_id": "CMKD3L8N2PRT",
-  "slug": "fed-april-2026-rate-decision",
-  "question": "What will the Federal Reserve announce at the April 2026 FOMC meeting?",
+  "event_id": "CM-EVT-KXFED26APR",
+  "slug": "kxfed-2026-apr",
+  "question": "What will the Fed announce at the April 2026 FOMC meeting?",
   "category": "macro",
 
-  // shared labels for searching across both platforms
-  "tags": ["macro", "fed-rate-decisions", "fomc", "monetary-policy", "2026"],
+  // events are single-venue; this is Kalshi's bundle of the decision
+  "venues_covered": ["kalshi"],
 
-  "venues_covered": ["polymarket", "kalshi"],
+  // shared labels for searching across the universe
+  "tags": ["macro", "fed-rate-decisions", "fomc", "monetary-policy"],
 
   // real-world events that move the price
   "catalyst_dates": [
-    {"date": "2026-04-29", "event": "FOMC meeting Day 1"},
-    {"date": "2026-04-30", "event": "FOMC statement + press conference"}
+    {"date": "2026-04-29", "type": "fomc", "label": "FOMC meeting Day 1"},
+    {"date": "2026-04-30", "type": "fomc", "label": "FOMC statement + press conference"}
   ],
 
-  "editorial_notes": "These markets price the Fed's April 29, 2026 target rate decision. Polymarket has four directional questions; Kalshi has eleven rate-level strike markets. Both cite the Federal Reserve Board of Governors as the source."
+  "markets": [
+    {
+      "market_id": "CM-MKT-KXFED26APR-T325",
+      "question_id": "CMX-FED26APR-UB325",   // the venue-independent question
+      "rcg": {"grade": "A"},
+      "resolution": {"source": "Federal Reserve Board of Governors", "arbitration_model": "kalshi_staff"},
+      // the same question priced on the other venue
+      "also_on": [{"venue": "polymarket", "market_id": "CM-MKT-0xA1B2", "price": 0.62}]
+    }
+  ],
+
+  "editorial_notes": "Kalshi prices this decision as eleven rate-level strike markets; Polymarket as four directional questions. They are separate single-venue events; ClearMarket links the matching questions across them by question_id (surfaced as also_on)."
 }
 ```
 
-One canonical event. Fifteen markets bound across both platforms. The FOMC meeting on the catalyst calendar. The Federal Reserve identified as the underlying source.
+Two single-venue events — one Kalshi, one Polymarket — each graded, each on the FOMC catalyst calendar, with the Federal Reserve named as the source. The matching questions are linked across venues by a shared `question_id`, and each market's `also_on` surfaces its twin on the other venue with a live price.
 
-Full record (markets, daily marks, per-field provenance) at [`samples/fed-apr-2026/specimen.json`](samples/fed-apr-2026/specimen.json).
+Full record at [`samples/fed-apr-2026/specimen.json`](samples/fed-apr-2026/specimen.json) — a legacy combined-bundle specimen captured before the single-venue split; the live API now serves these as two single-venue events linked by `question_id`.
 
 ---
 
@@ -127,7 +139,7 @@ All specimens validate against the JSON Schemas. All records carry per-field `fi
 | Specimen | Platforms | Events | Markets | What it demonstrates |
 |---|---|---|---|---|
 | `samples/iran/` | Polymarket | 9 | 9 | Thematic family (9 related questions, shared tag `iran-conflict`). UMA Optimistic Oracle with subjective resolution. Full 4-side CLOB prices for open markets; `resolved_at` timestamps for already-settled children. |
-| `samples/fed-apr-2026/` | Polymarket + Kalshi | 1 | 15 | Cross-platform single event. 4 UMA-resolved Polymarket directional markets and 11 staff-resolved Kalshi strike markets, all normalized under one `event_id`. |
+| `samples/fed-apr-2026/` | Polymarket + Kalshi | 1 | 15 | Legacy combined bundle (pre single-venue split): 4 UMA-resolved Polymarket directional markets + 11 staff-resolved Kalshi strike markets under one `event_id`. The live API now models these as two single-venue events linked by `question_id`. |
 | `samples/netanyahu/` | Polymarket | 4 | 4 | Thematic family with deadline variants. Same subjective UMA pattern as Iran. |
 | `samples/sp500-2026/` | Kalshi | 1 | 27 | Strike ladder. 27 binary markets resolving to one closing value. Editorial refinement of Kalshi's loose source naming ("for example, Google Finance") to the authoritative calculator (S&P Dow Jones Indices). |
 | **Total** | | **15** | **55** | |

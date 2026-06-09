@@ -67,14 +67,14 @@ const cats = Array.from(new Set(rows.map((r) => r.category))).sort();
 const canonicalURL = 'https://clearmarket.fyi/events/';
 ---
 
-<Site title="CM Data - event universe · ClearMarket" description="Browse every graded, cross-venue prediction-market event in the ClearMarket reference universe. Kalshi + Polymarket." canonical={canonicalURL}>
+<Site title="CM Data - event universe · ClearMarket" description="Browse every graded, single-venue prediction-market event in the ClearMarket reference universe, with the same question linked across Kalshi and Polymarket by question_id." canonical={canonicalURL}>
   <article class="cm-v2">
     <h1 class="cm-h1">
       <span class="cm-h1-brand">CLEARMARKET DATA</span>
       <span class="cm-h1-sep">//</span>
       <span class="cm-h1-role">EVENT UNIVERSE</span>
     </h1>
-    <p class="cm-index-lede">Every graded, cross-venue prediction-market event · Kalshi + Polymarket · queryable at every surface</p>
+    <p class="cm-index-lede">Every graded, single-venue prediction-market event · the same question linked across Kalshi + Polymarket by question_id · queryable at every surface</p>
 
     <div class="cm-horizon">
       <span class="cm-horizon-token"><span class="cm-horizon-label">events:</span> <span class="cm-horizon-value" id="ev-count">{rows.length.toLocaleString()}</span></span>
