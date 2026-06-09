@@ -47,3 +47,4 @@ marks.jsonl
 *-bak.json
 web/.backup/
 web/.retired-routes/
+.mcp-registry-key.pem
