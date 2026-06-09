@@ -144,7 +144,8 @@ export function marketOut(m: any) {
     settlement_style: m.settlement_style ?? null,
     direction: m.direction ?? null,
     threshold: num(m.threshold),
-    cross_venue_id: m.claim_sig ?? null,  // cross-venue link: markets sharing this id are the same claim across venues
+    question_id: m.question_id ?? null,  // canonical question id: markets sharing it are the same question (across venues + events)
+    also_on: parseJson(m.also_on, null),  // the same question priced on other venues [{venue, market_id, price}]; null if unique to this venue
     tags: parseJson(m.tags, []),
   };
 }
@@ -474,7 +475,7 @@ async function refreshMarks(env: Env): Promise<void> {
   const { results } = await env.DB.prepare(
     `SELECT market_id, platform_market_id FROM markets
      WHERE platform_market_id IS NOT NULL
-       AND (claim_sig IS NOT NULL
+       AND (question_id IS NOT NULL
             OR market_id IN (SELECT primary_market_id FROM events WHERE primary_market_id IS NOT NULL))`
   ).all<{ market_id: string; platform_market_id: string }>();
   const want = new Map<string, string>();
@@ -559,7 +560,7 @@ async function snapshotDaily(env: Env): Promise<void> {
      SELECT market_id, ?, last_price, volume_24h_usd, volume_total_usd, ?
        FROM markets
       WHERE last_price IS NOT NULL
-        AND (claim_sig IS NOT NULL
+        AND (question_id IS NOT NULL
              OR market_id IN (SELECT primary_market_id FROM events WHERE primary_market_id IS NOT NULL))
      ON CONFLICT(market_id, day) DO UPDATE SET
         last_price = excluded.last_price,

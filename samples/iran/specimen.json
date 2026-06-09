@@ -15,7 +15,7 @@
       "events.tags": 9,
       "events.question": 9
     },
-    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 9 × markets.underlying_reference\n  - 9 × events.editorial_notes\n  - 9 × events.tags\n  - 9 × events.question\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting — subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
+    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 9 \u00d7 markets.underlying_reference\n  - 9 \u00d7 events.editorial_notes\n  - 9 \u00d7 events.tags\n  - 9 \u00d7 events.question\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting \u2014 subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
   },
   "events": [
     {
@@ -1176,7 +1176,7 @@
       "event_id": "CM59HW43GPR1",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by March 7?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1187,11 +1187,11 @@
       "last_trading_date": "2026-03-31T00:00:00Z",
       "resolve_at": "2026-03-09T14:07:29Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1256,22 +1256,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1284,7 +1273,7 @@
       "event_id": "CM2YM9J8YL99",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by March 15?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1295,11 +1284,11 @@
       "last_trading_date": "2026-03-15T00:00:00Z",
       "resolve_at": "2026-03-17T12:24:13Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1364,22 +1353,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1392,7 +1370,7 @@
       "event_id": "CM5ZJ9B51FZ9",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by March 31?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1403,11 +1381,11 @@
       "last_trading_date": "2026-03-31T00:00:00Z",
       "resolve_at": "2026-04-03T10:09:49Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1472,22 +1450,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1500,7 +1467,7 @@
       "event_id": "CMV3W00GD8S4",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by December 31?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1511,11 +1478,11 @@
       "last_trading_date": "2026-06-30T00:00:00Z",
       "resolve_at": "2026-04-21T18:22:32Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1580,22 +1547,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1608,7 +1564,7 @@
       "event_id": "CMPQCX0GL8J8",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by April 30?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1619,11 +1575,11 @@
       "last_trading_date": "2026-04-30T00:00:00Z",
       "resolve_at": "2026-04-21T18:05:00Z",
       "status": "resolved",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1688,22 +1644,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1716,7 +1661,7 @@
       "event_id": "CMB5F2GCJSR8",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by April 15?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1727,11 +1672,11 @@
       "last_trading_date": "2026-04-15T00:00:00Z",
       "resolve_at": "2026-04-15T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1793,22 +1738,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1821,7 +1755,7 @@
       "event_id": "CMJM4SLNRD84",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by June 30?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1832,11 +1766,11 @@
       "last_trading_date": "2026-06-30T00:00:00Z",
       "resolve_at": "2026-06-30T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -1898,22 +1832,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -1926,7 +1849,7 @@
       "event_id": "CM1YYVDNVDP6",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by May 15?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -1937,11 +1860,11 @@
       "last_trading_date": "2026-05-15T00:00:00Z",
       "resolve_at": "2026-05-15T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -2003,22 +1926,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",
@@ -2031,7 +1943,7 @@
       "event_id": "CMFJCRXJ10T3",
       "platform_event_id": null,
       "question_raw": "Iran x Israel/US conflict ends by April 7?",
-      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "description_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -2042,11 +1954,11 @@
       "last_trading_date": "2026-04-07T00:00:00Z",
       "resolve_at": "2026-04-07T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other’s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
+      "resolution_rules_raw": "This market will resolve to \"Yes\" if there is a continuous 14-day period without any qualifying military action between Iran, and Israel and the United States that begins at any time between market creation and the specified end date (ET). Otherwise, this market will resolve to \"No\". \n\nThe 14-day period may begin at any time between the creation of this market and the specified end date (ET), and must continue uninterrupted through 12:00 PM ET on the 14th calendar day after the strike is confirmed. \n\nA \"military action\" is defined as any use of force by Iran, or Israel and the United States against the other\u2019s soil, or official embassies or consulates, that is either officially acknowledged by the acting government or confirmed through a clear consensus of credible reporting. \n\nThis includes, but is not limited to, airstrikes, naval attacks, and ground incursions. \n\nCyberattacks, sanctions, and diplomatic actions do not count. \n\nOnly actions by Iranian forces explicitly claimed by the Islamic Republic of Iran, or confirmed to have originated from Iranian territory will qualify as Iranian military actions. Attacks on Israel or the US by proxy forces (i.e. Hezbollah, Houthis, etc.) will not count.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
-      "resolution_source": "Credible news reporting (subjective — no specific feed cited in market description).",
+      "resolution_source": "Credible news reporting (subjective \u2014 no specific feed cited in market description).",
       "source_citation": null,
       "source_type": "subjective",
       "contract_terms_url": null,
@@ -2108,22 +2020,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 0
-        },
-        "polymarket": {
-          "market_count": 1
         }
       },
       "regulatory_class": "DeFi",

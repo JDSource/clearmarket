@@ -30,7 +30,7 @@ bullets:
   - "Resolves YES if xAI publicly releases Grok 5 model before 2026-07-01."
 atomic_claims:
   - type: "cross_venue_spread"
-    provenance: "CM cross-venue link (cross_venue_id CMX-967EBBB3FC); prices direct from venue APIs"
+    provenance: "CM cross-venue link (question_id CMX-967EBBB3FC); prices direct from venue APIs"
     field_provenance:
       kalshi_price:
         tier: "direct"

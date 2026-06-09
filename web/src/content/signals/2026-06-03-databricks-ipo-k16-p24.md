@@ -31,7 +31,7 @@ bullets:
   - "Resolves YES only if Databricks completes an IPO on a public exchange before Jan 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
-    provenance: "CM cross-venue link (cross_venue_id CMX-EBC7EEEA61); prices direct from venue APIs"
+    provenance: "CM cross-venue link (question_id CMX-EBC7EEEA61); prices direct from venue APIs"
     field_provenance:
       kalshi_price:
         tier: "direct"

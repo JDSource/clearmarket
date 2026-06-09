@@ -129,15 +129,15 @@ const allEvents: Event[] = bundle.events
 const eventsBySlug = new Map(allEvents.map((e) => [e.slug, e]));
 const eventsById = new Map(allEvents.map((e) => [e.event_id, e]));
 
-// Cross-venue link index: markets sharing a claim_sig are the same claim across venues.
+// Cross-venue link index: markets sharing a question_id are the same claim across venues.
 const marketById = new Map<string, Market>(allMarkets.map((m) => [m.market_id, m]));
-const marketsBySig = new Map<string, Market[]>();
+const marketsByQuestionId = new Map<string, Market[]>();
 for (const m of allMarkets) {
-  const sig = (m as any).claim_sig as string | null;
+  const sig = (m as any).question_id as string | null;
   if (!sig) continue;
-  const list = marketsBySig.get(sig);
+  const list = marketsByQuestionId.get(sig);
   if (list) list.push(m);
-  else marketsBySig.set(sig, [m]);
+  else marketsByQuestionId.set(sig, [m]);
 }
 
 export type CrossVenueLink = {
@@ -152,9 +152,9 @@ export type CrossVenueLink = {
 // Twin markets on the OTHER venue that price the same claim as this market.
 export function getCrossVenueLinks(market_id: string): CrossVenueLink[] {
   const m = marketById.get(market_id);
-  const sig = m ? ((m as any).claim_sig as string | null) : null;
+  const sig = m ? ((m as any).question_id as string | null) : null;
   if (!m || !sig) return [];
-  return (marketsBySig.get(sig) ?? [])
+  return (marketsByQuestionId.get(sig) ?? [])
     .filter((p) => p.market_id !== market_id && p.platform !== m.platform)
     .map((p) => ({
       market_id: p.market_id,
@@ -166,15 +166,15 @@ export function getCrossVenueLinks(market_id: string): CrossVenueLink[] {
     }));
 }
 
-// Markets sharing a claim_sig = the same canonical claim across venues.
-export function getMarketsBySig(sig: string): Market[] {
-  return marketsBySig.get(sig) ?? [];
+// Markets sharing a question_id = the same canonical claim across venues.
+export function getMarketsByQuestionId(sig: string): Market[] {
+  return marketsByQuestionId.get(sig) ?? [];
 }
 
 // Canonical cross-venue pairs (built by merge_canon.py) — the data-driven /compare set.
 export type CanonPair = {
   slug: string; title: string; claim: string; sector: string;
-  horizon: string; claim_sig: string; markets: number; clean: boolean; confidence: string;
+  horizon: string; question_id: string; markets: number; clean: boolean; confidence: string;
 };
 let canonPairs: CanonPair[] = [];
 try {

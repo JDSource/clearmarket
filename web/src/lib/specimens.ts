@@ -68,7 +68,8 @@ export type Market = {
   resolved_at: string | null;
   first_seen_at: string;
   last_updated_at: string;
-  cross_platform_link?: { kalshi: { market_count: number }; polymarket: { market_count: number } } | null;
+  question_id?: string | null;
+  also_on?: { venue: 'kalshi' | 'polymarket'; market_id: string; price: number | null }[] | null;
   field_provenance?: Record<string, unknown>;
 };
 

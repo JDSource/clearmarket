@@ -92,12 +92,6 @@ Empty `resolutionSource`. Rules buried in prose. No catalyst calendar. And nothi
 
   "venues_covered": ["polymarket", "kalshi"],
 
-  // links the 4 Polymarket and 11 Kalshi markets pricing this event
-  "cross_platform_link": {
-    "polymarket": {"market_count": 4},
-    "kalshi": {"market_count": 11}
-  },
-
   // real-world events that move the price
   "catalyst_dates": [
     {"date": "2026-04-29", "event": "FOMC meeting Day 1"},
@@ -176,7 +170,7 @@ Three steps. The first two are deterministic Python; the third is the editorial 
  │     • Field mapping (Poly endDate → ClearMarket close_at)      │
  │     • Type coercion, status inference                          │
  │     • Derived fields: spread, mid, venues_covered,             │
- │       cross_platform_link, current_primary_mark                │
+ │       also_on, current_primary_mark                            │
  │     • field_provenance flags (platform_api vs. editorial)      │
  └────────────────────────────────────────────────────────────────┘
                              │
@@ -253,7 +247,7 @@ Four tables. Full definitions in `schema/`.
 - **Resolution mechanism vs. resolution source type are separate fields.** `arbitration_model` is who arbitrates (UMA oracle, Kalshi staff, platform auto, etc.). `source_type` is what data is cited (central bank, regulated data vendor, media consensus, subjective, etc.). Previously conflated; split makes it possible to filter for "UMA-resolved but with a named central-bank source" (e.g., Poly Fed markets).
 - **`resolution_proposer` enum** on markets captures UMA's MOOV2 upgrade (August 2025, a managed whitelist of 37 proposers), distinct from Kalshi's platform-staff model or permissionless proposals.
 - **`field_provenance` on every row.** Per-field flag with five values: `platform_api`, `clearmarket_editorial`, `derived`, `imputed`, `null_by_venue_limitation`. Lets a consumer audit which fields are raw vs. enriched at field granularity.
-- **Derived fields are computed at API serve time, not stored.** `spread`, `mid`, `venues_covered`, `cross_platform_link`, `current_primary_mark`: all reshaped from the normalized tables on demand.
+- **Derived fields are computed at API serve time, not stored.** `spread`, `mid`, `venues_covered`, `also_on`, `current_primary_mark`: all reshaped from the normalized tables on demand.
 
 ---
 

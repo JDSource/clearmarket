@@ -17,7 +17,7 @@ INSERT INTO marks_daily (market_id, day, last_price, volume_24h_usd, volume_tota
 SELECT market_id, '2026-05-29', last_price, volume_24h_usd, volume_total_usd, '2026-05-29T00:00:00Z'
   FROM markets
  WHERE last_price IS NOT NULL
-   AND (claim_sig IS NOT NULL
+   AND (question_id IS NOT NULL
         OR market_id IN (SELECT primary_market_id FROM events WHERE primary_market_id IS NOT NULL))
 ON CONFLICT(market_id, day) DO UPDATE SET
   last_price = excluded.last_price,

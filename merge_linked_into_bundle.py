@@ -1,9 +1,9 @@
 """
-Fold the unified layer (structured fields + claim_sig + tags) onto the RCG-enriched bundle (#4b).
+Fold the unified layer (structured fields + question_id + tags) onto the RCG-enriched bundle (#4b).
 
 The enriched bundle (web/data/universe-enriched-full.json) has RCG grades + resolution fields
 but the mangled native fields. _clearmarket_linked.json has the clean structured fields +
-claim_sig + tags keyed by native_id (= platform_market_id). Join on platform_market_id.
+question_id + tags keyed by native_id (= platform_market_id). Join on platform_market_id.
 
 Writes a NEW file (universe-enriched-linked.json) — does NOT overwrite the live bundle
 (hold-the-push; review before the API consumes it). Deterministic, no LLM.
@@ -21,7 +21,7 @@ for m in linked:
         "settlement_style": m.get("settlement_style"),
         "direction": m.get("direction"),
         "threshold": m.get("threshold"),
-        "claim_sig": m.get("claim_sig"),
+        "question_id": m.get("question_id"),
         "tags": m.get("tags"),
     }
 
@@ -33,10 +33,10 @@ for m in bundle.get("markets", []):
         m.update(f)
 
 mkts = bundle.get("markets", [])
-linked_ct = sum(1 for m in mkts if m.get("claim_sig"))
+linked_ct = sum(1 for m in mkts if m.get("question_id"))
 tagged = sum(1 for m in mkts if m.get("tags"))
 print(f"bundle markets: {len(mkts)}  |  matched + enriched: {matched} ({matched*100//max(len(mkts),1)}%)")
-print(f"  with claim_sig: {linked_ct}  |  with tags: {tagged}")
+print(f"  with question_id: {linked_ct}  |  with tags: {tagged}")
 
 (ROOT / "web/data/universe-enriched-linked.json").write_text(json.dumps(bundle, default=str))
 print("Saved -> web/data/universe-enriched-linked.json")

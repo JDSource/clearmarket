@@ -1,7 +1,7 @@
 """
 Compute cross_venue_spread per claim (#4 — closes the loop on the spread layer).
 
-For each claim_sig spanning both venues, normalize polarity (a 'below' market -> P(at-or-above)
+For each question_id spanning both venues, normalize polarity (a 'below' market -> P(at-or-above)
 = 1 - price) so prices are comparable, then spread = |kalshi_prob - polymarket_prob|. This is
 the deterministic CM number CM Signal reads to detect divergence.
 
@@ -23,8 +23,8 @@ def norm(m):
 
 groups = defaultdict(lambda: {"kalshi": [], "polymarket": []})
 for m in markets:
-    if m.get("claim_sig"):
-        groups[m["claim_sig"]][m["venue"]].append(m)
+    if m.get("question_id"):
+        groups[m["question_id"]][m["venue"]].append(m)
 
 spreads = []
 for sig, g in groups.items():

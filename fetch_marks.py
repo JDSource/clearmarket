@@ -1,7 +1,7 @@
 """
 Marks fetcher — the hourly cron's core (task #4 / marks).
 
-Pulls CURRENT prices for the cross-venue-linked markets (claim_sig set) from the Kalshi +
+Pulls CURRENT prices for the cross-venue-linked markets (question_id set) from the Kalshi +
 Polymarket public APIs (open markets only — resolved/stale ones naturally drop out), appends a
 timestamped marks snapshot, and recomputes cross_venue_spread on the FRESH prices so the
 divergences are trustworthy (no stale 1.0s, no deadline-resolved artifacts).
@@ -27,11 +27,11 @@ def _get(url, params):
     return r.json()
 
 # ---- which markets to snapshot ----
-linked = [m for m in json.loads((ROOT / "_clearmarket_linked.json").read_text())["markets"] if m.get("claim_sig")]
+linked = [m for m in json.loads((ROOT / "_clearmarket_linked.json").read_text())["markets"] if m.get("question_id")]
 want_k = {m["native_id"] for m in linked if m["venue"] == "kalshi"}
 want_p = {m["native_id"] for m in linked if m["venue"] == "polymarket"}
 dir_by = {m["native_id"]: m.get("direction") for m in linked}
-sig_by = {m["native_id"]: m["claim_sig"] for m in linked}
+sig_by = {m["native_id"]: m["question_id"] for m in linked}
 print(f"linked markets to snapshot: {len(want_k)} kalshi / {len(want_p)} poly")
 
 now = datetime.now(timezone.utc).isoformat()
@@ -85,14 +85,14 @@ def norm(nid):
 groups = defaultdict(lambda: {"kalshi": [], "polymarket": []})
 for m in linked:
     if m["native_id"] in fresh:
-        groups[m["claim_sig"]][m["venue"]].append(m["native_id"])
+        groups[m["question_id"]][m["venue"]].append(m["native_id"])
 
 spreads = []
 for sig, g in groups.items():
     kp = next((norm(n) for n in g["kalshi"] if norm(n) is not None), None)
     pp = next((norm(n) for n in g["polymarket"] if norm(n) is not None), None)
     if kp is None or pp is None: continue
-    subj = next(m["subject"] for m in linked if m["claim_sig"] == sig)
+    subj = next(m["subject"] for m in linked if m["question_id"] == sig)
     rq = {m["native_id"]: m["raw_q"] for m in linked}
     spreads.append({"sig": sig, "subject": subj, "k": round(kp, 3), "p": round(pp, 3),
                     "spread": round(abs(kp - pp), 3),
