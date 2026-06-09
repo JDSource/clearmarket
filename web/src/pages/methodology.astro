@@ -82,7 +82,7 @@ const updated = '2026-05-26';
 
       <section class="surface" id="rcg">
         <div class="surface-tab">3 · RESOLUTION CLARITY GRADE (RCG) · v2</div>
-        <p>A per-<strong>market</strong> A/B/C grade of how unambiguously a market will resolve. Per market, not per event: one event can hold a Kalshi market that resolves clearly and a Polymarket market on the same question that resolves subjectively. The grade is a <strong>weighted score (0–100) banded into A/B/C, then capped</strong> — not a single rule. It rolls seven factors grounded in documented resolution failures (Hall's a16z analysis + the CFTC ANPRM comment): the failures were not absent sources but specific structural defects, so the grade scores those defects directly.</p>
+        <p>A per-<strong>market</strong> A/B/C grade of how unambiguously a market will resolve. Per market, not per event: one event can hold a Kalshi market that resolves clearly and a Polymarket market on the same question that resolves subjectively. The grade is a <strong>weighted score (0–100) banded into A/B/C, then capped</strong> — not a single rule. It rolls seven factors grounded in documented resolution failures (a16z's analysis of prediction-market resolution failures + the CFTC ANPRM comment): the failures were not absent sources but specific structural defects, so the grade scores those defects directly.</p>
 
         <h3>Seven factors (weights sum to 100)</h3>
         <table class="m-table">
@@ -113,7 +113,14 @@ const updated = '2026-05-26';
         <p>The source-conflict rule was deterministic (URL-count + regex) through 2026-05-26; it moved to the LLM on 2026-05-27 because URL counting mis-read one source across multiple pages as "multiple sources" (false C) and missed prose-named sources entirely (false <code>na</code>). It is now a reading-comprehension judgment.</p>
 
         <h3>Validation</h3>
-        <p>The model reproduces the four documented failures as <strong>C / C / B / C</strong> (Venezuela, Zelensky, OPM, Ukraine). Full-universe distribution is pending the per-event LLM rater's calibration run against a sample of <em>ordinary</em> markets — four tail failures are not a calibration set.</p>
+        <p>The model reproduces the four prominent prediction-market resolution failures of the past 24 months as <strong>C / C / B / C</strong> — each a real dispute that traced to a rule naming a source <em>category</em> instead of a specific authority:</p>
+        <ul class="m-list">
+          <li><strong>Venezuela election — C.</strong> The rule named two sources that conflicted ("official information from Venezuela" vs. "a consensus of credible reporting"). On election night the Maduro-controlled authority and the opposition's tallies disagreed, and nothing said which controlled.</li>
+          <li><strong>Zelensky suit — C.</strong> Over $200M traded on whether his NATO-summit outfit was a "suit," with no named source to decide. It resolved YES, then UMA flipped it to NO — the dispute was about whose interpretation controlled, not what happened.</li>
+          <li><strong>OPM shutdown — B.</strong> Resolved against the OPM website's status; funding was signed November 12 but the site did not update until November 13, so traders right on the event lost on the source's lag.</li>
+          <li><strong>Ukraine map — C.</strong> Resolved against a particular online map, with no rule for what happens if it is edited — and it was allegedly modified mid-contract.</li>
+        </ul>
+        <p>Full-universe distribution is pending the per-event LLM rater's calibration run against a sample of <em>ordinary</em> markets — four tail failures are not a calibration set.</p>
 
         <p>The cross-venue resolution-governance contrast (objective, named-authority Kalshi markets vs. the subjective-consensus share on Polymarket) is the signal the venues themselves do not surface.</p>
       </section>
