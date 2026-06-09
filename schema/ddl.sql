@@ -275,7 +275,7 @@ COMMIT;
 -- =============================================================
 -- Notes
 -- =============================================================
--- 1. Derived API fields (venues_covered, current_primary_mark, cross_platform_link,
+-- 1. Derived API fields (venues_covered, current_primary_mark, also_on,
 --    spread, mid, divergence_from_primary, hours_since_source_update,
 --    resolution_source_classification, resolution_mechanism_display) are NOT columns.
 --    They are computed at API serve time. See schema-working-spec.md "Public API derived fields".

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://clearmarket.fyi/schema/markets.json",
   "title": "ClearMarket Market",
-  "description": "One row per market per platform. Raw venue data + ClearMarket editorial fill on top. Auto-ingested daily from Kalshi and Polymarket public APIs. API response shape includes the derived field cross_platform_link, computed at serve time. Thematic grouping across events is handled via tags on the linked event, not via fields on markets.",
+  "description": "One row per market per platform. Raw venue data + ClearMarket editorial fill on top. Auto-ingested daily from Kalshi and Polymarket public APIs. API response shape includes the derived field also_on (the same question on other venues), computed at serve time. Thematic grouping across events is handled via tags on the linked event, not via fields on markets.",
   "type": "object",
   "required": [
     "market_id",
@@ -193,10 +193,10 @@
       "enum": ["touch", "terminal", "relative", "occurrence", null],
       "description": "How the contract settles on the underlying: 'touch' (level ever reached in a window), 'terminal' (level at a single point in time), 'relative' (new high/low), 'occurrence' (a discrete event happens). Distinct from arbitration_model (who arbitrates). Part of the cross-venue event key."
     },
-    "cross_venue_id": {
+    "question_id": {
       "type": ["string", "null"],
       "pattern": "^CMX-[0-9A-F]{10}$",
-      "description": "Cross-venue link id. Markets sharing a cross_venue_id are the SAME resolvable claim across venues (subject + threshold + settlement_style, plus window for terminal). The stable join key CM Signal references for cross-venue divergence. Null if the market has no cross-venue counterpart."
+      "description": "Canonical question id. The normalized real-world question this market settles (subject + threshold + settlement_style, plus window for terminal). Markets sharing a question_id are the SAME question — across venues and across events within a venue. The stable join key CM Signal references. Null where the market has not been canonicalized. (Value prefix is CMX- for historical continuity; it is the ClearMarket question id.)"
     },
     "tags": {
       "type": "array",
@@ -245,9 +245,19 @@
       "format": "date-time",
       "description": "Most recent ingestion update."
     },
-    "cross_platform_link": {
-      "type": ["object", "null"],
-      "description": "DERIVED AT API SERVE TIME. Summary of markets sharing the same event_id across platforms. Shape: {kalshi: {market_count}, polymarket: {market_count}}. Null if no event_id assigned."
+    "also_on": {
+      "type": ["array", "null"],
+      "description": "DERIVED. The SAME question (same question_id) priced on other venues. Non-null only when this market's question_id has markets on a different venue; null when the question is unique to this venue. Lets a consumer see the cross-venue twin(s) without a second lookup.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "venue": {"type": "string", "enum": ["kalshi", "polymarket"], "description": "The other venue this question trades on."},
+          "market_id": {"type": "string", "description": "FK to the counterpart market (market_id) on that venue."},
+          "price": {"type": ["number", "null"], "description": "Last price (implied probability) of the counterpart market."}
+        },
+        "required": ["venue", "market_id"],
+        "additionalProperties": false
+      }
     },
     "field_provenance": {
       "type": "object",

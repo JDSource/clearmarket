@@ -15,7 +15,7 @@
       "events.tags": 1,
       "events.question": 0
     },
-    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 15 × markets.underlying_reference\n  - 1 × events.editorial_notes\n  - 1 × events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting — subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
+    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 15 \u00d7 markets.underlying_reference\n  - 1 \u00d7 events.editorial_notes\n  - 1 \u00d7 events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting \u2014 subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
   },
   "events": [
     {
@@ -185,7 +185,7 @@
       "event_id": "CMCYQ4MMGJN4",
       "platform_event_id": null,
       "question_raw": "Will the Fed decrease interest rates by 50+ bps after the April 2026 meeting?",
-      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -196,7 +196,7 @@
       "last_trading_date": "2026-04-29T00:00:00Z",
       "resolve_at": "2026-04-29T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
@@ -262,22 +262,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -290,7 +279,7 @@
       "event_id": "CMCYQ4MMGJN4",
       "platform_event_id": null,
       "question_raw": "Will the Fed decrease interest rates by 25 bps after the April 2026 meeting?",
-      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -301,7 +290,7 @@
       "last_trading_date": "2026-04-29T00:00:00Z",
       "resolve_at": "2026-04-29T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
@@ -367,22 +356,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -395,7 +373,7 @@
       "event_id": "CMCYQ4MMGJN4",
       "platform_event_id": null,
       "question_raw": "Will there be no change in Fed interest rates after the April 2026 meeting?",
-      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -406,7 +384,7 @@
       "last_trading_date": "2026-04-29T00:00:00Z",
       "resolve_at": "2026-04-29T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
@@ -472,22 +450,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -500,7 +467,7 @@
       "event_id": "CMCYQ4MMGJN4",
       "platform_event_id": null,
       "question_raw": "Will the Fed increase interest rates by 25+ bps after the April 2026 meeting?",
-      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "description_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "category_raw": null,
       "contract_type": "binary",
       "settlement_currency": "USDC",
@@ -511,7 +478,7 @@
       "last_trading_date": "2026-04-29T00:00:00Z",
       "resolve_at": "2026-04-29T00:00:00Z",
       "status": "open",
-      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC’s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC’s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
+      "resolution_rules_raw": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal fund range are made by the Federal Open Market Committee (FOMC) meetings.\n\nThis market will resolve to the amount of basis points the upper bound of the target federal funds rate is changed by versus the level it was prior to the Federal Reserve's April 2026 meeting.\n\nIf the target federal funds rate is changed to a level not expressed in the displayed options, the change will be rounded up to the nearest 25 and will resolve to the relevant bracket. (e.g. if there's a cut/increase of 12.5 bps it will be considered to be 25 bps)\n\nThe resolution source for this market is the FOMC\u2019s statement after its meeting scheduled for April 28-29, 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm.\n\nThe level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.\n\nThis market may resolve as soon as the FOMC\u2019s statement for their April meeting with relevant data is issued. If no statement is released by the end date of the next scheduled meeting, this market will resolve to the \"No change\" bracket.",
       "resolution_triggers": null,
       "arbitration_model": "uma_oracle",
       "resolution_proposer": "managed_whitelist",
@@ -577,22 +544,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -697,22 +653,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -817,22 +762,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -937,22 +871,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1057,22 +980,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1177,22 +1089,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1297,22 +1198,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1417,22 +1307,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1537,22 +1416,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1657,22 +1525,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1777,22 +1634,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1897,22 +1743,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",

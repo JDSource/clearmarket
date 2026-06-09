@@ -1,7 +1,7 @@
 """
 Deadline-aligned cross-venue spreads (the trustworthy spread layer).
 
-A claim_sig groups a deadline ladder as ONE claim ("same question"), but a spread is only
+A question_id groups a deadline ladder as ONE claim ("same question"), but a spread is only
 meaningful between the SAME deadline. This pairs Kalshi<->Poly markets WITHIN a claim by
 nearest deadline (<=TOL days), polarity-normalizes (a 'below' market -> P(at-or-above)),
 and computes the spread per aligned pair. Uses the latest marks from marks.jsonl.
@@ -20,7 +20,7 @@ TOL = 7  # STRICT: two markets are the "same deadline" only within a week
 # GATE: spreads only on threshold-bearing markets (clean structured data). Occurrence/binary
 # pairs ship as LINKS (raw prices), never an editorialized spread — precision over recall.
 linked = [m for m in json.loads((ROOT / "_clearmarket_linked.json").read_text())["markets"]
-          if m.get("claim_sig") and m.get("threshold") is not None]
+          if m.get("question_id") and m.get("threshold") is not None]
 
 # latest mark per native_id
 latest = {}
@@ -40,7 +40,7 @@ groups = defaultdict(lambda: {"kalshi": [], "polymarket": []})
 for m in linked:
     mk = latest.get(m["native_id"])
     if mk and mk.get("last_price") is not None:
-        groups[m["claim_sig"]][m["venue"]].append({**m, "price": mk["last_price"], "d": parse_d(m.get("window"))})
+        groups[m["question_id"]][m["venue"]].append({**m, "price": mk["last_price"], "d": parse_d(m.get("window"))})
 
 pairs, seen = [], set()
 for sig, g in groups.items():

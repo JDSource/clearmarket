@@ -55,7 +55,7 @@ const TOOLS = [
     description:
       'Fetch the full ClearMarket record for one event by slug: the canonical question, every linked market across ' +
       'Kalshi and Polymarket, each market\'s current price + Resolution Clarity Grade (A/B/C) + resolution-source ' +
-      'provenance, cross-venue links (cross_venue_id), and the upcoming catalyst dates that move it before it resolves. ' +
+      'provenance, the canonical question_id (and also_on: the same question priced on other venues), and the upcoming catalyst dates that move it before it resolves. ' +
       'Use when you need the authoritative, graded, cross-venue view of a SPECIFIC event before reasoning about or ' +
       'acting on a prediction market. If you only have a topic (not a slug), call list_events first.',
     inputSchema: {
@@ -69,7 +69,7 @@ const TOOLS = [
     description:
       'Fetch one market by market_id: raw question, current price / implied probability, the Resolution Clarity Grade ' +
       'with the factors behind it, full resolution-source provenance (who resolves it, named source, source type & quality), ' +
-      'and the cross-venue id (cross_venue_id). Use when you have a specific market and need its resolution trustworthiness and ' +
+      'the canonical question_id, and also_on (the same question priced on other venues, with prices). Use when you have a specific market and need its resolution trustworthiness and ' +
       'provenance before trusting its price.',
     inputSchema: {
       type: 'object',

@@ -305,6 +305,7 @@ const datasetJsonLd = {
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: `${jsonURL}` },
     { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
   ],
+  includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/signals/', name: 'ClearMarket Signal', description: 'Daily prediction-market intelligence wires built on ClearMarket reference data.', url: 'https://clearmarket.fyi/signals/' },
   isBasedOn: `https://clearmarket.fyi/events/${data.event_slug}/`,
 };
 

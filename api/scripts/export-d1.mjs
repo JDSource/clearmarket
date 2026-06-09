@@ -98,13 +98,14 @@ CREATE TABLE markets (
   settlement_style TEXT,
   direction TEXT,
   threshold REAL,
-  claim_sig TEXT,
+  question_id TEXT,
+  also_on TEXT,              -- JSON [{venue, market_id, price}] of the same question on other venues; NULL if unique
   tags TEXT
 );
 CREATE INDEX idx_markets_event ON markets(event_id);
 CREATE INDEX idx_markets_grade ON markets(resolution_clarity_grade);
 CREATE INDEX idx_markets_platform ON markets(platform);
-CREATE INDEX idx_markets_claim ON markets(claim_sig);
+CREATE INDEX idx_markets_question ON markets(question_id);
 
 -- Auth (Option 3): free-key signup + per-day rate limiting.
 CREATE TABLE IF NOT EXISTS api_keys (
@@ -234,7 +235,7 @@ const mRows = markets.map((m) => `(${[
   q(m.resolution_source_quality), q(m.source_commitment), q(m.source_commitment_subtype),
   q(m.source_hedge_text), q(m.resolution_clarity_grade), q(m.rcg_score),
   json(m.rcg_caps), q(m.rcg_applied_factors), q(m.last_price), q(m.volume_24h_usd), q(m.volume_total_usd),
-  q(m.settlement_style), q(m.direction), q(m.threshold), q(m.claim_sig), json(m.tags),
+  q(m.settlement_style), q(m.direction), q(m.threshold), q(m.question_id), json(m.also_on ?? null), json(m.tags),
 ].join(',')})`);
 
 // ---- resolution log seed (read from web/data/resolution-log.json) ----
@@ -254,7 +255,7 @@ try {
 
 const batches = [
   ...chunkBySize(eRows, 'INSERT INTO events (event_id,slug,question,category,tags,primary_market_id,event_type,ladder_distribution,catalyst_types,catalyst_dates,venue,editorial_notes,is_demo,published,created_at,updated_at) VALUES'),
-  ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,source_commitment,source_commitment_subtype,source_hedge_text,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,claim_sig,tags) VALUES'),
+  ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,source_commitment,source_commitment_subtype,source_hedge_text,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,question_id,also_on,tags) VALUES'),
   ...(calRows.length ? chunkBySize(calRows, 'INSERT INTO catalyst_calendar (type,label,source_url,dates) VALUES') : []),
   ...(rlRows.length ? chunkBySize(rlRows, 'INSERT INTO resolution_log (market_id,event_id,platform,event_type,occurred_at,recorded_at,to_value,final_price,source,source_ref,actor) VALUES') : []),
 ];

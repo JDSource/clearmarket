@@ -263,22 +263,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -368,22 +357,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -473,22 +451,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -578,22 +545,11 @@
         "resolution_source": {
           "source": "clearmarket_editorial"
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DeFi",
@@ -698,22 +654,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -818,22 +763,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -938,22 +872,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1058,22 +981,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1178,22 +1090,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1298,22 +1199,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1418,22 +1308,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1538,22 +1417,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1658,22 +1526,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1778,22 +1635,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",
@@ -1898,22 +1744,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 11
-        },
-        "polymarket": {
-          "market_count": 4
         }
       },
       "regulatory_class": "DCM",

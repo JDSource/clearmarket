@@ -15,7 +15,7 @@
       "events.tags": 1,
       "events.question": 0
     },
-    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 27 × markets.underlying_reference\n  - 1 × events.editorial_notes\n  - 1 × events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting — subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
+    "editorial_review_notes": "Provenance notes for this specimen.\nAI-drafted fields are marked with `ai_drafted: true` in each row's field_provenance block.\n\nAI-drafted field counts in this specimen:\n  - 27 \u00d7 markets.underlying_reference\n  - 1 \u00d7 events.editorial_notes\n  - 1 \u00d7 events.tags\n\nProvenance rules:\n  - Kalshi `resolution_source` and `source_citation` are always pulled from the series `settlement_sources` API field.\n  - Polymarket `resolution_source` uses an editorial default ('Credible news reporting \u2014 subjective') only when the platform API ships the field empty.\n  - `underlying_reference`: per-market AI draft, anchored on market close_at for authoritative dates.\n  - `editorial_notes`: per-event AI draft, 2-3 sentences of institutional framing.\n  - `tags`: 4-6 per event, mix of thematic, attribute, and entity tags, anchored on the authoritative year from close_at.\n  - `question`: AI rewrite of raw platform prose into canonical grammar when needed; otherwise platform value retained."
   },
   "events": [
     {
@@ -276,22 +276,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -396,22 +385,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -516,22 +494,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -636,22 +603,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -756,22 +712,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -876,22 +821,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -996,22 +930,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1116,22 +1039,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1236,22 +1148,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1356,22 +1257,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1476,22 +1366,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1596,22 +1475,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1716,22 +1584,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1836,22 +1693,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -1956,22 +1802,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2076,22 +1911,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2196,22 +2020,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2316,22 +2129,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2436,22 +2238,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2556,22 +2347,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2676,22 +2456,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2796,22 +2565,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -2916,22 +2674,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -3036,22 +2783,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -3156,22 +2892,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -3276,22 +3001,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",
@@ -3396,22 +3110,11 @@
           "source": "clearmarket_editorial",
           "ai_drafted": true
         },
-        "cross_platform_link": {
-          "source": "derived"
-        },
         "regulatory_class": {
           "source": "derived"
         },
         "analyst_notes": {
           "source": "clearmarket_editorial"
-        }
-      },
-      "cross_platform_link": {
-        "kalshi": {
-          "market_count": 27
-        },
-        "polymarket": {
-          "market_count": 0
         }
       },
       "regulatory_class": "DCM",

@@ -2,7 +2,7 @@
 gen_cross_venue_divergence.py — CM Signal cross_venue_divergence wire generator.
 
 Self-contained, NO external API. Reads the linked bundle's canonical cross-venue pairs
-(canon-pairs.json + claim_sig), computes the Kalshi-vs-Polymarket price gap per CLEAN binary pair,
+(canon-pairs.json + question_id), computes the Kalshi-vs-Polymarket price gap per CLEAN binary pair,
 gates on a meaningful gap + two-sided liquidity (signal-not-noise), then ONE Claude call renders
 each qualifying divergence into a wire. The prices are direct provenance from the bundle (venue
 APIs); the wire cites the CM cross-venue record (CM is the layer that linked the two venues).
@@ -40,13 +40,13 @@ def find_divergences():
     evs = {e["event_id"]: e for e in bundle["events"]}
     by_sig = defaultdict(list)
     for m in bundle["markets"]:
-        if m.get("claim_sig"):
-            by_sig[m["claim_sig"]].append(m)
+        if m.get("question_id"):
+            by_sig[m["question_id"]].append(m)
     out = []
     for p in pairs:
         if not p.get("clean"):
             continue  # 1:1 binary only — never a ladder
-        grp = by_sig.get(p["claim_sig"], [])
+        grp = by_sig.get(p["question_id"], [])
         k = next((m for m in grp if m["platform"] == "kalshi"), None)
         po = next((m for m in grp if m["platform"] == "polymarket"), None)
         if not (k and po):
@@ -156,7 +156,7 @@ def build_md(d, it, sig_id, slug, date):
     fm += [f"  - {yz(b)}" for b in bullets]
     fm += [
         "atomic_claims:", '  - type: "cross_venue_spread"',
-        f"    provenance: {yz('CM cross-venue link (claim_sig ' + p['claim_sig'] + '); prices direct from venue APIs')}",
+        f"    provenance: {yz('CM cross-venue link (question_id ' + p['question_id'] + '); prices direct from venue APIs')}",
         "    field_provenance:",
         "      kalshi_price:", '        tier: "direct"', '        method: "kalshi_api"',
         "      poly_price:", '        tier: "direct"', '        method: "polymarket_clob_api"',
@@ -177,7 +177,7 @@ def build_md(d, it, sig_id, slug, date):
     ]
     body = no_dash(it.get("interp") or
                    "Cross-venue divergence: the same claim priced differently on Kalshi and Polymarket, "
-                   "linked by CM's claim_sig. The gap is each venue's current price; provenance is direct.")
+                   "linked by CM's question_id. The gap is each venue's current price; provenance is direct.")
     return "---\n" + "\n".join(fm) + "\n---\n\n" + body + "\n"
 
 def main():

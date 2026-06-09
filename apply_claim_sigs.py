@@ -1,11 +1,11 @@
 """
-Consolidate cross-venue links: stamp claim_sig onto every market (#4a).
+Consolidate cross-venue links: stamp question_id onto every market (#4a).
 
 Combines the two linkers:
   - threshold links  -> _unify_all.json "links" (members carry native_id)
   - occurrence links -> _unify_occurrence_links.json (keyed by event_native + subject)
 
-Output: _clearmarket_linked.json — the unified markets with claim_sig populated, ready to
+Output: _clearmarket_linked.json — the unified markets with question_id populated, ready to
 feed enrich_universe.py / the API. Deterministic, no LLM.
 """
 import json
@@ -40,18 +40,18 @@ for m in markets:
         sig = sig_by_evsubj.get((m["venue"], m["event_native"], m["subject"]))
         if sig:
             src["occurrence"] += 1
-    m["claim_sig"] = sig
+    m["question_id"] = sig
 
-linked = sum(1 for m in markets if m.get("claim_sig"))
-sigs = {m["claim_sig"] for m in markets if m.get("claim_sig")}
-print(f"markets: {len(markets)}  |  with claim_sig: {linked}  ({src['threshold']} threshold / {src['occurrence']} occurrence)")
-print(f"distinct claim_sigs (cross-venue claims): {len(sigs)}")
+linked = sum(1 for m in markets if m.get("question_id"))
+sigs = {m["question_id"] for m in markets if m.get("question_id")}
+print(f"markets: {len(markets)}  |  with question_id: {linked}  ({src['threshold']} threshold / {src['occurrence']} occurrence)")
+print(f"distinct question_ids (cross-venue claims): {len(sigs)}")
 
-# coverage by claim_sig group: venues present
+# coverage by question_id group: venues present
 by_sig = {}
 for m in markets:
-    if m.get("claim_sig"):
-        by_sig.setdefault(m["claim_sig"], set()).add(m["venue"])
+    if m.get("question_id"):
+        by_sig.setdefault(m["question_id"], set()).add(m["venue"])
 both = sum(1 for v in by_sig.values() if len(v) > 1)
 print(f"claim groups spanning BOTH venues: {both} / {len(by_sig)}")
 

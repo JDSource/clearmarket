@@ -60,7 +60,8 @@ export const GET: APIRoute = ({ params }) => {
         settlement_style: m.settlement_style,
         direction: m.direction,
         threshold: m.threshold,
-        cross_venue_id: m.claim_sig ?? null,
+        question_id: m.question_id ?? null,
+        also_on: (m as any).also_on ?? null,
         last_price: mk?.last_price ?? m.last_price ?? null,
         volume_total_usd: m.volume_total_usd ?? null,
       };

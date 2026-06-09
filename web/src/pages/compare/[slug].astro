@@ -15,20 +15,28 @@ import ResolutionStrip from '../../components/ResolutionStrip.astro';
 import MarketsTable from '../../components/MarketsTable.astro';
 import ProgrammaticAccess from '../../components/ProgrammaticAccess.astro';
 import {
-  getMarketsBySig, getMarkByMarketId, getEventById, getCanonPairs,
+  getMarketsByQuestionId, getMarkByMarketId, getEventById, getCanonPairs,
   SPECIMEN_GENERATED_AT, SCHEMA_VERSION, type Market, type CanonPair,
 } from '../../lib/universe';
 
 export async function getStaticPaths() {
   // Data-driven off canon-pairs.json (merge_canon.py): clean binary cross-venue claims.
-  return getCanonPairs().map((u) => ({ params: { slug: u.slug }, props: { u } }));
+  // LIVE-TWIN GUARD: only emit a /compare page when the question still has a live market on
+  // BOTH venues. Markets expire/delist between data builds, which would otherwise leave
+  // one-sided "Kalshi vs Polymarket" pages showing a single venue.
+  return getCanonPairs()
+    .filter((u) => {
+      const venues = new Set(getMarketsByQuestionId(u.question_id).map((m) => m.platform));
+      return venues.has('kalshi') && venues.has('polymarket');
+    })
+    .map((u) => ({ params: { slug: u.slug }, props: { u } }));
 }
 const { u } = Astro.props as { u: CanonPair };
 
 // Group the claim's markets by venue → one venue-block per venue in the shared MarketsTable.
 // Single market per venue (NYC) → 1 row per block; a ladder on each venue → N rows per block.
 type Item = { m: Market; mark: any };
-const sigMarkets = getMarketsBySig(u.claim_sig);
+const sigMarkets = getMarketsByQuestionId(u.question_id);
 const ORDER: ('kalshi' | 'polymarket')[] = ['kalshi', 'polymarket'];
 const marketGroups = ORDER
   .map((platform) => {
@@ -52,8 +60,42 @@ const canonicalURL = `https://clearmarket.fyi/compare/${u.slug}/`;
 // shim event for the shared components (they expect an Event with markets)
 const ev0 = allMarkets[0]?.event_id ? getEventById(allMarkets[0].event_id) : undefined;
 function fmtDate(d: string | null): string { return d ? d.slice(0, 10) : '—'; }
+
+// Dataset JSON-LD for the cross-venue comparison page — same shape as events/[slug].astro so
+// crawlers can discover /compare too. Keeps name+description+creator+license+includedInDataCatalog
+// (the GSC-required fields); never isPartOf.
+const cmpVenues = [...new Set(allMarkets.map((m) => m.platform))];
+const cmpGrade = (allMarkets.find((m) => (m as any).resolution_clarity_grade) as any)?.resolution_clarity_grade ?? null;
+const compareJsonLd: Record<string, unknown> = {
+  '@context': ['https://schema.org', { cm: 'https://clearmarket.fyi/schema/v1#' }],
+  '@type': 'Dataset',
+  '@id': canonicalURL,
+  name: `${u.title} — Kalshi vs Polymarket`,
+  description: `Cross-venue comparison for "${u.claim}". The same question priced on ${cmpVenues.join(' + ')}, linked by ClearMarket question_id ${u.question_id}. ${allMarkets.length} market${allMarkets.length === 1 ? '' : 's'} tracked.`,
+  url: canonicalURL,
+  identifier: u.question_id,
+  keywords: [u.sector, 'cross-venue', 'kalshi', 'polymarket'].filter(Boolean),
+  isAccessibleForFree: true,
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  publisher: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  variableMeasured: [
+    { '@type': 'PropertyValue', name: 'question_id', value: u.question_id, description: 'ClearMarket canonical question id (CMX-…); markets sharing it are the same question priced across Kalshi and Polymarket.' },
+    { '@type': 'PropertyValue', name: 'market_count', value: allMarkets.length },
+    ...(cmpGrade ? [{ '@type': 'PropertyValue', name: 'resolution_clarity_grade', value: cmpGrade, description: 'ClearMarket RCG v2 grade (A/B/C) of the representative market.' }] : []),
+  ],
+  distribution: [
+    { '@type': 'DataDownload', encodingFormat: 'text/html', contentUrl: canonicalURL },
+  ],
+  includedInDataCatalog: { '@type': 'DataCatalog', '@id': 'https://clearmarket.fyi/compare/', name: 'ClearMarket Cross-Venue Comparisons', description: 'Same-question prediction-market prices compared across Kalshi and Polymarket.', url: 'https://clearmarket.fyi/compare/' },
+  'cm:questionId': u.question_id,
+  'cm:venuesCovered': cmpVenues,
+};
+if (earliest && latest) compareJsonLd.temporalCoverage = earliest === latest ? earliest : `${earliest}/${latest}`;
+else if (earliest) compareJsonLd.temporalCoverage = earliest;
 ---
 <Site title={`${u.title} · Kalshi vs Polymarket · ClearMarket`} description={u.claim} canonical={canonicalURL}>
+  <script type="application/ld+json" set:html={JSON.stringify(compareJsonLd)} slot="head" />
   <nav class="cm-subnav" aria-label="Sections" slot="subnav">
     <a href="#markets" data-section="markets" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">▎</span>Markets</a>
     <a href="#resolution" data-section="resolution" class="cm-subnav-link"><span class="cm-active-mark">▎</span>Resolution</a>
@@ -62,7 +104,7 @@ function fmtDate(d: string | null): string { return d ? d.slice(0, 10) : '—'; 
     <span class="cm-subnav-snapshot">snapshot <span class="cm-dot-positive">●</span> {fmtDate(SPECIMEN_GENERATED_AT)}</span>
   </nav>
 
-  <article class="cm-v2" data-cm-claim-sig={u.claim_sig}>
+  <article class="cm-v2" data-cm-question-id={u.question_id}>
     <h1 class="cm-h1">{u.title}<span class="cm-h1-resolves">  [ {u.horizon}{resolveTail} ]</span></h1>
 
     {/* BORDERLESS STATUS TICKER — flush under the title (meta strip removed; vol moved to H1) */}
@@ -79,7 +121,7 @@ function fmtDate(d: string | null): string { return d ? d.slice(0, 10) : '—'; 
     <div class="cm-event-foot">
       <span><span class="cm-meta-l">snapshot</span> <code>{SPECIMEN_GENERATED_AT}</code></span>
       <span><span class="cm-meta-l">schema</span> <code>{SCHEMA_VERSION}</code></span>
-      <span><span class="cm-meta-l">cross_venue_id</span> <code>{u.claim_sig}</code></span>
+      <span><span class="cm-meta-l">question_id</span> <code>{u.question_id}</code></span>
       <a href="/events/">all events →</a>
     </div>
 
