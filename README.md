@@ -4,7 +4,7 @@
 
 **Live now:** [clearmarket.fyi](https://clearmarket.fyi) · REST `api.clearmarket.fyi/v1` · MCP `api.clearmarket.fyi/mcp` · daily wire feed at [`/signals`](https://clearmarket.fyi/signals). Open and read-only — no key required.
 
-**Coverage:** ~1,857 events / ~15,138 markets across Kalshi + Polymarket. Every market carries a **Resolution Clarity Grade** (RCG A/B/C), a named resolution source, and cross-venue claim links. Prices refresh hourly.
+**Coverage:** the live Kalshi + Polymarket universe (untraded placeholder slots excluded; counts on the site refresh with each ingest). Every market carries a **Resolution Clarity Grade** (RCG A/B/C), a named resolution source, and cross-venue claim links. Prices refresh hourly.
 
 v0.2 · June 2026
 
@@ -132,7 +132,7 @@ Full record at [`samples/fed-apr-2026/specimen.json`](samples/fed-apr-2026/speci
 
 ## What's here
 
-The live product (site, REST API, MCP, daily wire feed) serves the full ~1,857-event universe. This repo is the **open schema + enrichment pipeline + reference specimens** behind it:
+The live product (site, REST API, MCP, daily wire feed) serves the full live universe. This repo is the **open schema + enrichment pipeline + reference specimens** behind it:
 
 - **JSON Schemas** for the four ClearMarket tables (`events`, `markets`, `marks`, `resolution_log`)
 - **Postgres DDL** matching the schemas
@@ -277,7 +277,7 @@ Four tables. Full definitions in `schema/`.
 
 ### Live
 
-- Public site, REST API, and MCP server over the full ~1,857-event universe
+- Public site, REST API, and MCP server over the full live universe
 - Resolution Clarity Grade (RCG A/B/C) + named resolution source on every market
 - Cross-venue claim linking (the same graded claim across Kalshi + Polymarket)
 - CM Signal daily wire feed (news-cycle, volume-spike, cross-venue divergence, benchmark-drift)
