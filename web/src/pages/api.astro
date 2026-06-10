@@ -1,5 +1,6 @@
 ---
 import Site from '../layouts/Site.astro';
+import { coverageLabel } from '../lib/universe';
 
 // Production endpoints (custom domains cut over at go-live; Worker is the backing host).
 const API = 'https://api.clearmarket.fyi';
@@ -30,7 +31,7 @@ const updated = '2026-05-29';
     <div class="doc-body">
       <header class="doc-head" id="overview">
         <h1>API <span class="dh-plus">+</span> MCP</h1>
-        <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. ~1,850 events / ~15,000 markets across Kalshi and Polymarket, each with a <a href="/methodology/">Resolution Clarity Grade</a> — the named resolution source where one is committed, and a graded <code>source_status</code> when it isn't. No key required.</p>
+        <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. {coverageLabel()} across Kalshi and Polymarket, each with a <a href="/methodology/">Resolution Clarity Grade</a> — the named resolution source where one is committed, and a graded <code>source_status</code> when it isn't. No key required.</p>
         <p class="doc-note">Every event is single-venue; the same question priced on both venues is linked by a shared <code>question_id</code>, and each market's <code>also_on</code> lists its cross-venue twins. Prices refresh hourly. Catalyst dates (CPI, FOMC, jobs, earnings) are joined per event. Read-only.</p>
       </header>
 

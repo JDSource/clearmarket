@@ -1,5 +1,6 @@
 ---
 import Base from './Base.astro';
+import { coverageLabel } from '../lib/universe';
 
 export interface Props {
   title: string;
@@ -56,7 +57,7 @@ const isEventsIndex = path === '/events';
           </nav>
         </header>
         {/* Global system status bar — running grid header on every page (Gemini design direction).
-           TRUE values only: prices refresh hourly; ~1,850 events / ~15,000 markets; no daily-signal
+           TRUE values only: prices refresh hourly; live computed coverage; no daily-signal
            cadence claim until CM Signal ships. */}
         <div class="va-statusbar">
           <span class="va-sb-dot" aria-hidden="true"></span>
@@ -64,7 +65,7 @@ const isEventsIndex = path === '/events';
           <span class="va-sb-sep">·</span>
           <span>PRICES: HOURLY REFRESH</span>
           <span class="va-sb-sep">·</span>
-          <span>COVERAGE: ~1,850 EVENTS / ~15,000 MARKETS</span>
+          <span>COVERAGE: {coverageLabel().toUpperCase()}</span>
           <span class="va-sb-sep">·</span>
           <span>KALSHI + POLYMARKET</span>
         </div>

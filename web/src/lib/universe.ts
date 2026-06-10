@@ -102,6 +102,12 @@ const allMarkets: Market[] = bundle.markets.map((m) => ({
   rcg_caps: m.rcg_caps ?? [],
 })) as Market[];
 
+export function coverageLabel(): string {
+  const ev = Math.round(bundle.events.length / 10) * 10;
+  const mk = Math.round(bundle.markets.length / 100) * 100;
+  return `~${ev.toLocaleString('en-US')} events / ~${mk.toLocaleString('en-US')} markets`;
+}
+
 const marketsByEvent = new Map<string, Market[]>();
 for (const m of allMarkets) {
   if (!m.event_id) continue;
