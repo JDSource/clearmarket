@@ -55,6 +55,12 @@ jobs:
           # resolution-log.json feeds the event-page resolution-history ledger; absent → renders empty
           curl -fsSL "$BASE/resolution-log.json" -o web/data/resolution-log.json || echo "resolution-log.json unavailable — resolution history will be empty"
 
+      - name: Run eligibility screens (regenerates web/data/eligibility-*.json against the fresh bundle)
+        # web/data is gitignored — the /screens/ pages + per-market eligibility_screens
+        # field read these files at build time; absent, the pages render an
+        # "unavailable" state (lib/eligibility.ts no-ops). Never blocks the build.
+        run: python3 screen_eligibility.py --write || echo "eligibility screen skipped — /screens/ will render unavailable"
+
       - name: Generate wires (all four types; one failing never blocks the rest)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

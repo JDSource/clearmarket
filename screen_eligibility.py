@@ -8,14 +8,13 @@ Regimes are config, not code: each is a rule-set over fields the bundle
 already carries. First regime: CIRO Administrative Bulletin 26-0076 (Canadian
 dealers offering event contracts under IDPC Rule 2246(2)).
 
-Three-state output, deliberately:
-  pass   — clears every term mechanically (category, maturity, committed
-           source whose class is government/official/institutional)
-  review — clears the mechanical terms but the source class needs human
-           judgment against the regime's language (media, party bodies,
-           commercial data providers, unclassified names)
-  fail   — misses a mechanical term (category, maturity, or no committed
-           source)
+Three-state output, deliberately (public vocabulary — never pass/fail, so a
+jurisdiction-scoping fact cannot be misread as market quality):
+  eligible     — clears every Appendix A term mechanically (candidate
+                 category, >=30d maturity, core subject-matter match)
+  review       — clears mechanical terms; needs documented judgment
+                 (S1 penumbra, S1 unenumerated category, S3 language flag)
+  not_eligible — misses a mechanical term
 
 The source-name -> class mapping below is the adjudication surface: every
 entry is a judgment call to be reviewed, not an oracle. Unmatched named
@@ -174,9 +173,12 @@ REGIMES = {
         "name": "CIRO Administrative Bulletin 26-0076 / IDPC Rule 2246(2)",
         "venues": ["kalshi"],          # CFTC-regulated venue a dealer could route to
         # CM categories forming the CANDIDATE pool for the three Appendix A
-        # buckets. (crypto is deliberately out: not named in §1 — a penumbra
-        # policy question for Jeremy, see rule-mapping doc.)
+        # buckets. crypto is included as REVIEW-ONLY (adjudicated 2026-06-10):
+        # not enumerated in §1, but CF-Benchmarks-settled price contracts are
+        # structurally identical to CIRO's own CME-settlement example — a
+        # category-interpretation question, not a clear fail.
         "categories": ["economics", "financials", "climate"],
+        "review_only_categories": ["crypto"],
         "min_days_to_resolution": 30,
     },
 }
@@ -231,9 +233,12 @@ def screen_market(m, event, regime, now):
     contains no source-verifiability term."""
     reasons = []
 
+    cat = (event or {}).get("category")
+    review_only = cat in regime.get("review_only_categories", [])
+
     if m.get("platform") not in regime["venues"]:
         reasons.append("venue_out_of_scope")
-    if (event or {}).get("category") not in regime["categories"]:
+    if cat not in regime["categories"] and not review_only:
         reasons.append("category_not_permitted")
 
     resolve = parse_dt(m.get("resolve_at") or m.get("close_at"))
@@ -243,13 +248,18 @@ def screen_market(m, event, regime, now):
         reasons.append("under_min_maturity")
 
     if reasons:
-        return "fail", reasons, None
+        return "not_eligible", reasons, None
+
+    if review_only:
+        # crypto: never pass mechanically — §1 doesn't enumerate it, even
+        # where settlement structure mirrors the CME example
+        return "review", ["category_not_enumerated_s1"], None
 
     kind, bucket = classify_subject(m, event)
     if kind == "political":
         return "review", ["political_nature_s3"], None
     if kind == "core":
-        return "pass", [], bucket
+        return "eligible", [], bucket
     return "review", ["category_interpretation_s1"], None
 
 
@@ -294,7 +304,7 @@ def main():
             "screened_at": now.date().isoformat(),
         }
         stats[status] += 1
-        if status == "pass":
+        if status == "eligible":
             pass_buckets[bucket] += 1
             pass_diligence[(m.get("source_commitment"), src_cls)] += 1
         if status == "review":
@@ -311,18 +321,18 @@ def main():
         if not r or r < now + timedelta(days=regime["min_days_to_resolution"]):
             continue
         funnel["2_maturity"] += 1
-        if out[m["market_id"]]["status"] == "pass":
-            funnel["3_core_pass"] += 1
+        if out[m["market_id"]]["status"] == "eligible":
+            funnel["3_eligible"] += 1
 
     print(f"REGIME {args.regime} — {regime['name']}   (as of {now.date()})")
     print(f"  in-scope venue markets:               {funnel['0_in_scope']:>6}")
     print(f"  + candidate category (econ/fin/clim): {funnel['1_category']:>6}")
     print(f"  + >= {regime['min_days_to_resolution']}d maturity:                    {funnel['2_maturity']:>6}")
-    print(f"  + Appendix A core subject -> PASS:    {funnel['3_core_pass']:>6}")
-    print(f"\n  STATUS: pass {stats['pass']} / review {stats['review']} / fail {stats['fail']}")
-    print(f"\n  PASS by bucket: {dict(pass_buckets)}")
+    print(f"  + Appendix A core subject -> PASS:    {funnel['3_eligible']:>6}")
+    print(f"\n  STATUS: eligible {stats['eligible']} / review {stats['review']} / not_eligible {stats['not_eligible']}")
+    print(f"\n  ELIGIBLE by bucket: {dict(pass_buckets)}")
     print(f"  REVIEW by reason: {dict(review_reasons)}")
-    print("\n  DILIGENCE metadata on the PASS set (source_commitment, class):")
+    print("\n  DILIGENCE metadata on the ELIGIBLE set (source_commitment, class):")
     for (sc, cls), n in pass_diligence.most_common(10):
         print(f"   {n:>5}  commitment={sc}  class={cls}")
     print("\n  PENUMBRA sample (top distinct events in category_interpretation review):")
@@ -333,6 +343,77 @@ def main():
         dest = ROOT / f"web/data/eligibility-{args.regime}.json"
         dest.write_text(json.dumps(out, indent=0, sort_keys=True))
         print(f"\n  wrote {dest} ({len(out)} markets)")
+
+        # Page-ready summary: funnel + clustered review + eligible-set stats.
+        # Clusters group the review set into the ~20 actual judgment units.
+        CLUSTER_LABELS = [
+            ("ipo_announcements", "IPO announcements", [r"\bipo\b"]),
+            ("company_metrics", "Company performance metrics",
+             [r"users\b", r"subscribers", r"active uniques", r"members\b", r"downloads"]),
+            ("commodity_prices", "Commodity price levels",
+             [r"crude", r"\boil\b", r"gas(oline)? price", r"natural gas", r"gold price"]),
+            ("fx_levels", "FX rate levels", [r"usd/", r"/usd", r"exchange rate"]),
+            ("wealth_rankings", "Wealth / rich-list rankings", [r"wealthiest", r"richest"]),
+            ("weather_events", "Weather events (vs climate indicators)",
+             [r"hurricane", r"storm", r"tornado", r"snow", r"rainfall", r"heat wave",
+              r"high temp", r"temperature in "]),
+        ]
+        clusters = defaultdict(lambda: {"market_count": 0, "events": Counter()})
+        for m in bundle["markets"]:
+            rec = out.get(m["market_id"])
+            if not rec or rec["status"] != "review":
+                continue
+            ev = events.get(m.get("event_id")) or {}
+            q = str(ev.get("question", "?"))
+            reason = rec["reasons"][0]
+            if reason == "category_not_enumerated_s1":
+                key, label = "crypto_prices", "Crypto price contracts (category not enumerated in §1)"
+            elif reason == "political_nature_s3":
+                key, label = "political_language", "Political-language flags (§3 echo, in-category)"
+            else:
+                key, label = "other_interpretation", "Other §1 interpretation questions"
+                low = q.lower()
+                for k, lbl, pats in CLUSTER_LABELS:
+                    if any(re.search(p, low) for p in pats):
+                        key, label = k, lbl
+                        break
+            c = clusters[key]
+            c["label"] = label
+            c["reason"] = reason
+            c["market_count"] += 1
+            c["events"][q] += 1
+
+        cluster_list = sorted(
+            ({"key": k, "label": v["label"], "reason": v["reason"],
+              "market_count": v["market_count"],
+              "example_events": [q for q, _ in v["events"].most_common(5)],
+              "event_count": len(v["events"])}
+             for k, v in clusters.items()),
+            key=lambda c: -c["market_count"])
+
+        summary = {
+            "regime": args.regime,
+            "regime_name": regime["name"],
+            "screen_version": "v1",
+            "screened_at": now.date().isoformat(),
+            "venue": regime["venues"][0],
+            "funnel": {
+                "in_scope": funnel["0_in_scope"],
+                "candidate_category": funnel["1_category"],
+                "min_maturity": funnel["2_maturity"],
+                "eligible": stats["eligible"],
+                "review": stats["review"],
+                "not_eligible": stats["not_eligible"],
+            },
+            "eligible_buckets": dict(pass_buckets),
+            "eligible_no_committed_source": sum(
+                n for (sc, _), n in pass_diligence.items() if sc != "named"),
+            "review_reasons": dict(review_reasons),
+            "review_clusters": cluster_list,
+        }
+        sdest = ROOT / f"web/data/eligibility-{args.regime}-summary.json"
+        sdest.write_text(json.dumps(summary, indent=2))
+        print(f"  wrote {sdest} ({len(cluster_list)} review clusters)")
 
 
 if __name__ == "__main__":

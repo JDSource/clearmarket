@@ -1,0 +1,106 @@
+---
+/* Eligibility Screens index at /screens/
+ *
+ * Generic, jurisdiction-neutral surface: regimes are entries in a category,
+ * never the brand (locked decision — one Canadian rule presented as the first
+ * instance of a category, no CIRO branding on chrome). Terminal-ledger idiom,
+ * sibling to /signals/ and /events/.
+ */
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import '../../styles/cm-event.css';
+import { getScreenSummary } from '../../lib/eligibility';
+
+const ciro = getScreenSummary();
+const canonicalURL = 'https://clearmarket.fyi/screens/';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'DataCatalog',
+  name: 'ClearMarket Eligibility Screens',
+  description:
+    'Per-contract eligibility screening of prediction-market contracts against named regulatory and policy rule-sets. Screening data supporting an institution’s own determination; not a compliance opinion.',
+  url: canonicalURL,
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+};
+---
+<Site
+  title="Eligibility Screens · ClearMarket"
+  description="Which prediction-market contracts clear which distribution rule-sets. First regime live: CIRO 26-0076 (Canadian dealer distribution). Screening data, not a compliance opinion."
+  canonical={canonicalURL}
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} slot="head" />
+
+  <article class="cm-v2">
+    <h1 class="cm-h1">
+      <span class="cm-h1-brand">CLEARMARKET</span>
+      <span class="cm-h1-sep">//</span>
+      <span class="cm-h1-role">ELIGIBILITY SCREENS</span>
+    </h1>
+    <p class="cm-index-lede">
+      which contracts clear which rule-sets · per-contract status: eligible / review / not_eligible ·
+      built from primary documents, quoted verbatim · screening data supporting your own determination — not a compliance opinion
+    </p>
+
+    <section class="cm-section">
+      <div class="cm-section-h">regimes <span class="cm-section-tag">| rule-sets are config; the engine is the product</span></div>
+      <table class="scr-table">
+        <thead><tr><th>regime</th><th>scope</th><th>status</th><th>screen</th></tr></thead>
+        <tbody>
+          <tr data-regime="ciro-26-0076">
+            <td class="scr-mono"><a href="/screens/ciro-26-0076/">ciro-26-0076</a></td>
+            <td>Canadian dealer distribution of event contracts — CIRO Administrative Bulletin 26-0076 / IDPC Rule 2246(2)</td>
+            <td class="scr-mono"><span class="scr-live">&#9679; LIVE</span></td>
+            <td class="scr-mono">
+              {ciro
+                ? `${ciro.funnel.eligible} eligible · ${ciro.funnel.review} review · ${ciro.funnel.not_eligible} not_eligible`
+                : '—'}
+            </td>
+          </tr>
+          <tr data-regime="cftc-pending">
+            <td class="scr-mono">cftc-(pending)</td>
+            <td>US event-contract rulemaking — screen ships when the CFTC&rsquo;s rules land (ClearMarket&rsquo;s analysis is on the ANPRM docket, RIN 3038-AF65)</td>
+            <td class="scr-mono"><span class="scr-pending">PENDING</span></td>
+            <td class="scr-mono">—</td>
+          </tr>
+          <tr data-regime="custom">
+            <td class="scr-mono">custom</td>
+            <td>Your investment-policy, suitability, or listing rule-set as a screen over the same reference data</td>
+            <td class="scr-mono"><span class="scr-pending">CONTACT</span></td>
+            <td class="scr-mono"><a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="scr-note">
+        A status describes fit against one named rule-set only — it says nothing about a market&rsquo;s quality or tradability elsewhere.
+        Resolution quality is the <a href="/methodology/">Resolution Clarity Grade</a>.
+      </p>
+    </section>
+  </article>
+
+  <style>
+    .cm-v2 { max-width: 1080px; width: 100%; margin: 0 auto; }
+    .cm-v2 a { text-decoration: none; }
+    .cm-v2 *, .cm-v2 *::before, .cm-v2 *::after { border-radius: 0 !important; box-shadow: none !important; }
+    .cm-h1 { font-family: var(--cm-font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 12px 0 4px; line-height: 1.2; display: inline-flex; align-items: baseline; gap: 10px; }
+    .cm-h1-brand { color: var(--cm-fg-primary); }
+    .cm-h1-sep { color: var(--cm-border-rule); font-weight: 400; }
+    .cm-h1-role { color: var(--cm-fg-muted); font-weight: 400; letter-spacing: 0.12em; }
+    .cm-index-lede { font-family: var(--cm-font-mono); font-size: 11px; line-height: 1.4; color: var(--cm-fg-muted); margin: 0 0 12px; letter-spacing: 0.02em; }
+    .cm-section { margin: 28px 0 14px; }
+    .cm-section-h { display: flex; align-items: center; gap: 10px; font-family: var(--cm-font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--cm-fg-muted); margin-bottom: 10px; }
+    .cm-section-h::before { content: ""; flex: 0 0 24px; border-top: 1px solid var(--cm-border-rule); }
+    .cm-section-h::after { content: ""; flex: 1; border-top: 1px solid var(--cm-border-rule); }
+    .cm-section-tag { color: var(--cm-fg-faint); font-weight: 400; letter-spacing: 0.08em; text-transform: none; }
+    .scr-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .scr-table th { font-family: var(--cm-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--cm-fg-faint); text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid var(--cm-border-rule); }
+    .scr-table td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--cm-border-hairline); vertical-align: top; color: var(--cm-fg-primary); line-height: 1.5; }
+    .scr-mono { font-family: var(--cm-font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .scr-mono a { color: var(--cm-fg-link); }
+    .scr-mono a:hover { color: var(--cm-fg-primary); }
+    .scr-live { color: var(--cm-positive); letter-spacing: 0.06em; }
+    .scr-pending { color: var(--cm-fg-faint); letter-spacing: 0.06em; }
+    .scr-note { font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-muted); line-height: 1.5; margin-top: 10px; }
+    .scr-note a { color: var(--cm-fg-link); }
+  </style>
+</Site>

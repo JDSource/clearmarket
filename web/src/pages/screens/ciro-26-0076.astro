@@ -1,0 +1,347 @@
+---
+/* Eligibility screen — CIRO 26-0076 regime page at /screens/ciro-26-0076/
+ *
+ * Sibling layout to /signals/ and /events/ (terminal ledger: mono, hairline
+ * borders, flat geometry, no cards). Header/h1/horizon/section tokens
+ * replicated from signals/index.astro (local by convention, not in shared CSS).
+ *
+ * Content rules (locked, eligibility-screens-decision.md):
+ *  - statuses are eligible / review / not_eligible — never pass/fail
+ *  - regulator language appears ONLY as verbatim quotes with §-refs
+ *  - review renders as CLUSTERS (the ~20 judgment units), not 482 rows
+ *  - eligibility ≠ diligence: source/grade columns are evidence, not gates
+ *  - disclaimer present; nothing reads as endorsement or a compliance opinion
+ */
+import Site from '../../layouts/Site.astro';
+import '../../styles/tokens.css';
+import '../../styles/cm-event.css';
+import { getAllEvents, getMarketsForEvent } from '../../lib/universe';
+import { getScreenSummary, getEligibility, REASON_COPY } from '../../lib/eligibility';
+import { eventDisplayQuestion } from '../../lib/labels';
+
+const summary = getScreenSummary();
+const canonicalURL = 'https://clearmarket.fyi/screens/ciro-26-0076/';
+
+// Eligible rows: per-market, with the event question + diligence columns.
+type Row = {
+  market_id: string; question: string; slug: string; bucket: string;
+  resolves: string; source: string | null; commitment: string | null; grade: string | null;
+};
+const eligibleRows: Row[] = [];
+if (summary) {
+  for (const ev of getAllEvents()) {
+    const mkts = getMarketsForEvent(ev.event_id);
+    const display = eventDisplayQuestion(ev.question, mkts);
+    for (const m of mkts) {
+      const rec = getEligibility(m.market_id);
+      if (!rec || rec.status !== 'eligible') continue;
+      eligibleRows.push({
+        market_id: m.market_id,
+        question: display,
+        slug: ev.slug,
+        bucket: rec.bucket ?? '',
+        resolves: (m.resolve_at ?? m.close_at ?? '').slice(0, 10),
+        source: m.resolution_source ?? null,
+        commitment: rec.source_commitment,
+        grade: rec.rcg_grade,
+      });
+    }
+  }
+  eligibleRows.sort((a, b) => a.resolves.localeCompare(b.resolves) || a.question.localeCompare(b.question));
+}
+
+const f = summary?.funnel;
+const pct = (n: number) => (f ? Math.max(1.2, (n / f.in_scope) * 100) : 0);
+const bucketLabel: Record<string, string> = {
+  economic_forecasts: 'econ', financial_indicators: 'fin', environment_forecasts: 'env',
+};
+const clusterQuestion: Record<string, string> = {
+  ipo_announcements: 'Is a corporate one-off an "Economic Forecast"? The §1 examples are macro statistics.',
+  company_metrics: 'Company performance metrics vs "economic statistics" — same §1 interpretation question.',
+  commodity_prices: 'Commodity price levels: economic statistic, or neither enumerated bucket?',
+  fx_levels: 'Is an FX rate a "Financial indicator" in the §1 sense (the example is index settlement)?',
+  wealth_rankings: 'Rich-list rankings: no obvious §1 bucket.',
+  weather_events: 'Weather events vs "climate indicators related to the average global temperature".',
+  crypto_prices: 'Settlement mirrors the §1 CME example structurally, but §1 does not enumerate crypto.',
+  political_language: '§3 prohibits "events of a political nature" — these carry political language inside permitted categories; on inspection both clusters look like date/name echoes, which is the conservative net working.',
+  other_interpretation: 'No core-pattern match; the residual §1 interpretation set.',
+};
+
+const jsonLd = summary && {
+  '@context': 'https://schema.org',
+  '@type': 'Dataset',
+  name: 'ClearMarket Eligibility Screen — CIRO 26-0076',
+  description:
+    'Per-contract eligibility screening of Kalshi event contracts against the terms of CIRO Administrative Bulletin 26-0076 (Canadian dealer distribution under IDPC Rule 2246(2)). Statuses: eligible, review, not_eligible. Screening data supporting a dealer’s own determination; not a compliance opinion.',
+  creator: { '@type': 'Organization', name: 'ClearMarket', url: 'https://clearmarket.fyi' },
+  license: 'https://creativecommons.org/licenses/by/4.0/',
+  dateModified: summary.screened_at,
+  version: summary.screen_version,
+  isBasedOn: 'https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts',
+  distribution: [
+    { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: 'https://clearmarket.fyi/screens/ciro-26-0076.json' },
+  ],
+};
+---
+<Site
+  title="Eligibility screen · CIRO 26-0076 · ClearMarket"
+  description="Which Kalshi event contracts clear the terms of CIRO Administrative Bulletin 26-0076 for Canadian dealer distribution: eligible / review / not_eligible, with the rule-mapping, review clusters, and methodology. Screening data, not a compliance opinion."
+  canonical={canonicalURL}
+>
+  {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} slot="head" />}
+
+  <nav class="cm-subnav" aria-label="Screen sections" slot="subnav">
+    <a href="#funnel" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Funnel</a>
+    <a href="#rules" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Rule mapping</a>
+    <a href="#eligible" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Eligible</a>
+    <a href="#review" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Review</a>
+    <a href="#methodology" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Methodology</a>
+    {summary && <span class="cm-subnav-snapshot">screen {summary.screen_version} <span class="cm-dot-positive">&#9679;</span> {summary.screened_at}</span>}
+  </nav>
+
+  <article class="cm-v2">
+    <h1 class="cm-h1">
+      <span class="cm-h1-brand">ELIGIBILITY SCREENS</span>
+      <span class="cm-h1-sep">//</span>
+      <span class="cm-h1-role">CIRO-26-0076</span>
+    </h1>
+    <p class="cm-index-lede">
+      Application of CIRO Requirements to Event Contracts (Mar 26, 2026) · Canadian dealer distribution under IDPC Rule 2246(2) ·
+      venue: kalshi (CFTC DCM) · screening data supporting a dealer&rsquo;s own determination — not a compliance opinion
+    </p>
+
+    {!summary && <p class="cm-index-lede">Screen data unavailable in this build.</p>}
+
+    {summary && (
+      <>
+        <div class="cm-horizon">
+          <span class="cm-horizon-token"><span class="cm-horizon-label">eligible:</span> <span class="cm-horizon-value">{f.eligible}</span></span>
+          <span class="cm-horizon-pipe">|</span>
+          <span class="cm-horizon-token"><span class="cm-horizon-label">review:</span> <span class="cm-horizon-value">{f.review} · {summary.review_clusters.length} clusters</span></span>
+          <span class="cm-horizon-pipe">|</span>
+          <span class="cm-horizon-token"><span class="cm-horizon-label">not_eligible:</span> <span class="cm-horizon-value">{f.not_eligible}</span></span>
+          <span class="cm-horizon-pipe">|</span>
+          <span class="cm-horizon-token"><span class="cm-horizon-label">source:</span> <a class="cm-horizon-value cm-horizon-link" href="https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts" rel="noopener">bulletin 26-0076 ↗</a></span>
+        </div>
+
+        {/* ===== FUNNEL ===== */}
+        <section id="funnel" class="cm-section">
+          <div class="cm-section-h">the funnel <span class="cm-section-tag">| first-failure attribution, screened {summary.screened_at}</span></div>
+          <div class="scr-funnel" data-screen-regime={summary.regime}>
+            {[
+              ['in scope (kalshi)', f.in_scope],
+              ['candidate category — econ / financial / climate', f.candidate_category],
+              ['≥ 30-day term to maturity (§2)', f.min_maturity],
+              ['eligible — Appendix A core subject (§1)', f.eligible],
+            ].map(([label, n]) => (
+              <div class="scr-bar-row">
+                <span class="scr-bar-label">{label}</span>
+                <span class="scr-bar-track"><span class="scr-bar-fill" style={`width:${pct(n as number)}%`} /></span>
+                <span class="scr-bar-n">{(n as number).toLocaleString('en-US')}</span>
+              </div>
+            ))}
+          </div>
+          <p class="scr-note">
+            Eligible by bucket: econ {summary.eligible_buckets.economic_forecasts ?? 0} ·
+            fin {summary.eligible_buckets.financial_indicators ?? 0} ·
+            env {summary.eligible_buckets.environment_forecasts ?? 0}
+            <span class="scr-note-finding"> — Kalshi&rsquo;s climate listings are mostly weather events, not &ldquo;climate indicators&rdquo;; the Environment Forecasts bucket is nearly empty.</span>
+          </p>
+        </section>
+
+        {/* ===== RULE MAPPING ===== */}
+        <section id="rules" class="cm-section">
+          <div class="cm-section-h">rule mapping <span class="cm-section-tag">| verbatim term → field → logic</span></div>
+          <table class="scr-table scr-rules">
+            <thead><tr><th>Appendix A (verbatim)</th><th>ClearMarket field</th><th>screen logic</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>§1 &ldquo;offering of event contracts will be <em>limited to the following</em>: Economic Forecasts: <em>such as</em> contracts based on economic statistics related to the amount of sovereign debt, inflation rates, central bank reserve rates, labor markets, and housing; Environment Forecasts: <em>such as</em>&hellip; climate indicators related to the average global temperature; Financial indicators: <em>such as</em> US 500 Forecast Contracts that settle based on the daily settlement price of the&hellip; CME E-Mini S&amp;P 500 Futures&rdquo;</td>
+                <td>event tags + question text</td>
+                <td>&ldquo;such as&rdquo; = illustrative → settled core matches → <span class="scr-st scr-st-eligible">eligible</span>; in-category non-match = penumbra → <span class="scr-st scr-st-review">review</span></td>
+              </tr>
+              <tr>
+                <td>§2 &ldquo;term to maturity of 30 days or longer. For greater certainty, issuing a new threshold in respect of an event contract constitutes a new contract&rdquo;</td>
+                <td><code>resolve_at</code>, per market</td>
+                <td>≥ 30d from screen date; the threshold sentence is why screening is per-market, not per-event</td>
+              </tr>
+              <tr>
+                <td>§3 &ldquo;will not offer event contracts based on the outcome of elections, political events, or other events of a political nature&hellip; or&hellip; unlawful activities&rdquo;</td>
+                <td>category + in-category language flag</td>
+                <td>politics/geopolitics categories → <span class="scr-st scr-st-not">not_eligible</span>; political language inside permitted categories → <span class="scr-st scr-st-review">review</span></td>
+              </tr>
+              <tr>
+                <td>Body: &ldquo;Investment Dealer Members are <em>expected to exercise due diligence</em>&hellip;&rdquo;</td>
+                <td>resolution source, commitment, RCG grade, settlement history</td>
+                <td>the diligence layer — evidence columns, never eligibility gates (the bulletin contains no source term)</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        {/* ===== ELIGIBLE ===== */}
+        <section id="eligible" class="cm-section">
+          <div class="cm-section-h">eligible <span class="cm-section-tag">| {f.eligible} contracts · diligence columns are evidence, not gates</span></div>
+          <p class="scr-callout" data-stat="eligible_no_committed_source">
+            ELIGIBILITY IS NOT DILIGENCE — {summary.eligible_no_committed_source} of {f.eligible} eligible contracts commit to no resolution source.
+            Eligible under the bulletin&rsquo;s terms; diligence-weak under its own &ldquo;due diligence&rdquo; expectation.
+          </p>
+          <table class="scr-table scr-eligible">
+            <thead><tr><th>contract</th><th>bucket</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
+            <tbody>
+              {eligibleRows.map((r) => (
+                <tr data-market-id={r.market_id} data-bucket={r.bucket}>
+                  <td class="scr-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
+                  <td class="scr-mono">{bucketLabel[r.bucket] ?? r.bucket}</td>
+                  <td class="scr-mono">{r.resolves}</td>
+                  <td class="scr-mono">{r.commitment === 'named' ? r.source : <span class="scr-warn">— none</span>}</td>
+                  <td class="scr-mono">{r.grade ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {/* ===== REVIEW ===== */}
+        <section id="review" class="cm-section">
+          <div class="cm-section-h">review <span class="cm-section-tag">| {f.review} contracts in {summary.review_clusters.length} judgment clusters</span></div>
+          <p class="scr-note">
+            Review is where the bulletin&rsquo;s &ldquo;such as&rdquo; construction leaves a documented judgment to make — exactly the §5
+            question (&ldquo;within §1, or file a material change application?&rdquo;). Contracts here never silently pass. Clusters, not contracts,
+            are the unit of work: one call typically covers a whole cluster.
+          </p>
+          <table class="scr-table scr-review">
+            <thead><tr><th>cluster</th><th class="scr-num">markets</th><th class="scr-num">events</th><th>the open question</th></tr></thead>
+            <tbody>
+              {summary.review_clusters.map((c) => (
+                <tr data-cluster={c.key} data-reason={c.reason}>
+                  <td>
+                    <span class="scr-cluster-label">{c.label}</span>
+                    <span class="scr-examples">{c.example_events.slice(0, 3).join(' · ')}</span>
+                  </td>
+                  <td class="scr-mono scr-num">{c.market_count}</td>
+                  <td class="scr-mono scr-num">{c.event_count}</td>
+                  <td class="scr-openq">{clusterQuestion[c.key] ?? REASON_COPY[c.reason]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+
+        {/* ===== METHODOLOGY ===== */}
+        <section id="methodology" class="cm-section cm-section-machine">
+          <div class="cm-section-h">methodology &middot; status vocabulary &middot; changelog</div>
+          <div class="scr-method">
+            <p>
+              <strong>Statuses.</strong> <span class="scr-st scr-st-eligible">eligible</span> — clears every Appendix A term mechanically.
+              <span class="scr-st scr-st-review">review</span> — clears the mechanical terms; the remaining call is a documented §1/§3 interpretation.
+              <span class="scr-st scr-st-not">not_eligible</span> — misses a mechanical term (category, maturity). Statuses describe fit against
+              <em>this rule-set only</em>; they say nothing about a market&rsquo;s quality or tradability elsewhere — resolution quality is the
+              <a href="/methodology/">Resolution Clarity Grade</a>.
+            </p>
+            <p>
+              <strong>Conservative default.</strong> A candidate contract matching no core pattern is never silently classed eligible — it lands in review.
+              Subject-matter patterns are versioned; every change bumps the screen version and this changelog.
+            </p>
+            <p>
+              <strong>Primary source.</strong> Built from the verbatim text of
+              <a href="https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts" rel="noopener">CIRO Administrative Bulletin 26-0076</a>
+              (and the Apr 2, 2026 CSA/CIRO notice) — never from secondary coverage. §4 (no client leverage/margin) is a dealer-conduct term and is not
+              contract-screenable; it is noted here for completeness.
+            </p>
+            <p class="scr-changelog"><strong>Changelog.</strong> v1 ({summary.screened_at}) — initial screen: Appendix A subject classifier, §2 per-market maturity, §3 in-category language flag, crypto classed review-only (<code>category_not_enumerated_s1</code>).</p>
+            <p class="scr-disclaimer">
+              ClearMarket eligibility screens are reference data: a documented, reproducible mapping of contract attributes against a named
+              rule-set&rsquo;s terms. They support — and do not constitute — a dealer&rsquo;s own eligibility or suitability determination.
+            </p>
+            <p class="scr-mono scr-json-row">machine: <a href="/screens/ciro-26-0076.json">/screens/ciro-26-0076.json</a> · per-market field <code>eligibility_screens</code> in API + MCP responses</p>
+          </div>
+        </section>
+      </>
+    )}
+  </article>
+
+  <style>
+    .cm-v2 { max-width: 1080px; width: 100%; margin: 0 auto; }
+    .cm-v2 pre, .cm-v2 code { background: transparent; border: 0; border-radius: 0; padding: 0; margin: 0; font-family: var(--cm-font-mono); color: inherit; }
+    .cm-v2 a { text-decoration: none; }
+    .cm-v2 *, .cm-v2 *::before, .cm-v2 *::after { border-radius: 0 !important; box-shadow: none !important; }
+
+    .cm-subnav { display: flex; align-items: center; gap: 28px; max-width: 1280px; margin: 0 auto; padding: 10px 40px; font-family: var(--cm-font-mono); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; background: var(--cm-bg-surface); border-bottom: 1px solid var(--cm-border-rule); }
+    .cm-subnav a { color: var(--cm-fg-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .cm-subnav a:hover { color: var(--cm-fg-primary); }
+    .cm-subnav-link.cm-subnav-active { color: var(--cm-fg-primary); }
+    .cm-active-mark { color: var(--cm-positive); font-size: 14px; line-height: 1; opacity: 0; width: 0; overflow: hidden; transition: opacity 0.12s ease, width 0.12s ease; }
+    .cm-subnav-active .cm-active-mark { opacity: 1; width: auto; }
+    .cm-subnav-snapshot { margin-left: auto; color: var(--cm-fg-faint); letter-spacing: 0.08em; }
+    .cm-dot-positive { color: var(--cm-positive); }
+
+    .cm-h1 { font-family: var(--cm-font-mono); font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 12px 0 4px; line-height: 1.2; display: inline-flex; align-items: baseline; gap: 10px; }
+    .cm-h1-brand { color: var(--cm-fg-primary); }
+    .cm-h1-sep { color: var(--cm-border-rule); font-weight: 400; }
+    .cm-h1-role { color: var(--cm-fg-muted); font-weight: 400; letter-spacing: 0.12em; }
+    .cm-index-lede { font-family: var(--cm-font-mono); font-size: 11px; line-height: 1.4; color: var(--cm-fg-muted); margin: 0 0 12px; letter-spacing: 0.02em; }
+
+    .cm-horizon { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; min-height: 28px; margin: 14px 0 22px; border-top: 1px solid var(--cm-border-hairline); border-bottom: 1px solid var(--cm-border-hairline); padding: 4px 2px; overflow-x: auto; }
+    .cm-horizon-token { display: inline-flex; align-items: center; gap: 6px; }
+    .cm-horizon-pipe { color: var(--cm-border-rule); font-family: var(--cm-font-mono); font-size: 11px; user-select: none; }
+    .cm-horizon-label { font-family: var(--cm-font-sans); font-size: 11px; color: var(--cm-fg-muted); text-transform: lowercase; }
+    .cm-horizon-value { font-family: var(--cm-font-mono); font-size: 11.5px; font-weight: 500; color: var(--cm-fg-link); text-transform: uppercase; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+    .cm-horizon-link:hover { color: var(--cm-fg-primary); }
+
+    .cm-section { margin: 32px 0 14px; }
+    .cm-section:first-of-type { margin-top: 22px; }
+    #funnel, #rules, #eligible, #review, #methodology { scroll-margin-top: 120px; }
+    .cm-section-h { display: flex; align-items: center; gap: 10px; font-family: var(--cm-font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--cm-fg-muted); margin-bottom: 10px; }
+    .cm-section-h::before { content: ""; flex: 0 0 24px; border-top: 1px solid var(--cm-border-rule); }
+    .cm-section-h::after { content: ""; flex: 1; border-top: 1px solid var(--cm-border-rule); }
+    .cm-section-tag { color: var(--cm-fg-faint); font-weight: 400; letter-spacing: 0.08em; text-transform: none; }
+    #methodology.cm-section-machine { margin-top: 56px; border-top: 1px solid var(--cm-border-hairline); padding-top: 28px; }
+
+    /* ===== Screen-specific: funnel bars ===== */
+    .scr-funnel { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
+    .scr-bar-row { display: grid; grid-template-columns: minmax(220px, 340px) 1fr 72px; align-items: center; gap: 12px; font-family: var(--cm-font-mono); font-size: 11.5px; }
+    .scr-bar-label { color: var(--cm-fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .scr-bar-track { display: block; height: 12px; border: 1px solid var(--cm-border-hairline); background: var(--cm-bg-surface); }
+    .scr-bar-fill { display: block; height: 100%; background: var(--cm-fg-link); opacity: 0.65; }
+    .scr-bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--cm-fg-primary); }
+
+    /* ===== Tables (ledger idiom: hairlines, mono, no chrome) ===== */
+    .scr-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+    .scr-table th { font-family: var(--cm-font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--cm-fg-faint); text-align: left; padding: 5px 10px 5px 0; border-bottom: 1px solid var(--cm-border-rule); }
+    .scr-table td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--cm-border-hairline); vertical-align: top; color: var(--cm-fg-primary); line-height: 1.45; }
+    .scr-mono { font-family: var(--cm-font-mono); font-size: 11.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .scr-num { text-align: right; }
+    .scr-q a { color: var(--cm-fg-link); }
+    .scr-q a:hover { color: var(--cm-fg-primary); }
+    .scr-warn { color: var(--cm-negative, #c9542e); font-family: var(--cm-font-mono); }
+    .scr-rules td:first-child { font-size: 11.5px; color: var(--cm-fg-muted); max-width: 420px; }
+    .scr-rules em { font-style: normal; color: var(--cm-fg-primary); }
+
+    .scr-st { font-family: var(--cm-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 0 4px; border: 1px solid var(--cm-border-rule); }
+    .scr-st-eligible { color: var(--cm-positive); }
+    .scr-st-review { color: var(--cm-fg-link); }
+    .scr-st-not { color: var(--cm-fg-faint); }
+
+    .scr-callout { font-family: var(--cm-font-mono); font-size: 11.5px; letter-spacing: 0.04em; color: var(--cm-fg-primary); border: 1px solid var(--cm-border-rule); border-left: 3px solid var(--cm-negative, #c9542e); padding: 8px 12px; margin: 4px 0 12px; }
+    .scr-note { font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-muted); line-height: 1.5; margin: 6px 0 10px; }
+    .scr-note-finding { color: var(--cm-fg-faint); }
+    .scr-cluster-label { display: block; font-weight: 600; }
+    .scr-examples { display: block; font-family: var(--cm-font-mono); font-size: 10.5px; color: var(--cm-fg-faint); margin-top: 2px; }
+    .scr-openq { font-size: 11.5px; color: var(--cm-fg-muted); max-width: 360px; }
+
+    .scr-method p { font-size: 12.5px; line-height: 1.6; color: var(--cm-fg-muted); max-width: 760px; }
+    .scr-method strong { color: var(--cm-fg-primary); }
+    .scr-method a { color: var(--cm-fg-link); }
+    .scr-disclaimer { font-family: var(--cm-font-mono); font-size: 11px; border-top: 1px solid var(--cm-border-hairline); padding-top: 10px; }
+    .scr-json-row { font-size: 11px; color: var(--cm-fg-faint); }
+    .scr-json-row a, .scr-json-row code { color: var(--cm-fg-link); }
+
+    @media (max-width: 760px) {
+      .scr-bar-row { grid-template-columns: 1fr 60px; }
+      .scr-bar-label { grid-column: 1 / -1; }
+      .scr-openq { max-width: none; }
+      .cm-subnav { padding: 10px 16px; gap: 14px; overflow-x: auto; }
+    }
+  </style>
+</Site>
