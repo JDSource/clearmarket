@@ -120,13 +120,64 @@ SOURCE_CLASSES = [
     ]),
 ]
 
+# ---------------------------------------------------------------------------
+# Subject-matter classification against Appendix A of bulletin 26-0076.
+# The bulletin limits offerings to three buckets, each defined ILLUSTRATIVELY
+# ("such as ..."), so there is a settled core and a penumbra:
+#   §1 "Economic Forecasts: such as contracts based on economic statistics
+#       related to the amount of sovereign debt, inflation rates, central bank
+#       reserve rates, labor markets, and housing"
+#   §1 "Environment Forecasts: such as contracts based on climate indicators
+#       related to the average global temperature"
+#   §1 "Financial indicators: such as US 500 Forecast Contracts that settle
+#       based on the daily settlement price of the CME E-Mini S&P 500 Futures"
+# Core matches -> pass. Candidates that match no core pattern -> review with
+# reason category_interpretation (the penumbra; e.g. IPO-announcement markets).
+# §3 prohibits "elections, political events, or other events of a political
+# nature" — a flag that runs INSIDE permitted categories too (e.g. a Fed-chair
+# nomination market filed under economics).
+# Calibration: IBKR Canada (the first authorized dealer, live via ForecastEx)
+# offers only economic + climate indicator contracts — the revealed perimeter
+# matches the conservative core reading.
+# ---------------------------------------------------------------------------
+ECON_CORE = [
+    r"inflation", r"\bcpi\b", r"consumer price", r"\bgdp\b", r"recession",
+    r"unemployment", r"jobless", r"payroll", r"labor market", r"jobs report",
+    r"nonfarm", r"employment situation",
+    r"fed(eral)? funds", r"federal reserve", r"interest rate", r"\bfomc\b",
+    r"central bank", r"overnight rate", r"rate (decision|cut|hike|change)",
+    r"policy rate",
+    r"housing (start|price|market)", r"home price", r"case-?shiller",
+    r"sovereign debt", r"national debt", r"debt ceiling", r"deficit",
+    r"productivity", r"trade (deficit|balance)", r"current account",
+    r"retail sales", r"\bppi\b", r"producer price",
+]
+FIN_CORE = [
+    r"s ?& ?p ?500", r"\bspx\b", r"nasdaq( ?100)?", r"dow jones", r"\bdjia\b",
+    r"russell ?2000", r"treasury yield", r"10-?year yield", r"\bvix\b",
+    r"mortgage rate", r"\bsofr\b",
+]
+CLIMATE_CORE = [
+    r"global (average )?temperature", r"average global temperature",
+    r"warmest", r"hottest year", r"climate indicator", r"sea level",
+    r"carbon dioxide", r"\bco2\b", r"arctic sea ice",
+]
+POLITICAL_FLAG = [
+    r"election", r"nominee", r"nomination", r"referendum", r"impeach",
+    r"appointed?", r"confirmation", r"cabinet", r"president(ial)?",
+    r"senate", r"congress(ional)?", r"parliament", r"prime minister",
+    r"political party", r"\bmayor\b", r"governor race",
+]
+
 REGIMES = {
     "ciro-26-0076": {
         "name": "CIRO Administrative Bulletin 26-0076 / IDPC Rule 2246(2)",
-        "venues": ["kalshi"],          # venues a Canadian dealer could route to
+        "venues": ["kalshi"],          # CFTC-regulated venue a dealer could route to
+        # CM categories forming the CANDIDATE pool for the three Appendix A
+        # buckets. (crypto is deliberately out: not named in §1 — a penumbra
+        # policy question for Jeremy, see rule-mapping doc.)
         "categories": ["economics", "financials", "climate"],
         "min_days_to_resolution": 30,
-        "source_terms": "outcomes verifiable through official government or institutional sources",
     },
 }
 
@@ -152,8 +203,32 @@ def classify_source(name):
     return "unclassified", "review"
 
 
+def match_any(patterns, text):
+    return any(re.search(p, text) for p in patterns)
+
+
+def classify_subject(m, event):
+    """Appendix A §1 bucket fit: ('core', bucket) | ('penumbra', None) | political flag."""
+    text = " ".join([
+        str((event or {}).get("question", "")),
+        str(m.get("question_raw", "")),
+        " ".join((event or {}).get("tags", []) or []),
+    ]).lower()
+    if match_any(POLITICAL_FLAG, text):
+        return "political", None
+    for bucket, pats in (("economic_forecasts", ECON_CORE),
+                         ("financial_indicators", FIN_CORE),
+                         ("environment_forecasts", CLIMATE_CORE)):
+        if match_any(pats, text):
+            return "core", bucket
+    return "penumbra", None
+
+
 def screen_market(m, event, regime, now):
-    """Return (status, reasons, source_class). Mechanical fails first."""
+    """Return (status, reasons, bucket). Mechanical fails first; then the
+    Appendix A subject test sorts core (pass) from penumbra/political (review).
+    Source class is diligence METADATA, not an eligibility gate — the bulletin
+    contains no source-verifiability term."""
     reasons = []
 
     if m.get("platform") not in regime["venues"]:
@@ -167,17 +242,15 @@ def screen_market(m, event, regime, now):
     elif resolve < now + timedelta(days=regime["min_days_to_resolution"]):
         reasons.append("under_min_maturity")
 
-    committed = m.get("source_commitment") == "named"
-    if not committed:
-        reasons.append("no_committed_source")
-
     if reasons:
         return "fail", reasons, None
 
-    cls, tier = classify_source(m.get("resolution_source"))
-    if tier == "pass":
-        return "pass", [], cls
-    return "review", [f"source_class_{cls}"], cls
+    kind, bucket = classify_subject(m, event)
+    if kind == "political":
+        return "review", ["political_nature_s3"], None
+    if kind == "core":
+        return "pass", [], bucket
+    return "review", ["category_interpretation_s1"], None
 
 
 def main():
@@ -198,26 +271,36 @@ def main():
     events = {e["event_id"]: e for e in bundle["events"]}
 
     out, stats = {}, Counter()
-    review_sources = Counter()
+    review_reasons = Counter()
+    penumbra_examples = Counter()
+    pass_buckets = Counter()
+    pass_diligence = Counter()
     funnel = Counter()
-    template_bug = 0
 
     in_scope = [m for m in bundle["markets"] if m.get("platform") in regime["venues"]]
     for m in in_scope:
         ev = events.get(m.get("event_id"))
-        status, reasons, cls = screen_market(m, ev, regime, now)
+        status, reasons, bucket = screen_market(m, ev, regime, now)
+        src_cls, _ = classify_source(m.get("resolution_source"))
         out[m["market_id"]] = {
             "regime": args.regime,
             "status": status,
             "reasons": reasons,
-            "source_class": cls,
+            "bucket": bucket,
+            # diligence metadata (NOT eligibility gates)
+            "source_commitment": m.get("source_commitment"),
+            "source_class": src_cls,
+            "rcg_grade": m.get("resolution_clarity_grade"),
             "screened_at": now.date().isoformat(),
         }
         stats[status] += 1
+        if status == "pass":
+            pass_buckets[bucket] += 1
+            pass_diligence[(m.get("source_commitment"), src_cls)] += 1
         if status == "review":
-            review_sources[m.get("resolution_source")] += 1
-        if "<geography>" in str(m.get("resolution_source", "")):
-            template_bug += 1
+            review_reasons[reasons[0]] += 1
+            if reasons[0] == "category_interpretation_s1":
+                penumbra_examples[str((ev or {}).get("question", ""))[:64]] += 1
 
         # funnel (ordered, first-failure attribution)
         funnel["0_in_scope"] += 1
@@ -228,24 +311,23 @@ def main():
         if not r or r < now + timedelta(days=regime["min_days_to_resolution"]):
             continue
         funnel["2_maturity"] += 1
-        if m.get("source_commitment") != "named":
-            continue
-        funnel["3_committed_source"] += 1
         if out[m["market_id"]]["status"] == "pass":
-            funnel["4_pass"] += 1
+            funnel["3_core_pass"] += 1
 
     print(f"REGIME {args.regime} — {regime['name']}   (as of {now.date()})")
-    print(f"  in-scope venue markets:        {funnel['0_in_scope']:>6}")
-    print(f"  + permitted category:          {funnel['1_category']:>6}")
-    print(f"  + >= {regime['min_days_to_resolution']}d maturity:             {funnel['2_maturity']:>6}")
-    print(f"  + committed named source:      {funnel['3_committed_source']:>6}")
-    print(f"  + source class pass-tier:      {funnel['4_pass']:>6}")
+    print(f"  in-scope venue markets:               {funnel['0_in_scope']:>6}")
+    print(f"  + candidate category (econ/fin/clim): {funnel['1_category']:>6}")
+    print(f"  + >= {regime['min_days_to_resolution']}d maturity:                    {funnel['2_maturity']:>6}")
+    print(f"  + Appendix A core subject -> PASS:    {funnel['3_core_pass']:>6}")
     print(f"\n  STATUS: pass {stats['pass']} / review {stats['review']} / fail {stats['fail']}")
-    print(f"  '<geography>' template artifacts in source text: {template_bug}")
-    print("\n  REVIEW QUEUE (distinct sources, by market count) — adjudicate these:")
-    for src, n in review_sources.most_common(30):
-        cls, _ = classify_source(src)
-        print(f"   {n:>5}  [{cls}]  {str(src)[:70]}")
+    print(f"\n  PASS by bucket: {dict(pass_buckets)}")
+    print(f"  REVIEW by reason: {dict(review_reasons)}")
+    print("\n  DILIGENCE metadata on the PASS set (source_commitment, class):")
+    for (sc, cls), n in pass_diligence.most_common(10):
+        print(f"   {n:>5}  commitment={sc}  class={cls}")
+    print("\n  PENUMBRA sample (top distinct events in category_interpretation review):")
+    for q, n in penumbra_examples.most_common(15):
+        print(f"   {n:>4}  {q}")
 
     if args.write:
         dest = ROOT / f"web/data/eligibility-{args.regime}.json"
