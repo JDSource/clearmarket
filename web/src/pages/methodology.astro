@@ -22,6 +22,7 @@ const updated = '2026-05-26';
         <a href="#rcg">3 · Clarity Grade</a>
         <a href="#editorial">4 · Editorial</a>
         <a href="#crossvenue">5 · Cross-venue linking</a>
+        <a href="#screens">6 · Eligibility screens</a>
       </nav>
     </aside>
 
@@ -145,6 +146,11 @@ const updated = '2026-05-26';
 
         <h3>also_on — the cross-venue surface</h3>
         <p>Each market carries an <code>also_on</code> field: an array of <code>{'{ venue, market_id, price }'}</code> for the same question priced on other venues, or <code>null</code> when the question trades on only one. It is the <strong>only</strong> field that asserts a cross-venue twin — a market advertises one only when it genuinely has one. The linker is deliberately high-precision, low-recall: a missing link is preferred to a wrong one.</p>
+      </section>
+
+      <section class="surface" id="screens">
+        <div class="surface-tab">6 · ELIGIBILITY SCREENS</div>
+        <p>A separate layer on top of the reference data: parameterized rule-sets screened per contract, stamping every market <code>eligible / review / not_eligible</code> against a named distribution rule-set. Statuses describe fit against that one rule-set — they are not market quality (quality is the Resolution Clarity Grade above). First regime: <a href="/screens/ciro-26-0076/">CIRO Administrative Bulletin 26-0076</a> (Canadian dealer distribution); index at <a href="/screens/">/screens/</a>. Screening data supporting a dealer&rsquo;s own determination — not a compliance opinion.</p>
       </section>
     </div>
   </div>

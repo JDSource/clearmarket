@@ -17,6 +17,28 @@ const SEED_DIR = resolve(__dirname, '..', 'seed');
 const bundle = JSON.parse(readFileSync(BUNDLE, 'utf-8'));
 const events = bundle.events ?? [];
 const markets = bundle.markets ?? [];
+
+// Eligibility screens (optional layer): per-market records + summary, written by
+// screen_eligibility.py --write. Serialized into markets.eligibility_screens as the
+// public spec shape [{regime, screen_version, status, reasons, bucket, screened_at}]
+// (eligibility-screens-decision.md). Seed builds fine without the files.
+let eligByMarket = {};
+let eligVersion = '';
+try {
+  eligByMarket = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076.json'), 'utf-8'));
+  eligVersion = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076-summary.json'), 'utf-8')).screen_version ?? '';
+  console.error(`eligibility: ${Object.keys(eligByMarket).length} screened markets (screen ${eligVersion})`);
+} catch {
+  console.error('eligibility: no screen data found — eligibility_screens will be NULL');
+}
+const eligScreens = (marketId) => {
+  const r = eligByMarket[marketId];
+  if (!r) return null;
+  return [{
+    regime: r.regime, screen_version: eligVersion, status: r.status,
+    reasons: r.reasons ?? [], bucket: r.bucket ?? null, screened_at: r.screened_at,
+  }];
+};
 console.error(`bundle: ${events.length} events / ${markets.length} markets (schema ${bundle._meta?.schema})`);
 
 // ---- SQL value helpers -------------------------------------------------
@@ -100,7 +122,8 @@ CREATE TABLE markets (
   threshold REAL,
   question_id TEXT,
   also_on TEXT,              -- JSON [{venue, market_id, price}] of the same question on other venues; NULL if unique
-  tags TEXT
+  tags TEXT,
+  eligibility_screens TEXT   -- JSON [{regime, screen_version, status, reasons, bucket, screened_at}]; rule-set fit, NOT market quality
 );
 CREATE INDEX idx_markets_event ON markets(event_id);
 CREATE INDEX idx_markets_grade ON markets(resolution_clarity_grade);
@@ -235,7 +258,7 @@ const mRows = markets.map((m) => `(${[
   q(m.resolution_source_quality), q(m.source_commitment), q(m.source_commitment_subtype),
   q(m.source_hedge_text), q(m.resolution_clarity_grade), q(m.rcg_score),
   json(m.rcg_caps), q(m.rcg_applied_factors), q(m.last_price), q(m.volume_24h_usd), q(m.volume_total_usd),
-  q(m.settlement_style), q(m.direction), q(m.threshold), q(m.question_id), json(m.also_on ?? null), json(m.tags),
+  q(m.settlement_style), q(m.direction), q(m.threshold), q(m.question_id), json(m.also_on ?? null), json(m.tags), json(eligScreens(m.market_id)),
 ].join(',')})`);
 
 // ---- resolution log seed (read from web/data/resolution-log.json) ----
@@ -255,7 +278,7 @@ try {
 
 const batches = [
   ...chunkBySize(eRows, 'INSERT INTO events (event_id,slug,question,category,tags,primary_market_id,event_type,ladder_distribution,catalyst_types,catalyst_dates,venue,editorial_notes,is_demo,published,created_at,updated_at) VALUES'),
-  ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,source_commitment,source_commitment_subtype,source_hedge_text,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,question_id,also_on,tags) VALUES'),
+  ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,source_commitment,source_commitment_subtype,source_hedge_text,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,question_id,also_on,tags,eligibility_screens) VALUES'),
   ...(calRows.length ? chunkBySize(calRows, 'INSERT INTO catalyst_calendar (type,label,source_url,dates) VALUES') : []),
   ...(rlRows.length ? chunkBySize(rlRows, 'INSERT INTO resolution_log (market_id,event_id,platform,event_type,occurred_at,recorded_at,to_value,final_price,source,source_ref,actor) VALUES') : []),
 ];

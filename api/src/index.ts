@@ -147,6 +147,9 @@ export function marketOut(m: any) {
     question_id: m.question_id ?? null,  // canonical question id: markets sharing it are the same question (across venues + events)
     also_on: parseJson(m.also_on, null),  // the same question priced on other venues [{venue, market_id, price}]; null if unique to this venue
     tags: parseJson(m.tags, []),
+    // Jurisdiction-specific distribution rule-set fit (e.g. ciro-26-0076): eligible / review /
+    // not_eligible against ONE named rule-set. NOT market quality — quality is rcg.grade.
+    eligibility_screens: parseJson(m.eligibility_screens, null),
   };
 }
 

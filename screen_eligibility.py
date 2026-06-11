@@ -340,10 +340,6 @@ def main():
         print(f"   {n:>4}  {q}")
 
     if args.write:
-        dest = ROOT / f"web/data/eligibility-{args.regime}.json"
-        dest.write_text(json.dumps(out, indent=0, sort_keys=True))
-        print(f"\n  wrote {dest} ({len(out)} markets)")
-
         # Page-ready summary: funnel + clustered review + eligible-set stats.
         # Clusters group the review set into the ~20 actual judgment units.
         CLUSTER_LABELS = [
@@ -377,6 +373,7 @@ def main():
                     if any(re.search(p, low) for p in pats):
                         key, label = k, lbl
                         break
+            rec["cluster"] = key  # per-market cluster key for the /screens/ page
             c = clusters[key]
             c["label"] = label
             c["reason"] = reason
@@ -411,6 +408,10 @@ def main():
             "review_reasons": dict(review_reasons),
             "review_clusters": cluster_list,
         }
+        dest = ROOT / f"web/data/eligibility-{args.regime}.json"
+        dest.write_text(json.dumps(out, indent=0, sort_keys=True))
+        print(f"\n  wrote {dest} ({len(out)} markets)")
+
         sdest = ROOT / f"web/data/eligibility-{args.regime}-summary.json"
         sdest.write_text(json.dumps(summary, indent=2))
         print(f"  wrote {sdest} ({len(cluster_list)} review clusters)")

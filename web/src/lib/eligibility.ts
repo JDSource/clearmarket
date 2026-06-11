@@ -13,6 +13,7 @@ export type EligibilityRecord = {
   regime: string;
   status: EligibilityStatus;
   reasons: string[];
+  cluster?: string | null; // review judgment-cluster key (review rows only)
   bucket: string | null;
   source_commitment: string | null;
   source_class: string | null;
