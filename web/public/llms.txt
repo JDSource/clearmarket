@@ -59,7 +59,7 @@ Jurisdiction-specific distribution rule-sets screened per contract. eligibility 
 
 - https://clearmarket.fyi/screens/ : index of screens (first regime: ciro-26-0076 — CIRO Administrative Bulletin 26-0076, Canadian dealer distribution under IDPC Rule 2246(2))
 - https://clearmarket.fyi/screens/ciro-26-0076/ : per-contract statuses, review clusters, verbatim rule mapping
-- https://clearmarket.fyi/screens/ciro-26-0076.json : machine twin (summary + per-market records)
+- https://clearmarket.fyi/screens/ciro-26-0076.json : machine twin (screen summary + market-id lists by status; full per-contract records in the .csv)
 - https://clearmarket.fyi/screens/ciro-26-0076.csv : flat per-contract export
 
 ## Schema

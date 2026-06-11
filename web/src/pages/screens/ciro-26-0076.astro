@@ -138,8 +138,10 @@ const jsonLd = summary && {
   dateModified: summary.screened_at,
   version: summary.screen_version,
   isBasedOn: 'https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts',
+  url: canonicalURL,
   distribution: [
     { '@type': 'DataDownload', encodingFormat: 'application/json', contentUrl: 'https://clearmarket.fyi/screens/ciro-26-0076.json' },
+    { '@type': 'DataDownload', encodingFormat: 'text/csv', contentUrl: 'https://clearmarket.fyi/screens/ciro-26-0076.csv' },
   ],
 };
 ---

@@ -312,16 +312,22 @@ def main():
             if reasons[0] == "category_interpretation_s1":
                 penumbra_examples[str((ev or {}).get("question", ""))[:64]] += 1
 
-        # funnel (ordered, first-failure attribution)
+        # funnel (ordered, first-failure attribution) — derived from the SAME
+        # stamped reasons that produce the statuses, so the published cascade
+        # composes exactly with the per-market records on every surface
+        # (HTML/JSON/CSV). The old version re-tested event category directly,
+        # which silently dropped crypto (review-only, not category-failed) at
+        # the category gate and made the public numbers irreconcilable.
+        rec = out[m["market_id"]]
+        first = rec["reasons"][0] if rec["reasons"] else None
         funnel["0_in_scope"] += 1
-        if (ev or {}).get("category") not in regime["categories"]:
+        if first == "category_not_permitted":
             continue
         funnel["1_category"] += 1
-        r = parse_dt(m.get("resolve_at") or m.get("close_at"))
-        if not r or r < now + timedelta(days=regime["min_days_to_resolution"]):
+        if first in ("under_min_maturity", "no_resolution_date"):
             continue
         funnel["2_maturity"] += 1
-        if out[m["market_id"]]["status"] == "eligible":
+        if rec["status"] == "eligible":
             funnel["3_eligible"] += 1
 
     print(f"REGIME {args.regime} — {regime['name']}   (as of {now.date()})")
@@ -363,11 +369,11 @@ def main():
             q = str(ev.get("question", "?"))
             reason = rec["reasons"][0]
             if reason == "category_not_enumerated_s1":
-                key, label = "crypto_prices", "Crypto price contracts (category not enumerated in §1)"
+                key, label = "crypto_prices", "Crypto price contracts (category not enumerated in Section 1)"
             elif reason == "political_nature_s3":
-                key, label = "political_language", "Political-language flags (§3 echo, in-category)"
+                key, label = "political_language", "Political-language flags (Section 3 echo, in-category)"
             else:
-                key, label = "other_interpretation", "Other §1 interpretation questions"
+                key, label = "other_interpretation", "Other Section 1 interpretation questions"
                 low = q.lower()
                 for k, lbl, pats in CLUSTER_LABELS:
                     if any(re.search(p, low) for p in pats):

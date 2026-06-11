@@ -81,13 +81,13 @@ export function getMarketIdsByStatus(status: EligibilityStatus): string[] {
 }
 
 // Human-readable copy for reason codes (kept here so every surface says the
-// same thing). The §-refs point at Appendix A of bulletin 26-0076.
+// same thing). The Section refs point at Appendix A of bulletin 26-0076.
 export const REASON_COPY: Record<string, string> = {
-  category_not_permitted: 'category outside the Appendix A §1 buckets',
-  under_min_maturity: 'term to maturity under 30 days (§2)',
-  no_resolution_date: 'no parseable resolution date (§2 cannot be evidenced)',
-  category_interpretation_s1: '§1 interpretation open — the "such as" examples are macro statistics',
-  category_not_enumerated_s1: 'category not enumerated in §1 (crypto)',
-  political_nature_s3: '§3 political-language flag inside a permitted category',
+  category_not_permitted: 'category outside the Appendix A Section 1 buckets',
+  under_min_maturity: 'term to maturity under 30 days (Section 2)',
+  no_resolution_date: 'no parseable resolution date (Section 2 cannot be evidenced)',
+  category_interpretation_s1: 'Section 1 interpretation open — the "such as" examples are macro statistics',
+  category_not_enumerated_s1: 'category not enumerated in Section 1 (crypto)',
+  political_nature_s3: 'Section 3 political-language flag inside a permitted category',
   venue_out_of_scope: 'venue out of scope for this regime',
 };
