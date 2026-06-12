@@ -158,7 +158,7 @@ const jsonLd = summary && {
   {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} slot="head" />}
 
   <nav class="cm-subnav" aria-label="Screen sections" slot="subnav">
-    <a href="#cascade" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Cascade</a>
+    <a href="#funnel" class="cm-subnav-link cm-subnav-active"><span class="cm-active-mark">&#9614;</span>Funnel</a>
     <a href="#eligible" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Eligible</a>
     <a href="#review" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Review</a>
     <a href="#not-eligible" class="cm-subnav-link"><span class="cm-active-mark">&#9614;</span>Not eligible</a>
@@ -189,8 +189,8 @@ const jsonLd = summary && {
         </dl>
 
         {/* ===== ATTRITION CASCADE ===== */}
-        <section id="cascade" class="cm-section">
-          <div class="cm-section-h">screening cascade <span class="cm-section-tag">| each market counted at the first term it misses · screened {summary.screened_at}</span></div>
+        <section id="funnel" class="cm-section">
+          <div class="cm-section-h">screening funnel <span class="cm-section-tag">| each market counted at the first term it misses · screened {summary.screened_at}</span></div>
           <div class="scr-cascade" data-screen-regime={summary.regime}>
             {cascadeRows.map((r) => (
               <div class="scr-cascade-row">
@@ -449,7 +449,7 @@ const jsonLd = summary && {
 
     .cm-section { margin: 32px 0 14px; }
     .cm-section:first-of-type { margin-top: 22px; }
-    #cascade, #eligible, #review, #not-eligible, #rules, #methodology { scroll-margin-top: 120px; }
+    #funnel, #eligible, #review, #not-eligible, #rules, #methodology { scroll-margin-top: 120px; }
     .cm-section-h { display: flex; align-items: center; gap: 10px; font-family: var(--cm-font-mono); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--cm-fg-muted); margin-bottom: 10px; }
     /* Section markers, three tiers (overrides the global green tick from
        cm-event.css, hence the explicit width/height/margin/background):
