@@ -58,7 +58,7 @@ const RAW = 'https://raw.githubusercontent.com/JDSource/clearmarket/main/schema'
           <li><code>question_id</code> — the venue-independent identity of the bet. Markets sharing a <code>question_id</code> are the same question across Kalshi and Polymarket, and across events within a venue.</li>
           <li><code>also_on</code> — on each market, an array of <code>{'{ venue, market_id, price }'}</code> for the same question priced on other venues, or <code>null</code> when it trades on only one. The only field that asserts a cross-venue twin.</li>
         </ul>
-        <p>The ids are deterministic and stable — they are the citation unit. Persist them and a claim stays traceable to its source. Full reasoning on the three grains is in <a href="/methodology/#crossvenue">methodology §5</a>.</p>
+        <p>The ids are deterministic and stable — they are the citation unit. Persist them and a claim stays traceable to its source. Full reasoning on the three grains is in <a href="/methodology/#crossvenue">methodology section 5</a>.</p>
       </section>
 
       <section class="surface" id="grades">

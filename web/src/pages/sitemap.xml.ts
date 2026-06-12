@@ -16,6 +16,9 @@ export async function GET() {
     { loc: `${SITE}/methodology/` },
     { loc: `${SITE}/api/` },
     { loc: `${SITE}/schema/` },
+    // Eligibility screens — index + one page per regime (keep in sync with src/pages/screens/).
+    { loc: `${SITE}/screens/` },
+    { loc: `${SITE}/screens/ciro-26-0076/` },
     // Schema vocabulary pages — DefinedTermSet, versioned citation anchors (keep in sync
     // with getStaticPaths in schema/[vocab]/[version].astro).
     ...['arbitration-model', 'resolution-proposer', 'source-type', 'settlement-style', 'direction', 'field-provenance', 'category']

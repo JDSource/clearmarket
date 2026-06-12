@@ -3,7 +3,7 @@ import Site from '../layouts/Site.astro';
 
 // Canonical methodology doc. Mirrors src/pages/api.astro's doc layout (sticky gutter +
 // surface sections + --va-* tokens) so the two reference pages read as one system.
-const updated = '2026-05-26';
+const updated = '2026-06-11';
 ---
 <Site title="Methodology — ClearMarket" description="How ClearMarket selects, sources, and grades prediction-market data across Kalshi and Polymarket.">
   <div class="doc">
@@ -22,6 +22,7 @@ const updated = '2026-05-26';
         <a href="#rcg">3 · Clarity Grade</a>
         <a href="#editorial">4 · Editorial</a>
         <a href="#crossvenue">5 · Cross-venue linking</a>
+        <a href="#screens">6 · Eligibility screens</a>
       </nav>
     </aside>
 
@@ -104,11 +105,11 @@ const updated = '2026-05-26';
         <ul class="m-list">
           <li><strong>Always-on factors</strong> (trigger, contested, source clarity, arbiter, temporal, mutability — 92 of 100) score every market. The <strong>one situational</strong> factor (source-conflict rule) scores only when 2+ distinct sources are named and is excluded from the denominator otherwise (score re-normalized over applicable factors).</li>
           <li>Score = <code>100 × earned / applicable</code>, banded <strong>A ≥ 80, B 55–79, C ≤ 54</strong>.</li>
-          <li><strong>Hard caps</strong> (ceilings, applied after banding): <strong>source uncommitted-illustrative goes to B; uncommitted-placeholder or none goes to C</strong> (§2 — a hedge is not a committed source; the binding constraint on most unregulated markets); 2+ <em>genuinely competing</em> sources with no precedence rule goes to C; discretionary trigger with no named source goes to C; permissionless oracle + discretionary trigger goes to C; adversarial ground truth (contested reality) goes to B. Caps only ever <em>lower</em> a grade, never raise it.</li>
+          <li><strong>Hard caps</strong> (ceilings, applied after banding): <strong>source uncommitted-illustrative goes to B; uncommitted-placeholder or none goes to C</strong> (section 2 — a hedge is not a committed source; the binding constraint on most unregulated markets); 2+ <em>genuinely competing</em> sources with no precedence rule goes to C; discretionary trigger with no named source goes to C; permissionless oracle + discretionary trigger goes to C; adversarial ground truth (contested reality) goes to B. Caps only ever <em>lower</em> a grade, never raise it.</li>
           <li>The <strong>applicable-factor count is surfaced with the grade</strong> ("B — scored on 6 of 7 factors") for comparability across markets of different complexity.</li>
         </ul>
 
-        <p>Five LLM-judged factors — trigger objectivity, contested reality, source-conflict rule, temporal precision, source mutability — are scored in <strong>one per-event call</strong> (<code>enhance.llm_rcg_factors</code>). Source clarity is hybrid: it reads the §2 verified-source layer (deterministic for Kalshi, gated-LLM for Polymarket). Only arbiter incentive is purely deterministic (it reads the venue's arbitration model). Adding factors adds tokens, not calls. The full weighted model, scoring rules, and caps are in <code>rcg-scoring-model.csv</code> (repo root) — the canonical spec for this section.</p>
+        <p>Five LLM-judged factors — trigger objectivity, contested reality, source-conflict rule, temporal precision, source mutability — are scored in <strong>one per-event call</strong> (<code>enhance.llm_rcg_factors</code>). Source clarity is hybrid: it reads the section 2 verified-source layer (deterministic for Kalshi, gated-LLM for Polymarket). Only arbiter incentive is purely deterministic (it reads the venue's arbitration model). Adding factors adds tokens, not calls. The full weighted model, scoring rules, and caps are in <code>rcg-scoring-model.csv</code> (repo root) — the canonical spec for this section.</p>
 
         <p>The source-conflict rule was deterministic (URL-count + regex) through 2026-05-26; it moved to the LLM on 2026-05-27 because URL counting mis-read one source across multiple pages as "multiple sources" (false C) and missed prose-named sources entirely (false <code>na</code>). It is now a reading-comprehension judgment.</p>
 
@@ -145,6 +146,11 @@ const updated = '2026-05-26';
 
         <h3>also_on — the cross-venue surface</h3>
         <p>Each market carries an <code>also_on</code> field: an array of <code>{'{ venue, market_id, price }'}</code> for the same question priced on other venues, or <code>null</code> when the question trades on only one. It is the <strong>only</strong> field that asserts a cross-venue twin — a market advertises one only when it genuinely has one. The linker is deliberately high-precision, low-recall: a missing link is preferred to a wrong one.</p>
+      </section>
+
+      <section class="surface" id="screens">
+        <div class="surface-tab">6 · ELIGIBILITY SCREENS</div>
+        <p>A separate layer on top of the reference data: parameterized rule-sets screened per contract, stamping every market <code>eligible / review / not_eligible</code> against a named distribution rule-set. Statuses describe fit against that one rule-set — they are not market quality (quality is the Resolution Clarity Grade above). First regime: <a href="/screens/ciro-26-0076/">CIRO Administrative Bulletin 26-0076</a> (Canadian dealer distribution); index at <a href="/screens/">/screens/</a>. Screening data supporting a dealer&rsquo;s own determination — not a compliance opinion.</p>
       </section>
     </div>
   </div>
