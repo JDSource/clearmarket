@@ -648,6 +648,16 @@ export default {
       });
     }
 
+    // Glama connector-ownership proof (glama.ai/mcp/connectors/fyi.clearmarket/clearmarket):
+    // Glama polls this well-known file on the connector's domain and verifies the
+    // maintainer email against the claiming Glama account.
+    if (path === '/.well-known/glama.json') {
+      return json({
+        $schema: 'https://glama.ai/mcp/schemas/connector.json',
+        maintainers: [{ email: 'jeremyd2255@gmail.com' }],
+      }, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
     if (path === '/mcp') return handleMcp(req, env, ctx);
 
     if (path === '/v1/keys' && req.method === 'POST') return createKey(env, req);
