@@ -37,7 +37,7 @@ from pathlib import Path
 import enhance as E  # reuse llm_call, prompts, cache, cost stats, helpers
 from classify import CATEGORIES_IN, grade_market
 
-UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-03"
+UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
 OUT_DIR      = Path.home() / "jeremy-os/outputs/clearmarket/samples-universe"
 RUN_AT       = datetime.now(timezone.utc).isoformat()
 

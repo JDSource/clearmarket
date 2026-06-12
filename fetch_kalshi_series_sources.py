@@ -19,7 +19,7 @@ from pathlib import Path
 
 import requests
 
-UNIV  = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-03"
+UNIV  = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
 CACHE = Path(__file__).parent / ".kalshi-series-cache"
 BASE  = "https://api.elections.kalshi.com/trade-api/v2"
 H     = {"User-Agent": "clearmarket/0.1"}
