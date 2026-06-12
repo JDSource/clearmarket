@@ -80,6 +80,9 @@ def main():
         if old is not None and "question_id_legacy" not in m:
             m["question_id_legacy"] = old   # preserve the ORIGINAL only (don't clobber on re-run)
         m.pop("claim_sig", None)            # retire the old field name
+        m.pop("claim_sig_method", None)     # retire the old audit sidecars (renamed to question_id_*)
+        m.pop("claim_sig_provenance", None)
+        m.pop("claim_sig_legacy", None)
         m.pop("cross_platform_link", None)  # retire the vestigial derived field (single-venue event_id; never worked)
         if isinstance(m.get("field_provenance"), dict):
             m["field_provenance"].pop("cross_platform_link", None)

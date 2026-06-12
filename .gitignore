@@ -48,3 +48,5 @@ marks.jsonl
 web/.backup/
 web/.retired-routes/
 .mcp-registry-key.pem
+data/uma-statuses-*.json
+data/dispute-labels-2*.json

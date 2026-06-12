@@ -24,7 +24,7 @@ from pathlib import Path
 
 import enhance as E
 
-UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-05-27"
+UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
 URL_RE = re.compile(r'https?://[^\s\)\]\}"\'<>]+')
 
 
