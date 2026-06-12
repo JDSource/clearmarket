@@ -218,7 +218,7 @@ const jsonLd = summary && {
               <summary class="scr-group-summary">
                 <span class="scr-group-marker" aria-hidden="true">▸</span>
                 <span class="scr-group-tag">[{g.meta.tag}]</span>
-                <span class="scr-group-count">{g.rows.length} MARKETS</span>
+                <span class="scr-group-count">{g.rows.length} {g.rows.length === 1 ? 'MARKET' : 'MARKETS'}</span>
               </summary>
               <table class="scr-table scr-eligible">
                 <thead><tr><th>market</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
