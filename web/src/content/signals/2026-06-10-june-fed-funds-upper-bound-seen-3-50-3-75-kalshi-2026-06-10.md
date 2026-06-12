@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG2026061004"
+signal_id: "CMSIG2026061001"
 signal_slug: "june-fed-funds-upper-bound-seen-3-50-3-75-kalshi-2026-06-10"
 headline: "June Fed funds upper bound seen 3.50-3.75%: Kalshi"
-semantic_title: "Fed funds upper bound seen pinned at 3.50-3.75 percent"
+semantic_title: "June Fed funds upper bound consensus wavers near 3.5 percent"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"
-published_at: "2026-06-10T00:00:00.000Z"
+published_at: "2026-06-10T23:17:00.000Z"
 event_id: "CM-EVT-4ZQLQPNH91"
 event_slug: "kxfed-26sep"
 event_question: "June 2026 Fed funds upper bound"
@@ -21,10 +21,10 @@ primary_market:
   resolution_source: "Federal Reserve Board of Governors"
   resolves_at: "2026-09-16T18:05:00Z"
 bullets:
-  - "Kalshi pins the June 2026 Fed funds upper bound in the 3.50-3.75% range, with 91% probability above 3.50% but only 15% above 4.00%."
-  - "Blowout jobs data and rising inflation expectations are consistent with the market holding rates higher for longer, though a full hike to 4.00% or above still registers well below 20%."
-  - "A separate Kalshi ladder for a subsequent meeting (CM-EVT-PHWX2H6DM5) shows 95% above 3.50% but only 14% above 3.75%, confirming the market sees 3.50-3.75% as a durable holding zone."
-  - "Resolves via Federal Reserve announcement; the sharp drop from 91% to 15% at the 4.00% strike is the key distribution signal."
+  - "Kalshi pins the June 2026 Fed funds upper bound in the 3.50-3.75% range, pricing 91% above 3.50% but only 34% above 3.75%."
+  - "Hot May CPI is consistent with rates staying well above 3.50%, but the market is not aggressively pricing a move above 3.75% despite the inflation shock."
+  - "The 3.75% strike at 34% signals the distribution has a real upper tail, Warsh's first meeting carries more uncertainty than a routine hold."
+  - "A second Kalshi ladder (CM-EVT-RJ6SMJGK50) shows the longer-horizon upper bound firmly at 3.50-3.75%, with only 2% above 3.75%, suggesting the near-term tail fades quickly in time."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -32,28 +32,28 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active kalshi market"
-    story: "Blowout May jobs numbers have complicated Fed Chair Kevin Warsh's position and raised the prospect of a rate hike showdown with President Trump."
-    publisher: "Keith Speights, The Motley Fool      Wed, June 10, 2026 at 3:35 AM EDT   5 min read"
-    published_at: "2026-06-10T00:00:00.000Z"
-    source_url: "https://finance.yahoo.com/economy/policy/articles/blowout-jobs-numbers-just-made-073500605.html"
+    story: "May CPI hit a 3-year high driven by Iran war energy shocks, resetting Fed rate-cut expectations ahead of new Chair Kevin Warsh's first meeting."
+    publisher: "Celine Provini"
+    published_at: "2026-06-10T23:17:00.000Z"
+    source_url: "https://www.thestreet.com/fed/hot-may-cpi-sticks-a-pin-in-fed-rate-cut-bets"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "Keith Speights, The Motley Fool      Wed, June 10, 2026 at 3:35 AM EDT   5 min read"
-        source_url: "https://finance.yahoo.com/economy/policy/articles/blowout-jobs-numbers-just-made-073500605.html"
-        retrieved_at: "2026-06-10T11:36:47+00:00"
+        source: "Celine Provini"
+        source_url: "https://www.thestreet.com/fed/hot-may-cpi-sticks-a-pin-in-fed-rate-cut-bets"
+        retrieved_at: "2026-06-12T11:42:07+00:00"
   - type: "pm_response"
-    notes: "Kalshi's distribution clusters tightly at 3.50-3.75% across multiple meeting ladders, with the strong jobs print keeping any near-term cut off the table while a hike above 4.00% remains a low-probability tail."
+    notes: "Kalshi ladder resolves via the Fed's own target-range announcement; the sharp drop from 91% at 3.50% to 34% at 3.75% is the key distribution signal."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "Keith Speights, The Motley Fool      Wed, June 10, 2026 at 3:35 AM EDT   5 min read: Blowout Jobs Numbers Just Made Kevin Warsh's Job Much Harder -- and Pu"
-    url: "https://finance.yahoo.com/economy/policy/articles/blowout-jobs-numbers-just-made-073500605.html"
-    published_at: "2026-06-10T00:00:00.000Z"
-    retrieved_at: "2026-06-10T11:36:47+00:00"
+  - label: "Celine Provini: Hot CPI Resets Fed Rate-Cut Bets Ahead of Warsh Meeting - TheStreet"
+    url: "https://www.thestreet.com/fed/hot-may-cpi-sticks-a-pin-in-fed-rate-cut-bets"
+    published_at: "2026-06-10T23:17:00.000Z"
+    retrieved_at: "2026-06-12T11:42:07+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   news_context: "exa_search"
