@@ -58,6 +58,27 @@ URL), **`editorial`** (LLM-drafted interpretation, e.g. `underlying_reference`),
 (resolution by consensus, no named data source). The LLM is confined to the `editorial` tier; any
 verifiable identifier (source name, URL) traces to platform data.
 
+### Source commitment
+
+Capturing a source is not the same as the venue *committing* to one. We classify every market's
+resolution source on a **commitment axis**, because a hedge or a placeholder is not a definitive
+source:
+
+- **named** — a concrete, resolvable authority (Federal Reserve, BLS, the NYC Rent Guidelines Board,
+  a deep-link `.gov` / official-electoral citation). No grade cap.
+- **uncommitted** — a source is *gestured at* but not committed to. Two sub-cases:
+  *illustrative* ("For example, Google Finance" — a candidate, not a commitment) and
+  *placeholder* ("a consensus of credible reporting" — names no concrete authority).
+- **none** — no source language at all.
+
+The principle: **"for example" means the venue did not commit to a definitive source.** Source
+commitment is a *separate axis* from outcome objectivity — an objective outcome resolved against an
+uncommitted source still carries resolution risk, because *which* report decides is left unspecified.
+This is the gap the CFTC comment documents: regulated venues commit to a named authority; unregulated
+markets frequently do not. The commitment classification feeds a grade ceiling (see §3), and the
+**venue's literal source field is shown verbatim** on each event page — including when it does not
+match the resolution rules — so the reader judges the source in the venue's own words, not ours.
+
 ---
 
 ## 3. Resolution Clarity Grade (RCG) — v2
@@ -77,7 +98,7 @@ defects, so the grade scores those defects directly.
 | Contested reality | 22 | Whether the underlying fact is controlled or disputed by an interested party (Venezuela, Ukraine). Most saturation-resistant. |
 | Source clarity | 18 | Authoritative named source + usable link. Necessary but commoditizes fastest. |
 | Arbiter incentive | 12 | Dispute resolver's capture risk: regulated/automated vs. permissionless oracle (the UMA flip). |
-| Source-conflict rule | 8 | If 2+ sources that could disagree are named, is there an explicit precedence/fallback rule? (Venezuela). *Situational — the only one.* |
+| Source-conflict rule | 8 | If 2+ **genuinely competing** sources (independent authorities that could give contradictory answers) are named, is there an explicit precedence/fallback rule? A named *primary with an informal fallback* is **not** a conflict (Venezuela). *Situational — the only one.* |
 | Temporal precision | 7 | Controlling timestamp vs. source-update lag (OPM shutdown). |
 | Source mutability | 5 | Editable/tamperable source without a snapshot rule (Ukraine map, Météo-France sensor). |
 
@@ -86,9 +107,11 @@ defects, so the grade scores those defects directly.
   score every market. The **one situational** factor (source-conflict rule) scores only when 2+ distinct
   sources are named and is **excluded from the denominator** otherwise (score re-normalized over applicable factors).
 - Score = `100 × earned / applicable`, banded **A ≥ 80, B 55–79, C ≤ 54**.
-- **Hard caps (ceilings, applied after banding):** 2+ conflictable sources with no conflict rule → C;
-  discretionary trigger with no named source → C; permissionless oracle + discretionary trigger → C;
-  **adversarial ground truth (contested reality) → B**.
+- **Hard caps (ceilings, applied after banding):** **source uncommitted-illustrative → B; uncommitted-placeholder
+  or none → C** (§2 — a hedge is not a committed source; the binding constraint on most unregulated markets);
+  2+ *genuinely competing* sources with no precedence rule → C; discretionary trigger with no named source → C;
+  permissionless oracle + discretionary trigger → C; **adversarial ground truth (contested reality) → B**.
+  Caps only ever *lower* a grade, never raise it.
 - The **applicable-factor count is surfaced with the grade** ("B — scored on 6 of 7 factors") for
   comparability across markets of different complexity.
 

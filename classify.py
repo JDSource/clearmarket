@@ -273,12 +273,43 @@ def resolution_clarity_grade(ratings: dict) -> dict:
 
 
 # ---- deterministic factor raters (source_clarity, arbiter); the 5 LLM factors are supplied at enrichment ----
+import re as _re
+
+# Venue homepages / generic landing pages are NOT real source citations — a market that
+# "cites" kalshi.com or polymarket.com has not named where the outcome is actually read.
+_PLACEHOLDER_HOSTS = ("kalshi.com", "polymarket.com", "kalshi.co")
+
+def _is_placeholder_citation(url: str) -> bool:
+    """True if the citation is the venue's own homepage / a bare host with no real path."""
+    if not url:
+        return True
+    u = url.strip().rstrip("/")
+    host = _re.sub(r"^https?://(www\.)?", "", u).split("/")[0].lower()
+    path = u[u.find(host) + len(host):] if host in u else ""
+    if host in _PLACEHOLDER_HOSTS:
+        return True
+    # bare host with no meaningful path (e.g. "https://example.com") = not a real deep link
+    if not path or path in ("", "/"):
+        return True
+    return False
+
+def _is_placeholder_source_name(name: str) -> bool:
+    """Single-token / acronym-only source names ('NYC') are placeholders, not named authorities."""
+    return bool(name) and len(name.split()) <= 1
+
 def rate_source_clarity(market: dict) -> str:
     if market.get("resolution_source_quality") == "loose":
         return "partial"
-    if market.get("source_citation"):
+    cite = market.get("source_citation")
+    name = market.get("resolution_source")
+    real_cite = cite and not _is_placeholder_citation(cite)
+    real_name = name and not _is_placeholder_source_name(name)
+    # Full credit only when there's a real deep-link citation AND a named authority.
+    if real_cite and real_name:
         return "pass"
-    if market.get("resolution_source"):
+    # Partial: has one of the two (a real link OR a properly-named source), but not a
+    # clean placeholder-free pair. A venue that only cites its own homepage lands here.
+    if real_cite or real_name or name:
         return "partial"
     return "fail"
 

@@ -37,7 +37,7 @@ from pathlib import Path
 import enhance as E  # reuse llm_call, prompts, cache, cost stats, helpers
 from classify import CATEGORIES_IN, grade_market
 
-UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-05-27"
+UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-03"
 OUT_DIR      = Path.home() / "jeremy-os/outputs/clearmarket/samples-universe"
 RUN_AT       = datetime.now(timezone.utc).isoformat()
 
@@ -65,7 +65,7 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
     rules = "\n\n".join(filter(None, [m.get("rules_primary"), m.get("rules_secondary")]))
     ksrc = (src or {}).get("sources") or []
     mk = {
-        "market_id":             E.next_market_id(),
+        "market_id":             E.generate_market_id("kalshi:" + (m.get("ticker") or m.get("title") or "")),
         "platform":              "kalshi",
         "platform_market_id":    m.get("ticker"),
         "event_id":              event_id,
@@ -99,7 +99,7 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
 def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
     psrc = src or {}
     mk = {
-        "market_id":             E.next_market_id(),
+        "market_id":             E.generate_market_id("polymarket:" + (m.get("conditionId") or m.get("id") or m.get("question") or "")),
         "platform":              "polymarket",
         "platform_market_id":    m.get("conditionId") or m.get("id"),
         "event_id":              event_id,
@@ -301,6 +301,24 @@ def main() -> None:
 
     all_events = [ev for ev, mkts in built]
     all_markets = [mk for ev, mkts in built for mk in mkts]
+
+    # Dedup by id: the venue pulls list the same event under multiple tags, so an
+    # event (and its markets) can appear twice. Deterministic ids make these collide;
+    # collapse by id (first wins) so ids stay unique (D1 primary key, citable ref).
+    seen_ev, dedup_events = set(), []
+    for ev in all_events:
+        if ev["event_id"] in seen_ev:
+            continue
+        seen_ev.add(ev["event_id"]); dedup_events.append(ev)
+    seen_mk, dedup_markets = set(), []
+    for mk in all_markets:
+        if mk["market_id"] in seen_mk:
+            continue
+        seen_mk.add(mk["market_id"]); dedup_markets.append(mk)
+    if len(all_events) != len(dedup_events) or len(all_markets) != len(dedup_markets):
+        print(f"dedup: dropped {len(all_events)-len(dedup_events)} duplicate events, "
+              f"{len(all_markets)-len(dedup_markets)} duplicate markets", flush=True)
+    all_events, all_markets = dedup_events, dedup_markets
 
     bundle = {"_meta": {"generated_at": RUN_AT, "schema": "v0.2.0-universe",
                         "event_count": len(all_events), "market_count": len(all_markets)},

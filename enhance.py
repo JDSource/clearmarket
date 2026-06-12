@@ -220,7 +220,9 @@ SPECIMENS = [
 VOWEL_FREE_ALPHABET = "0123456789BCDFGHJKLMNPQRSTVWXYZ"  # 31 chars
 
 
-def generate_event_id(seed: str) -> str:
+def _cm_id(prefix: str, seed: str) -> str:
+    """Deterministic 12-char id: prefix + 9 vowel-free base31 chars + 1 mod-10 check.
+    Same body algorithm for events and markets; only the prefix differs."""
     h = hashlib.blake2s(seed.encode(), digest_size=16).hexdigest()
     num = int(h, 16)
     body = ""
@@ -228,7 +230,20 @@ def generate_event_id(seed: str) -> str:
         body = VOWEL_FREE_ALPHABET[num % len(VOWEL_FREE_ALPHABET)] + body
         num //= len(VOWEL_FREE_ALPHABET)
     check_val = sum(VOWEL_FREE_ALPHABET.index(c) for c in body) % 10
-    return f"CM-EVT-{body}{check_val}"
+    return f"{prefix}{body}{check_val}"
+
+
+def generate_event_id(seed: str) -> str:
+    return _cm_id("CM-EVT-", seed)
+
+
+def generate_market_id(seed: str) -> str:
+    """Deterministic market id, hashed from venue + venue-native market id
+    (Kalshi ticker / Polymarket conditionId). Stable across re-enrichment so
+    marks history, cross-venue links, and catalysts survive a re-run -- the
+    CUSIP-model 'assigned + pinned' property a reference layer needs.
+    Replaces the old session counter (next_market_id), kept for the specimens."""
+    return _cm_id("CM-MKT-", seed)
 
 
 def load_json(filename: str):
@@ -814,20 +829,6 @@ def populate_derived(events, markets, marks):
         if ev["current_primary_mark"] is not None:
             ev["field_provenance"]["current_primary_mark"] = {"source": "derived"}
 
-    # Market-level derived
-    # Group by event_id for cross-platform link
-    for m in markets:
-        sib_markets = markets_by_event.get(m["event_id"], [])
-        by_platform = {}
-        for sm in sib_markets:
-            by_platform.setdefault(sm["platform"], 0)
-            by_platform[sm["platform"]] += 1
-        m["cross_platform_link"] = {
-            "kalshi":     {"market_count": by_platform.get("kalshi", 0)},
-            "polymarket": {"market_count": by_platform.get("polymarket", 0)},
-        }
-        m["field_provenance"]["cross_platform_link"] = {"source": "derived"}
-
     # Mark-level derived
     for mk in marks:
         if mk.get("yes_bid") is not None and mk.get("yes_ask") is not None:
@@ -1021,7 +1022,8 @@ _RCG_SYSTEM = (
     "measurable, publicly-verifiable trigger (a number, a dated official action, a clearly "
     "defined event)? pass = objective and measurable; partial = mostly objective with a "
     "discretionary edge; fail = hinges on subjective judgment about whether something "
-    "'counts' (vague qualitative criteria).\n"
+    "'counts' (vague qualitative criteria, e.g. resolution by a 'consensus of credible "
+    "reporting' with no named authoritative source).\n"
     "contested_reality (ALWAYS rate, never na): is the underlying ground-truth fact neutral, or "
     "is it controlled/disputed by an interested party who shapes the RECORD of what happened? "
     "pass = neutral and independently verifiable, OR the interested party is merely the SUBJECT of "
@@ -1029,11 +1031,14 @@ _RCG_SYSTEM = (
     "X is interested); partial = some dispute but largely verifiable; fail = the ground truth itself is "
     "reported, controlled, or disputed by a party with a stake in the outcome (a government reporting "
     "its own election, combatants narrating a clash) with no neutral record.\n"
-    "source_conflict (na if there is only ONE source / a single deciding authority): when TWO OR MORE "
-    "sources that could give different answers are named, is there an explicit rule for which wins "
-    "(precedence, fallback, or required agreement)? pass = 2+ sources WITH a stated conflict/fallback "
-    "rule; fail = 2+ sources that could disagree with NO rule for the conflict; na = a single source or "
-    "single deciding authority (nothing to adjudicate). Multiple pages/links of the SAME source = na.\n"
+    "source_conflict (na if there is only ONE source / a single deciding authority): only fires when TWO "
+    "OR MORE GENUINELY COMPETING sources — independent authorities that could return CONTRADICTORY "
+    "answers — are named with NO precedence. pass = 2+ competing sources WITH a stated conflict/fallback "
+    "rule; fail = 2+ competing sources that could disagree with NO rule; na = a single source/authority, "
+    "OR a named PRIMARY with an informal/corroborating fallback (e.g. 'official X, however a consensus of "
+    "credible reporting may also be used' — the primary decides, the fallback merely corroborates), OR "
+    "multiple pages/links of the SAME source. A subjective 'consensus of credible reporting' standard with "
+    "no named authority is NOT a source conflict — its weakness is trigger subjectivity; rate it there.\n"
     "temporal_precision (rate for every market; na only if truly inapplicable): is the controlling "
     "timestamp/cutoff precise and aligned with when the source updates? pass = precise and aligned; "
     "partial = minor ambiguity; fail = ambiguous timing or source-update lag could flip the outcome.\n"
