@@ -73,6 +73,10 @@ export function getEligibility(marketId: string): EligibilityRecord | null {
   return byMarket?.[marketId] ?? null;
 }
 
+export function getAllEligibility(): Record<string, EligibilityRecord> {
+  return byMarket ?? {};
+}
+
 export function getMarketIdsByStatus(status: EligibilityStatus): string[] {
   if (!byMarket) return [];
   return Object.entries(byMarket)

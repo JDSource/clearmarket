@@ -76,7 +76,7 @@ const fmt = (n: number) => n.toLocaleString('en-US');
 // Attrition cascade: first-failure attribution, delta removed at each gate.
 const cascadeRows = f
   ? [
-      { idx: '1', label: 'IN-SCOPE CONTRACTS (KALSHI)', n: f.in_scope, delta: null as number | null, note: 'baseline pool' },
+      { idx: '1', label: 'IN-SCOPE MARKETS (KALSHI)', n: f.in_scope, delta: null as number | null, note: 'baseline pool' },
       { idx: '2', label: 'PERMITTED CATEGORY (SECTIONS 1, 3)', n: f.candidate_category, delta: f.in_scope - f.candidate_category, note: 'category exclusions' },
       { idx: '3', label: 'TERM TO MATURITY ≥ 30D (SECTION 2)', n: f.min_maturity, delta: f.candidate_category - f.min_maturity, note: 'short-horizon drop' },
       { idx: '4', label: 'APPENDIX A CORE SUBJECT (SECTION 1)', n: f.eligible, delta: f.min_maturity - f.eligible, note: 'interpretation calls → review' },
@@ -98,6 +98,11 @@ const ledgerGroups = bucketOrder
 // screen_eligibility.py — each cluster block expands into its own markets).
 const reviewRowsByCluster: Record<string, Row[]> = {};
 for (const r of reviewRows) (reviewRowsByCluster[r.cluster] ??= []).push(r);
+// Integrity fallback: a review row whose cluster key is missing/unknown (the
+// two data files are separate artifacts of one script run and can drift) must
+// never silently vanish — it renders under an explicit unclustered block.
+const knownClusters = new Set((summary?.review_clusters ?? []).map((c) => c.key));
+const unclusteredRows = reviewRows.filter((r) => !knownClusters.has(r.cluster));
 
 // Jeremy 2026-06-11: no "§" anywhere — the bulletin itself doesn't use it;
 // spell out "Section N" on all surfaces (data labels get deSection below).
@@ -118,12 +123,12 @@ const notEligibleGroups = Object.entries(notEligibleReasons)
 const clusterWhy: Record<string, string> = {
   ipo_announcements: 'A corporate one-off is not clearly an "Economic Forecast" — the bulletin’s Section 1 examples are macro statistics.',
   company_metrics: 'Company performance metrics are not clearly "economic statistics" in the Section 1 sense.',
-  commodity_prices: 'Commodity price levels fit no enumerated Section 1 bucket cleanly.',
-  fx_levels: 'An FX rate is not clearly a "Financial indicator" — Section 1’s example is index settlement.',
-  wealth_rankings: 'Rich-list rankings fit no Section 1 bucket.',
+  commodity_prices: 'Commodity price levels fit none of the bulletin’s listed categories cleanly.',
+  fx_levels: 'An FX rate is not clearly a "Financial indicator" — the bulletin’s example is an equity-index settlement.',
+  wealth_rankings: 'Rich-list rankings fit none of the bulletin’s listed categories.',
   weather_events: 'Weather events are not "climate indicators related to the average global temperature".',
-  crypto_prices: 'Section 1 does not enumerate crypto, though settlement mirrors its CME index example structurally.',
-  political_language: 'Political language inside a permitted category (Section 3) — mostly date/name echoes, held by the conservative net.',
+  crypto_prices: 'Section 1 does not list crypto, though these settle the same way as its CME index example.',
+  political_language: 'Political wording inside a permitted category — Section 3 prohibits political-outcome contracts, so these are held for review out of caution. Most are date or name echoes ("Election Day", "Bank of England").',
   other_interpretation: 'Sits in a permitted category but resembles none of the bulletin\u2019s named subjects — each needs a decision on whether it counts as an "Economic Forecast".',
 };
 
@@ -147,7 +152,7 @@ const jsonLd = summary && {
 ---
 <Site
   title="Eligibility screen · CIRO 26-0076 · ClearMarket"
-  description="Which Kalshi event contracts clear the terms of CIRO Administrative Bulletin 26-0076 for Canadian dealer distribution: eligible / review / not_eligible, with the rule-mapping, review clusters, and methodology. Screening data, not a compliance opinion."
+  description="Kalshi event contracts screened against the terms of CIRO Administrative Bulletin 26-0076 (Canadian dealer distribution): eligible / review / not_eligible, with the rule-mapping, review clusters, and methodology. Screening data, not a compliance opinion."
   canonical={canonicalURL}
 >
   {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} slot="head" />}
@@ -166,7 +171,7 @@ const jsonLd = summary && {
     <h1 class="cm-h1">
       <span class="cm-h1-brand">ELIGIBILITY SCREENS</span>
       <span class="cm-h1-sep">//</span>
-      <span class="cm-h1-role">CIRO-26-0076</span>
+      <span class="cm-h1-role">CIRO 26-0076</span>
     </h1>
 
     {!summary && <p class="cm-index-lede">Screen data unavailable in this build.</p>}
@@ -177,7 +182,7 @@ const jsonLd = summary && {
         <dl class="scr-prospectus scr-pros-meta">
           <div class="scr-pros-row"><dt>screen regime</dt><dd>CIRO Administrative Bulletin 26-0076 (Mar 26, 2026)</dd></div>
           <div class="scr-pros-row"><dt>rule authority</dt><dd>IDPC Rule 2246(2) — Canadian dealer distribution</dd></div>
-          <div class="scr-pros-row"><dt>scope</dt><dd>kalshi event contracts (CFTC DCM)</dd></div>
+          <div class="scr-pros-row"><dt>scope</dt><dd>Kalshi event contracts (CFTC-regulated exchange)</dd></div>
           <div class="scr-pros-row"><dt>screened</dt><dd>{summary.screened_at} · screen {summary.screen_version}</dd></div>
           <div class="scr-pros-row"><dt>formats</dt><dd>HTML · <a href="/screens/ciro-26-0076.json">JSON</a> · <a href="/screens/ciro-26-0076.csv">CSV</a></dd></div>
           <div class="scr-pros-row"><dt>source</dt><dd><a href="https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts" rel="noopener">bulletin 26-0076 ↗</a></dd></div>
@@ -185,7 +190,7 @@ const jsonLd = summary && {
 
         {/* ===== ATTRITION CASCADE ===== */}
         <section id="cascade" class="cm-section">
-          <div class="cm-section-h">screening cascade <span class="cm-section-tag">| first-failure attribution, screened {summary.screened_at}</span></div>
+          <div class="cm-section-h">screening cascade <span class="cm-section-tag">| each market counted at the first term it misses · screened {summary.screened_at}</span></div>
           <div class="scr-cascade" data-screen-regime={summary.regime}>
             {cascadeRows.map((r) => (
               <div class="scr-cascade-row">
@@ -200,10 +205,11 @@ const jsonLd = summary && {
 
         {/* ===== ELIGIBLE MARKETS ===== */}
         <section id="eligible" class="cm-section">
-          <div class="cm-section-h">eligible markets <span class="cm-section-tag">| {fmt(f.eligible)} contracts</span></div>
+          <div class="cm-section-h">eligible markets <span class="cm-section-tag">| {fmt(f.eligible)} markets</span></div>
           <p class="scr-intro">
-            These contracts clear every term of the bulletin: a permitted subject category, a term to maturity of
-            30 days or longer, and a settled match to an Appendix A subject.
+            These markets clear every term this screen tests: a permitted subject category, a term to maturity of
+            30 days or longer, and a settled match to a subject in the bulletin&rsquo;s Appendix A — the schedule
+            that lists the permitted categories.
           </p>
           <details class="scr-ledger" id="scr-ledger">
             <summary class="scr-ledger-action">[ ▾ VIEW ELIGIBLE MARKETS — {fmt(f.eligible)} ]</summary>
@@ -212,10 +218,10 @@ const jsonLd = summary && {
               <summary class="scr-group-summary">
                 <span class="scr-group-marker" aria-hidden="true">▸</span>
                 <span class="scr-group-tag">[{g.meta.tag}]</span>
-                <span class="scr-group-count">{g.rows.length} CONTRACTS</span>
+                <span class="scr-group-count">{g.rows.length} MARKETS</span>
               </summary>
               <table class="scr-table scr-eligible">
-                <thead><tr><th>contract</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
+                <thead><tr><th>market</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
                 <tbody>
                   {g.rows.map((r) => (
                     <tr data-market-id={r.market_id} class={r.commitment === 'named' ? undefined : 'scr-row-nosource'}>
@@ -232,18 +238,19 @@ const jsonLd = summary && {
             ))}
           </details>
           <p class="scr-flag" data-stat="eligible_no_committed_source">
-            Note: {summary.eligible_no_committed_source} of the {fmt(f.eligible)} eligible contracts name no
+            Note: {summary.eligible_no_committed_source} of the {fmt(f.eligible)} eligible markets name no
             resolution source — flagged in red in the table.
           </p>
         </section>
 
         {/* ===== REVIEW MARKETS ===== */}
         <section id="review" class="cm-section">
-          <div class="cm-section-h">review markets <span class="cm-section-tag">| {fmt(f.review)} contracts in {summary.review_clusters.length} judgment clusters</span></div>
+          <div class="cm-section-h">review markets <span class="cm-section-tag">| {fmt(f.review)} markets in {summary.review_clusters.length} judgment clusters</span></div>
           <p class="scr-intro">
-            These contracts clear the mechanical terms but do not fit neatly inside the bulletin&rsquo;s categories,
-            so the screen holds them for a documented judgment call instead of silently passing them.
-            Grouped below by the question that needs answering — one call typically covers a whole cluster.
+            Nine documented calls cover all {fmt(f.review)} of these markets. Each clears the mechanical terms;
+            what remains is interpretation — does it fit a Section 1 category, or does its wording trip Section 3?
+            The screen holds them for a documented judgment instead of silently passing them, grouped below by
+            the question that needs answering.
           </p>
           <div class="scr-clusters">
             {summary.review_clusters.map((c) => (
@@ -259,7 +266,7 @@ const jsonLd = summary && {
                 <details class="scr-cluster-mkts">
                   <summary class="scr-cluster-toggle">[ ▾ VIEW MARKETS — {c.market_count} ]</summary>
                   <table class="scr-table scr-eligible">
-                    <thead><tr><th>contract</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
+                    <thead><tr><th>market</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
                     <tbody>
                       {(reviewRowsByCluster[c.key] ?? []).map((r) => (
                         <tr data-market-id={r.market_id}>
@@ -275,18 +282,44 @@ const jsonLd = summary && {
                 </details>
               </div>
             ))}
+            {unclusteredRows.length > 0 && (
+              <div class="scr-cluster" data-cluster="unclustered">
+                <div class="scr-cluster-top">
+                  <span class="scr-cluster-name">Unclustered (data drift — should be empty)</span>
+                  <span class="scr-cluster-counts">[ {unclusteredRows.length} MARKETS ]</span>
+                </div>
+                <p class="scr-cluster-why">These review markets carry no recognized cluster key; the per-market and summary files have drifted. Regenerate the screen data.</p>
+                <details class="scr-cluster-mkts">
+                  <summary class="scr-cluster-toggle">[ ▾ VIEW MARKETS — {unclusteredRows.length} ]</summary>
+                  <table class="scr-table scr-eligible">
+                    <thead><tr><th>market</th><th>venue id</th><th>resolves</th><th>source</th><th>rcg</th></tr></thead>
+                    <tbody>
+                      {unclusteredRows.map((r) => (
+                        <tr data-market-id={r.market_id}>
+                          <td class="scr-q"><a href={`/events/${r.slug}/`}>{r.question}</a></td>
+                          <td class="scr-mono scr-vid" title={r.venue_id}>{r.venue_id}</td>
+                          <td class="scr-mono">{r.resolves}</td>
+                          <td class="scr-mono">{r.commitment === 'named' ? r.source : <span class="scr-warn">— none</span>}</td>
+                          <td class="scr-mono">{r.grade ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              </div>
+            )}
           </div>
         </section>
 
         {/* ===== NOT ELIGIBLE ===== */}
         <section id="not-eligible" class="cm-section">
-          <div class="cm-section-h">not eligible <span class="cm-section-tag">| {fmt(f.not_eligible)} contracts</span></div>
+          <div class="cm-section-h">not eligible <span class="cm-section-tag">| {fmt(f.not_eligible)} markets</span></div>
           <p class="scr-intro">
-            These contracts miss at least one mechanical term of the bulletin. This is a jurisdiction-scoping fact
+            These markets miss at least one mechanical term of the bulletin. This is a jurisdiction-scoping fact
             about one rule-set, not a judgment on the market itself. By first failed term:
           </p>
           <table class="scr-table scr-noteligible">
-            <thead><tr><th>reason</th><th class="scr-num">contracts</th></tr></thead>
+            <thead><tr><th>reason</th><th class="scr-num">markets</th></tr></thead>
             <tbody>
               {notEligibleGroups.map((g) => (
                 <tr data-reason={g.reason}>
@@ -321,7 +354,7 @@ const jsonLd = summary && {
                 <span class="scr-rule-toggle">[ VERBATIM + ]</span>
               </summary>
               <div class="scr-rule-body">
-                <blockquote class="scr-verbatim">&ldquo;term to maturity of 30 days or longer. For greater certainty, issuing a new threshold in respect of an event contract constitutes a new contract&rdquo;</blockquote>
+                <blockquote class="scr-verbatim">&ldquo;Investment Dealer Members&rsquo; offering of event contracts will be limited to contracts with a term to maturity of 30 days or longer. For greater certainty, issuing a new threshold in respect of an event contract constitutes a new contract, this new contract must also have a term to maturity of 30 days or longer&rdquo;</blockquote>
                 <p class="scr-rule-note">screened field: <code>resolve_at</code>, per market — the threshold sentence is why screening is per-market, not per-event</p>
               </div>
             </details>
@@ -339,12 +372,12 @@ const jsonLd = summary && {
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">BODY · DUE-DILIGENCE EXPECTATION</span>
-                <span class="scr-rule-logic">the diligence layer — evidence columns, never eligibility gates</span>
+                <span class="scr-rule-logic">ClearMarket&rsquo;s evidence columns — diligence support, never eligibility gates</span>
                 <span class="scr-rule-toggle">[ VERBATIM + ]</span>
               </summary>
               <div class="scr-rule-body">
-                <blockquote class="scr-verbatim">&ldquo;Investment Dealer Members are <em>expected to exercise due diligence</em>&hellip;&rdquo;</blockquote>
-                <p class="scr-rule-note">screened fields: resolution source, commitment, RCG grade, settlement history — the bulletin contains no source term</p>
+                <blockquote class="scr-verbatim">&ldquo;Investment Dealer Members are <em>expected to exercise due diligence</em> to ensure that any event contracts made available to clients do not fall within these prohibited categories&rdquo;</blockquote>
+                <p class="scr-rule-note">the bulletin&rsquo;s diligence sentence is about prohibited categories; the source, commitment, RCG grade, and settlement-history columns are ClearMarket&rsquo;s own evidence layer offered in the same spirit — the bulletin contains no source-quality term, and these are never eligibility gates</p>
               </div>
             </details>
           </div>

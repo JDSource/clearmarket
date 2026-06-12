@@ -38,12 +38,12 @@ const jsonLd = {
       <span class="cm-h1-role">ELIGIBILITY SCREENS</span>
     </h1>
     <p class="cm-index-lede">
-      which contracts clear which rule-sets · per-contract status: eligible / review / not_eligible ·
+      which markets clear which rule-sets · per-market status: eligible / review / not_eligible ·
       built from primary documents, quoted verbatim · screening data supporting your own determination — not a compliance opinion
     </p>
 
     <section class="cm-section">
-      <div class="cm-section-h">regimes <span class="cm-section-tag">| rule-sets are config; the engine is the product</span></div>
+      <div class="cm-section-h">regimes <span class="cm-section-tag">| one engine, any rule-set — CIRO is the first</span></div>
       <table class="scr-table">
         <thead><tr><th>regime</th><th>scope</th><th>status</th><th>screen</th></tr></thead>
         <tbody>
@@ -53,8 +53,9 @@ const jsonLd = {
             <td class="scr-mono"><span class="scr-live">&#9679; LIVE</span></td>
             <td class="scr-mono">
               {ciro
-                ? `${ciro.funnel.eligible} eligible · ${ciro.funnel.review} review · ${ciro.funnel.not_eligible} not_eligible`
+                ? `${ciro.funnel.eligible.toLocaleString('en-US')} eligible · ${ciro.funnel.review.toLocaleString('en-US')} review · ${ciro.funnel.not_eligible.toLocaleString('en-US')} not_eligible`
                 : '—'}
+              {ciro && <span class="scr-fmt"> · <a href="/screens/ciro-26-0076.json">JSON</a> · <a href="/screens/ciro-26-0076.csv">CSV</a></span>}
             </td>
           </tr>
           <tr data-regime="cftc-pending">

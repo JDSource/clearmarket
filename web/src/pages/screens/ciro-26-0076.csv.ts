@@ -5,12 +5,12 @@
 import { getAllEvents, getMarketsForEvent } from '../../lib/universe';
 import { getScreenSummary, getEligibility } from '../../lib/eligibility';
 
-const esc = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+const esc = (v: string) => (/[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
 
 export async function GET() {
   const summary = getScreenSummary();
   const rows: string[][] = [[
-    'cm_market_id', 'venue', 'venue_id', 'question', 'status', 'reason', 'review_cluster',
+    'cm_market_id', 'venue', 'venue_id', 'question', 'status', 'reasons', 'review_cluster',
     'permitted_category', 'resolves', 'resolution_source', 'rcg_grade', 'regime', 'screen_version', 'screened_at',
   ]];
   const seen = new Set<string>();
@@ -25,7 +25,7 @@ export async function GET() {
         (m as any).platform_market_id ?? '',
         ev.question,
         rec.status,
-        rec.reasons[0] ?? '',
+        (rec.reasons ?? []).join(';'),
         rec.cluster ?? '',
         rec.bucket ?? '',
         (m.resolve_at ?? m.close_at ?? '').slice(0, 10),
@@ -37,7 +37,10 @@ export async function GET() {
       ]);
     }
   }
-  const body = rows.map((r) => r.map((v) => esc(String(v))).join(',')).join('\n') + '\n';
+  // UTF-8 BOM: Excel's double-click open sniffs the BOM, not HTTP headers —
+  // and the static build strips the charset header anyway. ~190 rows carry
+  // non-ASCII question text that would otherwise mojibake.
+  const body = '\ufeff' + rows.map((r) => r.map((v) => esc(String(v))).join(',')).join('\n') + '\n';
   return new Response(body, {
     headers: { 'Content-Type': 'text/csv; charset=utf-8' },
   });

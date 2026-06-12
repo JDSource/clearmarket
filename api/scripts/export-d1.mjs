@@ -25,11 +25,19 @@ const markets = bundle.markets ?? [];
 let eligByMarket = {};
 let eligVersion = '';
 try {
-  eligByMarket = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076.json'), 'utf-8'));
-  eligVersion = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076-summary.json'), 'utf-8')).screen_version ?? '';
+  // Read both into temporaries and assign only if BOTH parse: the two files
+  // are only valid as a pair (a populated map with an empty screen_version
+  // would seed 6k versionless records and break result traceability).
+  const byMarket = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076.json'), 'utf-8'));
+  const version = JSON.parse(readFileSync(resolve(REPO, 'web', 'data', 'eligibility-ciro-26-0076-summary.json'), 'utf-8')).screen_version;
+  if (!version) throw new Error('summary has no screen_version');
+  eligByMarket = byMarket;
+  eligVersion = version;
   console.error(`eligibility: ${Object.keys(eligByMarket).length} screened markets (screen ${eligVersion})`);
-} catch {
-  console.error('eligibility: no screen data found — eligibility_screens will be NULL');
+} catch (e) {
+  eligByMarket = {};
+  eligVersion = '';
+  console.error(`eligibility: screen data unavailable or incomplete (${e?.message ?? e}) — eligibility_screens will be NULL`);
 }
 const eligScreens = (marketId) => {
   const r = eligByMarket[marketId];
