@@ -7,8 +7,11 @@ committed, reproducible script (same posture as the CFTC pull scripts).
 
 What it does
 ------------
-1. Sweeps the FULL Polymarket Gamma /markets surface (two passes: closed=true and
-   closed=false; Gamma caps pages at 100) and records, per conditionId:
+1. Targeted sweep: collects the conditionIds of every Polymarket market in the CM
+   universe (union of the current bundle + the freshest raw pull), queries Gamma
+   /markets in batches of condition_ids (two passes per batch — default returns
+   open markets only, closed=true recovers the rest; full-surface offset paging
+   is NOT viable, Gamma 422s past offset 10,000). Records per conditionId:
    umaResolutionStatuses (the dispute trail), umaResolutionStatus (final),
    closed flag, volumeNum, question.
 2. Joins the sweep against the CM bundle's Polymarket markets by platform_market_id
@@ -60,6 +63,9 @@ KEEP = ("umaResolutionStatuses", "umaResolutionStatus", "closed",
         "volumeNum", "question", "endDate")
 
 
+BATCH = 50
+
+
 def _page(params):
     for attempt in range(RETRIES):
         try:
@@ -72,31 +78,56 @@ def _page(params):
             time.sleep(2 ** attempt)
 
 
+def _universe_condition_ids():
+    """Union of conditionIds: current bundle + freshest raw pull."""
+    cids = set()
+    if BUNDLE.exists():
+        bundle = json.loads(BUNDLE.read_text())
+        for m in bundle["markets"]:
+            if m.get("platform") == "polymarket" and m.get("platform_market_id"):
+                cids.add(m["platform_market_id"])
+    pulls = sorted((Path.home() / "jeremy-os/raw").glob("clearmarket-universe-2*"))
+    pulls = [p for p in pulls if "_smoke" not in p.name]
+    if pulls:
+        raw = json.loads((pulls[-1] / "poly-institutional.json").read_text())
+        for ev in raw:
+            for m in ev.get("markets", []):
+                if m.get("conditionId"):
+                    cids.add(m["conditionId"])
+        print(f"id sources: bundle + {pulls[-1].name}")
+    return sorted(cids)
+
+
 def sweep(max_pages=None):
-    """Two passes (closed / open) over the full Gamma markets surface."""
+    """Batched condition_ids queries, two passes per batch (open default + closed)."""
+    cids = _universe_condition_ids()
+    if max_pages:
+        cids = cids[: max_pages * BATCH]
+    print(f"sweeping {len(cids)} conditionIds in batches of {BATCH}...")
     out = {}
-    for closed in ("true", "false"):
-        offset, pages = 0, 0
-        while True:
-            rows = _page({"limit": PAGE, "offset": offset, "closed": closed})
-            if not rows:
-                break
+    for i in range(0, len(cids), BATCH):
+        batch = cids[i : i + BATCH]
+        rows = _page([("condition_ids", c) for c in batch] + [("limit", "100")])
+        got = set()
+        for row in rows:
+            cid = row.get("conditionId")
+            if cid:
+                out[cid] = {k: row.get(k) for k in KEEP}
+                got.add(cid)
+        missing = [c for c in batch if c not in got]
+        if missing:
+            rows = _page([("condition_ids", c) for c in missing]
+                         + [("limit", "100"), ("closed", "true")])
             for row in rows:
                 cid = row.get("conditionId")
-                if not cid:
-                    continue
-                out[cid] = {k: row.get(k) for k in KEEP}
-            offset += PAGE
-            pages += 1
-            if pages % 25 == 0:
-                print(f"  [closed={closed}] {pages} pages, {len(out)} unique conditionIds")
-            if max_pages and pages >= max_pages:
-                break
-            time.sleep(PAUSE)
-        print(f"[closed={closed}] done: {pages} pages")
+                if cid:
+                    out[cid] = {k: row.get(k) for k in KEEP}
+        if (i // BATCH) % 25 == 0:
+            print(f"  {i + len(batch)}/{len(cids)} ids, {len(out)} found")
+        time.sleep(PAUSE)
     path = OUT_DIR / f"uma-statuses-{TODAY}.json"
     path.write_text(json.dumps(out, indent=1))
-    print(f"wrote {path} ({len(out)} conditionIds)")
+    print(f"wrote {path} ({len(out)} of {len(cids)} conditionIds resolved)")
     return out
 
 
