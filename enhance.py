@@ -66,15 +66,21 @@ def _stats(model: str) -> dict:
 
 
 def llm_call(prompt: str, system: str = "", max_tokens: int = 300,
-             model: str = LLM_MODEL_HAIKU) -> str:
-    """Cached Anthropic call. Returns generated text. Model selectable per-call."""
+             model: str = LLM_MODEL_HAIKU, validate=None) -> str:
+    """Cached Anthropic call. Returns generated text. Model selectable per-call.
+    validate: optional callable(text) -> bool. A response that fails validation is
+    never written to the cache, and a cached response that fails it is evicted and
+    refetched once — otherwise one truncated/malformed output poisons every retry."""
     cache_key = hashlib.sha256(
         f"{model}|{max_tokens}|{system}|{prompt}".encode()
     ).hexdigest()[:24]
     cache_path = LLM_CACHE / f"{cache_key}.txt"
     if cache_path.exists():
-        _stats(model)["cache_hits"] += 1
-        return cache_path.read_text().strip()
+        cached = cache_path.read_text().strip()
+        if validate is None or validate(cached):
+            _stats(model)["cache_hits"] += 1
+            return cached
+        cache_path.unlink()  # poisoned entry — evict and refetch
 
     client = _get_llm_client()
     msg_kwargs = {
@@ -100,8 +106,9 @@ def llm_call(prompt: str, system: str = "", max_tokens: int = 300,
     s["input_tokens"]  += resp.usage.input_tokens
     s["output_tokens"] += resp.usage.output_tokens
 
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(text)
+    if validate is None or validate(text):
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(text)
     return text
 
 
@@ -1070,12 +1077,23 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
         f"Arbiter: {rep.get('arbitration_model')}\n\n"
         f"Resolution criteria:\n{criteria[:1800]}"
     )
-    raw = llm_call(user, system=_RCG_SYSTEM, max_tokens=420)  # 5 factors x {rating, why}; 260 truncated
-    if raw.startswith("```"):
-        raw = raw.strip("`").lstrip("json").strip()
-    try:
-        data = json.loads(raw)
-    except Exception:
+    # max_tokens 700: 420 truncated long-"why" responses on big ladder events, and the
+    # truncated JSON then poisoned the cache. validate keeps unparseable output out of
+    # the cache entirely; raw_decode tolerates prose the model appends after the JSON.
+    def _parse(text: str):
+        t = text
+        if t.startswith("```"):
+            t = t.strip("`").lstrip("json").strip()
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(t)
+            return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
+
+    raw = llm_call(user, system=_RCG_SYSTEM, max_tokens=700,
+                   validate=lambda t: _parse(t) is not None)
+    data = _parse(raw)
+    if data is None:
         return None
     out = {}
     for f in RCG_LLM_FACTORS:

@@ -11,13 +11,16 @@ Usage:
 import json, sys
 from collections import defaultdict, Counter
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 from pathlib import Path
 import enhance as E
 from classify import grade_market
 
 ROOT = Path(__file__).parent
 BUNDLE = ROOT / "web/data/universe-enriched-linked.json"
-BACKUP = ROOT / "web/data/universe-enriched-linked.pre-regrade-bak.json"
+# Dated backup: the old static name + "backup once" guard meant a second run on the
+# same checkout silently took NO backup (the only rollback artifact was a stale one).
+BACKUP = ROOT / f"web/data/universe-enriched-linked.pre-regrade-{date.today().isoformat()}-bak.json"
 DRY = "--dry" in sys.argv
 SAMPLE = int(sys.argv[sys.argv.index("--sample") + 1]) if "--sample" in sys.argv else None
 

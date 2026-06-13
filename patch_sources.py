@@ -113,6 +113,11 @@ def classify(m):
     cite = m.get("source_citation")
     rules = m.get("resolution_rules_raw") or ""
 
+    # 0. Unfilled template token ("<geography>", "<polling organization>") -> placeholder.
+    #    Audit 2026-06-12: 383 markets served a literal angle-bracket template as a
+    #    "named" source and were graded A off it.
+    if name and re.search(r"<[^>]{1,40}>", name):
+        return "uncommitted", "uncommitted_placeholder", None, name
     # 1. Stored "source" is itself a hedge marker -> illustrative
     if name and HEDGE.search(name):
         return "uncommitted", "uncommitted_illustrative", None, name

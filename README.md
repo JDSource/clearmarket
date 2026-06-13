@@ -4,7 +4,7 @@
 
 **Live now:** [clearmarket.fyi](https://clearmarket.fyi) · REST `api.clearmarket.fyi/v1` · MCP `api.clearmarket.fyi/mcp` · daily wire feed at [`/signals`](https://clearmarket.fyi/signals). Open and read-only — no key required.
 
-**Coverage:** the live Kalshi + Polymarket universe (untraded placeholder slots excluded; counts on the site refresh with each ingest). Every market carries a **Resolution Clarity Grade** (RCG A/B/C), a named resolution source, and cross-venue claim links. Prices refresh hourly.
+**Coverage:** the live Kalshi + Polymarket universe (untraded placeholder slots excluded; counts on the site refresh with each ingest). Every market carries a **Resolution Clarity Grade** (RCG A/B/C) and full source provenance — the resolution source is named where the venue commits to one, and where it doesn't, that absence is classified and graded (that gap is the point). Markets listing the same question on both venues carry cross-venue links. Prices refresh hourly.
 
 v0.2 · June 2026
 
@@ -50,7 +50,7 @@ Every URL also ships a parallel `.json`, embedded JSON-LD, and a row in [`/llms.
 
 Polymarket and Kalshi publish market data that is useful for retail trading but not ingestion-ready for institutional research or risk. Three gaps a buyer hits immediately:
 
-1. **You can't tell where the resolution data comes from.** On 92% of institutional-category Polymarket markets, the resolution source is placeholder language ("a consensus of credible reporting"), not a named authority. Kalshi names sources but loosely ("for example, Google Finance" on S&P 500 contracts).
+1. **You can't tell where the resolution data comes from.** On ~65% of institutional-category Polymarket markets by count — ~80% dollar-weighted — the venue commits to no named resolution source (placeholder language like "a consensus of credible reporting", or non-binding hedges). Kalshi names sources but sometimes loosely ("for example, Google Finance" on S&P 500 contracts).
 2. **The same event is priced differently on each platform.** Polymarket lists the Fed April 2026 rate decision as four directional yes/no questions; Kalshi lists eleven rate-level brackets. Nothing in either API tells you they are pricing the same thing.
 3. **Related markets aren't grouped, on a single platform or across them.** Nine Polymarket contracts on when the Iran conflict ends sit in the API as nine separate items, with nothing connecting them. Cross-platform, the gap is wider still.
 
@@ -278,7 +278,7 @@ Four tables. Full definitions in `schema/`.
 ### Live
 
 - Public site, REST API, and MCP server over the full live universe
-- Resolution Clarity Grade (RCG A/B/C) + named resolution source on every market
+- Resolution Clarity Grade (RCG A/B/C) on every market + named resolution source wherever the venue commits to one (uncommitted sources are classified, not hidden)
 - Cross-venue claim linking (the same graded claim across Kalshi + Polymarket)
 - CM Signal daily wire feed (news-cycle, volume-spike, cross-venue divergence, benchmark-drift)
 - Hourly price refresh; four-format output (HTML + JSON-LD + parallel JSON + `llms.txt`)
