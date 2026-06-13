@@ -52,7 +52,7 @@ const updated = '2026-06-11';
         <p>Every market's resolution source is captured from <strong>platform-provided data</strong>, never invented by a model. The mechanism differs by venue.</p>
 
         <h3>Kalshi — structured (direct)</h3>
-        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Coverage across 703 unique series:</p>
+        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Coverage across 734 unique series (2026-06-12 vintage):</p>
         <ul class="m-list">
           <li><strong>98% authoritative</strong> — Federal Reserve, BLS, BEA, NWS, Library of Congress, ICE, CF Benchmarks.</li>
           <li><strong>2% loose</strong> — a placeholder ("For example, Google Finance"), all in the equity-index family.</li>
@@ -66,7 +66,7 @@ const updated = '2026-06-11';
           <li><strong>By count:</strong> 0 URLs goes to subjective/none; exactly 1 is used directly (no LLM); 2+ has an LLM select the primary <em>by number among the candidates</em>.</li>
           <li><strong>Verbatim gate:</strong> the selected URL must appear verbatim in the description, or it is rejected and flagged for review.</li>
         </ol>
-        <p>Result: <strong>88% pure-deterministic</strong> (49% subjective-no-URL + 39% single-URL), <strong>12% gated-LLM</strong>, and <strong>zero hallucinated URLs</strong> (6 borderline cases fell back to first-candidate and were flagged). The LLM is constrained to selecting among URLs that provably exist in platform text; it cannot introduce or mistype one.</p>
+        <p>Result: <strong>91% pure-deterministic</strong> (48% subjective-no-URL + 43% single-URL), <strong>8% gated-LLM</strong>, and <strong>zero hallucinated URLs</strong> (8 borderline cases fell back to first-candidate and were flagged). The LLM is constrained to selecting among URLs that provably exist in platform text; it cannot introduce or mistype one.</p>
 
         <h3>Provenance tiers</h3>
         <p>Every value carries its origin. <strong>direct</strong>: platform API, structured field, or verbatim-extracted URL. <strong>editorial</strong>: LLM-drafted interpretation, e.g. <code>underlying_reference</code>. <strong>subjective</strong>: resolution by consensus, no named data source. The LLM is confined to the <code>editorial</code> tier; any verifiable identifier (source name, URL) traces to platform data.</p>
