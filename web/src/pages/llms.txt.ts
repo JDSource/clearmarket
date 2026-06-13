@@ -1,15 +1,20 @@
-# ClearMarket
+// llms.txt as a build-time route so coverage counts come from the bundle, never hand-edited.
+// (The old static web/public/llms.txt shipped "~1,850 events" two vintages past its sell-by.)
+import type { APIRoute } from 'astro';
+import { coverageLabel } from '../lib/universe';
 
-Reference data layer for prediction markets. Cross-venue event linking, graded resolution clarity, named resolution sources, and catalysts across Kalshi and Polymarket. Open and free; built to be queried by agents.
+const body = `# ClearMarket
+
+Reference data layer for prediction markets. Cross-venue event linking, graded resolution clarity, resolution-source provenance, and catalysts across Kalshi and Polymarket. Open and free; built to be queried by agents.
 
 ## What this is
 
 ClearMarket normalizes Kalshi and Polymarket markets into a single schema:
 - events: a venue's bundle of one or more markets under a canonical question, classified, with catalyst dates. Every event is single-venue.
-- markets: one row per venue listing, with a Resolution Clarity Grade (A/B/C), named resolution source, and provenance. Each market carries a question_id (the venue-independent identity of the bet) and also_on (the same question priced on other venues).
+- markets: one row per venue listing, with a Resolution Clarity Grade (A/B/C) and full resolution-source provenance — the source is named where the venue commits to one; where it doesn't, that absence is classified and graded. Markets recognized as the same question across venues or events also carry a question_id (the venue-independent identity of the bet; null when not yet linked) and also_on (the same question priced on other venues).
 - cross-venue link: markets sharing a question_id are the same bet across Kalshi and Polymarket; a market's also_on field gives an array of { venue, market_id, price } (one entry per other venue it trades on), or is null when it trades on only one venue.
 
-~1,850 events / ~15,000 markets. Prices refresh hourly. Read-only.
+${coverageLabel()}. Prices refresh hourly. Read-only.
 
 ## REST API (open, free, no key)
 
@@ -73,7 +78,7 @@ JSON Schema files (draft 2020-12):
 ## Attribution
 
 Open and free to use. Attribution required: cite ClearMarket (clearmarket.fyi).
-Every API and MCP record carries a `_provenance` field. The canonical ids are the
+Every API and MCP record carries a \`_provenance\` field. The canonical ids are the
 citation unit, all in ClearMarket's namespace: market_id (CM-MKT-... — one contract
 on one venue), event_id (CM-EVT-... — a single-venue bundle), and question_id (the
 venue-independent bet; the same question_id is the cross-venue link). Persist and
@@ -86,3 +91,7 @@ https://github.com/JDSource/clearmarket
 ## Contact
 
 hello@clearmarket.fyi
+`;
+
+export const GET: APIRoute = () =>
+  new Response(body, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
