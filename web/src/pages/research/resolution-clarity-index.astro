@@ -1,0 +1,223 @@
+---
+import Site from '../../layouts/Site.astro';
+
+// Validation study (the "default study" companion to /methodology). Reuses the
+// methodology doc layout + --va-* tokens so the two reference pages read as one system.
+// Numbers: grade-to-dispute backtest (2026-06-14) + volume-confound control (2026-06-15).
+const updated = '2026-06-15';
+
+const jsonld = {
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "ClearMarket Resolution Clarity Grade: resolution-risk validation",
+  "description": "Empirical test of whether ClearMarket's A/B/C Resolution Clarity Grades predict resolution risk, measured against on-chain UMA disputes, across 7,155 Polymarket markets, with a volume-confound control.",
+  "creator": { "@type": "Organization", "name": "ClearMarket", "url": "https://clearmarket.fyi" },
+  "url": "https://clearmarket.fyi/research/resolution-clarity-index/",
+  "isBasedOn": "https://github.com/JDSource/clearmarket",
+  "variableMeasured": ["Resolution Clarity Grade", "UMA dispute (tier1_challenged)", "market volume"],
+  "about": [
+    { "@type": "Thing", "name": "Prediction markets" },
+    { "@type": "Thing", "name": "Resolution risk" },
+    { "@type": "Thing", "name": "Polymarket" },
+    { "@type": "Thing", "name": "UMA Protocol" }
+  ],
+  "license": "https://github.com/JDSource/clearmarket",
+  "dateModified": updated,
+};
+---
+<Site title="Do prediction markets resolve fairly? A 7,155-contract Polymarket backtest | ClearMarket" description="Do prediction markets resolve fairly? Across 7,155 Polymarket markets, every resolution dispute was on a contract ClearMarket rated C; zero A- or B-rated markets were disputed. A backtest of resolution-risk grading: which prediction-market contracts resolve cleanly, and which get disputed.">
+  <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+  <div class="doc">
+    <aside class="doc-gutter">
+      <div class="dg-meta">
+        <div class="dg-row"><span class="dg-k">doc_id</span><span class="dg-v">cm-rcg-validation</span></div>
+        <div class="dg-row"><span class="dg-k">version</span><span class="dg-v">RCG v2</span></div>
+        <div class="dg-row"><span class="dg-k">updated</span><span class="dg-v">{updated}</span></div>
+        <div class="dg-row"><span class="dg-k">sample</span><span class="dg-v">7,155 markets</span></div>
+        <div class="dg-row"><span class="dg-k">repro</span><span class="dg-v">JDSource/clearmarket</span></div>
+      </div>
+      <nav class="dg-nav">
+        <a href="#overview">Overview</a>
+        <a href="#finding">1 · The finding</a>
+        <a href="#control">2 · Not just volume</a>
+        <a href="#cases">3 · What a C looks like</a>
+        <a href="#how">4 · How the grade works</a>
+        <a href="#scope">5 · Scope &amp; method</a>
+      </nav>
+    </aside>
+
+    <div class="doc-body">
+      <header class="doc-head" id="overview">
+        <p class="eyebrow">Resolution Clarity Grade · Polymarket validation backtest</p>
+        <h1>Do prediction markets resolve fairly?</h1>
+        <p class="doc-subtitle">A 7,155-contract Polymarket backtest.</p>
+        <p class="doc-lede">Most prediction-market contracts on Polymarket and Kalshi resolve cleanly. Some don't. They end in a dispute, or settle against what actually happened. That is the resolution risk traders and funds care about. ClearMarket grades it before a market resolves, from the resolution rules alone, as A, B, or C. This page tests the grade against the public record: do the contracts it flags as unclear actually get disputed?</p>
+        <blockquote class="keyfinding"><strong>Key finding.</strong> Across 7,155 Polymarket markets, 100% of resolution disputes were on contracts ClearMarket rated C, the lowest of its three Resolution Clarity Grades (RCG). Zero A-rated and zero B-rated markets were disputed, including 627 high-volume A and B markets. Reproducible at <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</blockquote>
+      </header>
+
+      <section class="surface" id="finding">
+        <h2 class="surface-tab">1 · THE FINDING</h2>
+        <p>Across <strong>7,155 Polymarket markets</strong>, every market that ended up in a resolution dispute had been rated <strong>C by ClearMarket</strong>, the lowest clarity tier. <strong>Zero A-rated and zero B-rated markets were disputed.</strong></p>
+        <table class="m-table">
+          <thead><tr><th scope="col">RCG</th><th scope="col" class="m-num">Resolution disputes</th><th scope="col" class="m-num">Markets</th><th scope="col" class="m-num">Dispute rate</th></tr></thead>
+          <tbody>
+            <tr><td><span class="gr gr-a">A</span></td><td class="m-num">0</td><td class="m-num">1,716</td><td class="m-num">0.00%</td></tr>
+            <tr><td><span class="gr gr-b">B</span></td><td class="m-num">0</td><td class="m-num">1,461</td><td class="m-num">0.00%</td></tr>
+            <tr><td><span class="gr gr-c">C</span></td><td class="m-num">26</td><td class="m-num">3,978</td><td class="m-num">0.65%</td></tr>
+          </tbody>
+        </table>
+        <p>Disputes concentrate entirely in the bottom tier, the way loan defaults concentrate in the lowest credit rating. ClearMarket assigns the grade from rules text alone and never reads the dispute history, so the result is not circular.</p>
+      </section>
+
+      <section class="surface" id="control">
+        <h2 class="surface-tab">2 · IT ISN'T JUST THE BUSY MARKETS</h2>
+        <p>The obvious objection: contentious markets draw both more money and vaguer wording, so maybe the grade is only a proxy for attention. It isn't. Splitting the universe into quartiles by trading volume, A and B markets dispute at <strong>0% in every band</strong>. Only C disputes, and only more so as volume rises.</p>
+        <table class="m-table">
+          <thead><tr><th scope="col">Volume band</th><th scope="col" class="m-num">RCG <span class="gh gh-a">A</span></th><th scope="col" class="m-num">RCG <span class="gh gh-b">B</span></th><th scope="col" class="m-num">RCG <span class="gh gh-c">C</span></th></tr></thead>
+          <tbody>
+            <tr><td>Lowest quartile</td><td class="m-num">0 / 658</td><td class="m-num">0 / 441</td><td class="m-num">2 / 690 &middot; 0.29%</td></tr>
+            <tr><td>Highest quartile</td><td class="m-num">0 / 310</td><td class="m-num">0 / 317</td><td class="m-num">21 / 1,161 &middot; 1.81%</td></tr>
+          </tbody>
+        </table>
+        <p class="doc-note">(A and B are 0% across all four quartiles; the middle two are omitted here.)</p>
+        <p>A dispute needs two things: a vague rule <em>and</em> enough money to be worth fighting over. The money was there. The highest-volume quartile alone held <strong>627 A- and B-rated markets</strong>, the most contentious, highest-attention contracts on the platform, and not one was disputed. Clear wording held at every volume.</p>
+      </section>
+
+      <section class="surface" id="cases">
+        <h2 class="surface-tab">3 · WHAT A C LOOKS LIKE</h2>
+        <p>The three largest disputed markets, each rated C by ClearMarket before it resolved, then disputed exactly where its rules were weak:</p>
+        <table class="m-table">
+          <thead><tr><th scope="col">Market</th><th scope="col">Venue</th><th scope="col" class="m-num">RCG</th><th scope="col" class="m-num">Volume</th><th scope="col">The defect</th></tr></thead>
+          <tbody>
+            <tr><td>MicroStrategy sells any Bitcoin by May 31, 2026</td><td>Polymarket</td><td class="m-num"><span class="gr gr-c">C</span></td><td class="m-num">$230M</td><td>No committed source of record, only "a consensus of credible reporting"; rules silent on event date vs. confirmation date</td></tr>
+            <tr><td>Netanyahu out by March 31</td><td>Polymarket</td><td class="m-num"><span class="gr gr-c">C</span></td><td class="m-num">$104M</td><td>Subjective trigger (what counts as "out"), plus two sources with no tiebreak: the subject's own government and "a consensus of credible reporting"</td></tr>
+            <tr><td>US &times; Iran permanent peace deal by April 22</td><td>Polymarket</td><td class="m-num"><span class="gr gr-c">C</span></td><td class="m-num">$26M</td><td>A fact controlled by an interested party</td></tr>
+          </tbody>
+        </table>
+        <p>The MicroStrategy market is the most instructive of the three. It shows why the grade is more than a score. It scored <strong>59, a B on the weighted factors</strong>, but its rules named no real source of record, pointing only to "a consensus of credible reporting." A <strong>hard cap held it at C</strong>. Strategy did sell Bitcoin inside the window, between May 26 and 31, but disclosed it on June 1, one day after the deadline. With no source of record committed, Polymarket ruled the late confirmation did not qualify, and the market resolved <strong>NO against a sale that had actually happened</strong>. One trader reported a loss of $527,000. The cap caught what the score alone would have missed.</p>
+        <figure class="doc-figure">
+          <a class="doc-figure-frame" href="https://clearmarket.fyi/events/microstrategy-sell-any-bitcoin-in-2025/" target="_blank" rel="noopener">
+            <div class="dff-bar">
+              <span class="dff-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="dff-title">MicroStrategy sells any Bitcoin?</span>
+              <span class="dff-live">live &#8599;</span>
+            </div>
+            <img src="/mstr-resolution-architecture.png" alt="ClearMarket's parsed resolution architecture for the MicroStrategy market: source uncommitted, citation not provided, arbitration by Optimistic Oracle (UMA)." loading="lazy" />
+            <img src="/mstr-resolution-rules.png" alt="ClearMarket's verbatim-rules panel for the MicroStrategy market: the resolution rules name only a consensus of credible reporting, and the platform source field is flagged empty with no committed source." loading="lazy" />
+          </a>
+          <figcaption>A live screenshot of the MicroStrategy event page on ClearMarket. The parsed resolution architecture flags the source as uncommitted and the citation as not provided; the verbatim rules show why, naming only "a consensus of credible reporting." That placeholder is what capped the grade at C.</figcaption>
+        </figure>
+      </section>
+
+      <section class="surface" id="how">
+        <h2 class="surface-tab">4 · HOW THE GRADE WORKS</h2>
+        <p>The grade is a weighted score across seven factors of the resolution rules text, banded A/B/C, then capped. It never reads the outcome. The <a href="/methodology/#rcg">methodology page</a> carries the full specification: the scoring rules, how each factor is judged, and the complete cap list. In brief:</p>
+        <table class="m-table">
+          <thead><tr><th scope="col">Factor</th><th scope="col" class="m-num">Weight</th><th scope="col">What it asks</th></tr></thead>
+          <tbody>
+            <tr><td>Trigger objectivity</td><td class="m-num">28</td><td>Is the deciding condition objective, or open to interpretation?</td></tr>
+            <tr><td>Contested reality</td><td class="m-num">22</td><td>Is the underlying fact controlled or disputed by an interested party?</td></tr>
+            <tr><td>Source clarity</td><td class="m-num">18</td><td>Is the source of record named and verifiable?</td></tr>
+            <tr><td>Arbiter incentive</td><td class="m-num">12</td><td>Is resolution handled by a regulated, accountable arbiter, or a token-holder vote that whales can sway?</td></tr>
+            <tr><td>Source conflict</td><td class="m-num">8</td><td>Are there conflicting sources with no rule for which wins?</td></tr>
+            <tr><td>Temporal precision</td><td class="m-num">7</td><td>Is the deadline precisely defined?</td></tr>
+            <tr><td>Source mutability</td><td class="m-num">5</td><td>Can the source be changed or edited after the fact?</td></tr>
+          </tbody>
+        </table>
+        <p class="doc-note">The arbiter-incentive factor reflects a documented risk. A <em>Wall Street Journal</em> investigation (May 2026) found that in most disputed Polymarket markets a majority of the votes came from the ten largest UMA token wallets, and roughly one in five disputes had a voter who held a stake in the outcome they were judging.</p>
+
+        <h3>Hard caps</h3>
+        <p>Some defects are fatal. A market can score well on the seven factors and still be ceilinged. The grade is the <strong>worse</strong> of the score and any cap, so a single flaw can't be averaged away:</p>
+        <ul class="m-list">
+          <li><strong>No source of record, or only placeholder language</strong> ("a consensus of credible reporting," no named authority) &rarr; C.</li>
+          <li><strong>A source given only as an illustrative example</strong> ("for example, Reuters"), never committed to &rarr; B.</li>
+          <li><strong>Conflicting sources with no rule for which wins</strong> &rarr; C.</li>
+          <li><strong>A subjective trigger with no objective anchor</strong> &rarr; C.</li>
+          <li><strong>An underlying fact controlled by an interested party</strong> &rarr; B.</li>
+        </ul>
+      </section>
+
+      <section class="surface" id="scope">
+        <h2 class="surface-tab">5 · SCOPE &amp; METHOD</h2>
+        <p>Stated plainly, because the honesty is the point.</p>
+        <ul class="m-list">
+          <li><strong>"Disputed" means formally challenged</strong> through Polymarket's on-chain UMA process, not necessarily overturned.</li>
+          <li><strong>ClearMarket grades Kalshi markets too,</strong> and the grade applies identically to both venues. This dispute test is Polymarket-only because Polymarket's disputes are public and on-chain; Kalshi has no comparable public dispute feed, so its known settlement controversies are tracked qualitatively, not in this rate.</li>
+          <li><strong>Reproducible.</strong> The grading model, dispute labels, and this analysis are open at <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <style>
+    .doc { display: grid; grid-template-columns: 200px 1fr; gap: 40px; align-items: start; }
+    .doc-gutter { position: sticky; top: 120px; font-family: var(--va-mono); }
+    .dg-meta { border-left: 2px solid var(--va-accent); padding-left: 12px; margin-bottom: 24px; }
+    .dg-row { display: flex; justify-content: space-between; gap: 10px; font-size: 10.5px; padding: 3px 0; letter-spacing: 0.03em; }
+    .dg-k { color: var(--va-fg-faint); text-transform: uppercase; }
+    .dg-v { color: var(--va-fg-muted); }
+    .dg-nav { display: flex; flex-direction: column; gap: 2px; }
+    .dg-nav a { font-size: 11.5px; color: var(--va-fg-muted); text-decoration: none; padding: 5px 0; border-bottom: 1px solid var(--va-rule); letter-spacing: 0.03em; }
+    .dg-nav a:hover { color: var(--va-accent); }
+
+    .doc-body { border-left: 1px solid var(--va-border); padding-left: 40px; min-width: 0; max-width: 760px; }
+    .doc-head { margin-bottom: 8px; }
+    .doc-head h1 { font-family: var(--va-sans); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; color: var(--va-fg); }
+    .doc-subtitle { font-family: var(--va-sans); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; margin: 0 0 16px; color: var(--va-fg-muted); }
+    .doc-lede { font-size: 17px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 16px; }
+    .doc-note { font-size: 14px; line-height: 1.6; color: var(--va-fg-muted); }
+
+    .doc-body p { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; }
+    .doc-body strong { color: var(--va-fg); }
+    .doc-body em { color: var(--va-fg-muted); font-style: italic; }
+    .doc-body h3 { font-family: var(--va-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); margin: 28px 0 10px; }
+    .doc-body a { color: var(--va-accent); text-decoration: none; }
+    .doc-body a:hover { text-decoration: underline; }
+
+    .m-list { color: var(--va-fg-muted); font-size: 14.5px; line-height: 1.6; padding-left: 20px; margin: 0 0 16px; }
+    .m-list li { margin: 0 0 7px; }
+    .m-list strong { color: var(--va-fg); }
+
+    .m-table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13px; }
+    .m-table th { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--va-border); }
+    .m-table td { color: var(--va-fg-muted); line-height: 1.5; padding: 9px 10px; border-bottom: 1px solid var(--va-rule); vertical-align: top; }
+    .m-table td:first-child { color: var(--va-fg); font-weight: 600; }
+    .m-table .m-num { text-align: right; font-family: var(--va-mono); color: var(--va-fg); white-space: nowrap; }
+    /* Grade badge — matches the event-page RcgBadge .rb-grade spec (square box, 1.5px border). */
+    .gr { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1.5px solid; font-family: var(--va-mono); font-size: 13px; font-weight: 700; vertical-align: middle; }
+    .gr-a { color: #10d894; border-color: #10d894; }
+    .gr-b { color: #b6bfcc; border-color: #3c4759; }
+    .gr-c { color: #f0a830; border-color: #f0a830; background: rgba(240,168,48,0.06); }
+    /* Grade letters used as column headers in the volume-band table — color only, no badge box. */
+    .m-table th .gh { font-size: 13px; font-weight: 700; }
+    .gh-a { color: #10d894; }
+    .gh-b { color: #b6bfcc; }
+    .gh-c { color: #f0a830; }
+    .eyebrow { font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-accent); margin: 0 0 14px; }
+    .keyfinding { border-left: 2px solid var(--va-accent); background: var(--va-bg-2); padding: 14px 16px; margin: 18px 0 16px; font-size: 14.5px; line-height: 1.6; color: var(--va-fg-muted); }
+    .keyfinding strong { color: var(--va-fg); }
+    .doc-figure { margin: 22px 0 0; }
+    .doc-figure-frame { display: block; border: 1px solid var(--va-accent); border-radius: 6px; overflow: hidden; background: var(--va-bg-2); text-decoration: none; transition: box-shadow 0.15s; }
+    .doc-figure-frame:hover { box-shadow: 0 0 0 1px var(--va-accent); }
+    .dff-bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--va-border); font-family: var(--va-mono); font-size: 11px; letter-spacing: 0.02em; }
+    .dff-dots { display: inline-flex; gap: 5px; flex: none; }
+    .dff-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--va-rule); }
+    .dff-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--va-accent); }
+    .dff-live { flex: none; color: var(--va-accent); }
+    .doc-figure-frame:hover .dff-live { text-decoration: underline; }
+    .doc-figure img { display: block; width: 100%; height: auto; }
+    .doc-figure img + img { margin-top: 12px; }
+    .doc-figure figcaption { margin-top: 8px; font-family: var(--va-mono); font-size: 11px; line-height: 1.5; letter-spacing: 0.02em; color: var(--va-fg-faint); }
+
+    .surface { border-top: 1px solid var(--va-border); padding-top: 22px; margin-top: 40px; scroll-margin-top: 130px; }
+    .surface-tab { display: inline-block; font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: var(--va-bg); background: var(--va-accent); padding: 3px 9px; margin: 0 0 14px; }
+
+    @media (max-width: 820px) {
+      .doc { grid-template-columns: 1fr; gap: 24px; }
+      .doc-gutter { position: static; top: auto; }
+      .doc-body { border-left: 0; padding-left: 0; }
+      .dg-nav { flex-flow: row wrap; gap: 8px 16px; }
+      .dg-nav a { border-bottom: 0; padding: 2px 0; }
+    }
+  </style>
+</Site>

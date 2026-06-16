@@ -1,0 +1,307 @@
+---
+import Site from '../layouts/Site.astro';
+
+// "For funds" buyer page — institutional intelligence briefing.
+// Purpose: make Luc/Re7 partners understand and VALUE the rankings, and grasp the
+// business adjacencies (insurance, index) unaided. Self-contained briefing, not a funnel.
+// Aesthetic: technical minimalism / terminal — 1px rules, mono numerics, no SaaS cards,
+// 65ch line discipline, deliberate minimal color (grade green/amber on data only).
+const jsonld = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Resolution-risk ratings for prediction markets | ClearMarket",
+  "description": "ClearMarket grades every prediction market's resolution clarity A/B/C from its rules text, before it resolves: the neutral reference layer funds use to price and screen resolution risk across Polymarket and Kalshi.",
+  "url": "https://clearmarket.fyi/resolution-risk/",
+  "isPartOf": { "@type": "WebSite", "name": "ClearMarket", "url": "https://clearmarket.fyi" },
+};
+---
+<Site
+  title="Resolution-risk ratings for prediction markets | ClearMarket"
+  description="A prediction market can be right and still pay zero. ClearMarket grades resolution clarity A/B/C from the rules, before settlement: the reference layer funds use to price resolution risk and screen index inclusion across Polymarket and Kalshi."
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+
+  <div class="rr">
+    <!-- HERO — asymmetric 60/40 -->
+    <header class="rr-hero">
+      <div class="rr-hero-main">
+        <p class="rr-kick">Resolution-risk ratings &middot; prediction markets</p>
+        <h1>A prediction market can be right and still pay zero.</h1>
+        <p class="rr-lede">Settlement turns on the rules, not the event. ClearMarket grades every market's resolution clarity, A, B, or C, from its rules text before it resolves: the neutral reference layer for pricing and screening resolution risk across Polymarket and Kalshi.</p>
+        <div class="rr-cta-row">
+          <a class="rr-btn rr-btn-primary" href="/api/" target="_blank" rel="noopener">Access the data feed</a>
+          <a class="rr-btn rr-btn-ghost" href="/research/resolution-clarity-index/" target="_blank" rel="noopener">See the validation &rarr;</a>
+        </div>
+      </div>
+      <aside class="rr-ref" aria-label="Resolution Clarity Grade reference">
+        <p class="rr-ref-head">RCG &middot; Resolution Clarity Grade</p>
+        <div class="rr-ref-row rr-ref-a"><span class="rr-ref-g">A</span><span class="rr-ref-d">Named source, objective trigger</span><span class="rr-ref-t">Clears</span></div>
+        <div class="rr-ref-row rr-ref-b"><span class="rr-ref-g">B</span><span class="rr-ref-d">Resolves with caveats</span><span class="rr-ref-t">Caution</span></div>
+        <div class="rr-ref-row rr-ref-c"><span class="rr-ref-g">C</span><span class="rr-ref-d">No committed source, or subjective trigger</span><span class="rr-ref-t">Execution risk</span></div>
+        <div class="rr-sample rr-sample-a">
+          <div class="rr-sample-meta"><span>Graded now</span><span>Kalshi</span></div>
+          <p class="rr-sample-q">"Will there be a recession in 2027?"</p>
+          <div class="rr-sample-grade">
+            <span class="rr-sample-g">A</span>
+            <span class="rr-sample-r">Resolves on Bureau of Economic Analysis GDP data. Named source, objective trigger.</span>
+          </div>
+        </div>
+        <div class="rr-sample rr-sample-c">
+          <div class="rr-sample-meta"><span>Graded now</span><span>Polymarket</span></div>
+          <p class="rr-sample-q">"Will any country leave NATO by June 30, 2026?"</p>
+          <div class="rr-sample-grade">
+            <span class="rr-sample-g">C</span>
+            <span class="rr-sample-r">Resolves on "a consensus of credible reporting." No committed source.</span>
+          </div>
+        </div>
+      </aside>
+    </header>
+
+    <!-- PROBLEM -->
+    <section class="rr-sec">
+      <p class="rr-label">The risk that isn't in the price</p>
+      <div class="rr-prose">
+        <p>What a market pays out depends on its resolution rules, not just whether the event happened. On Polymarket, roughly nine in ten geopolitics markets name no specific source of record, only placeholder language like "a consensus of credible reporting." A contract can price the event perfectly and still pay zero on the wording.</p>
+      </div>
+      <div class="rr-loss">
+        <div class="rr-loss-fig">
+          <span class="rr-loss-tag">[ Single dispute &middot; trader loss ]</span>
+          <span class="rr-loss-num">$527,000</span>
+        </div>
+        <p class="rr-loss-body">Between May 26 and 31, 2026, Strategy sold Bitcoin inside the window of a $230M Polymarket contract asking exactly that. The disclosure landed one day late. The market resolved NO, against a sale that demonstrably happened. The loss was on the wording, not the event.</p>
+      </div>
+      <div class="rr-prose">
+        <p>That is resolution risk: the part of the trade that isn't in the price, and the part bigger checkbooks can't yet size.</p>
+      </div>
+    </section>
+
+    <!-- PROOF — audit matrix -->
+    <section class="rr-sec">
+      <p class="rr-label">Validated against the public record</p>
+      <h2 class="rr-proof-head">100% of resolution disputes were rated C.</h2>
+      <p class="rr-proof-sub">Zero A-rated and zero B-rated markets were disputed, across 7,155 graded Polymarket markets. The grade is read from rules text alone and never sees the dispute history, so the result is not circular.</p>
+      <div class="rr-matrix">
+        <div class="rr-mcol rr-m-a">
+          <span class="rr-m-grade">Grade A</span>
+          <span class="rr-m-num">0</span>
+          <span class="rr-m-unit">disputed</span>
+          <span class="rr-m-den">of 1,716 markets</span>
+          <span class="rr-m-rate">0.00% dispute rate</span>
+        </div>
+        <div class="rr-mcol rr-m-b">
+          <span class="rr-m-grade">Grade B</span>
+          <span class="rr-m-num">0</span>
+          <span class="rr-m-unit">disputed</span>
+          <span class="rr-m-den">of 1,461 markets</span>
+          <span class="rr-m-rate">0.00% dispute rate</span>
+        </div>
+        <div class="rr-mcol rr-m-c">
+          <span class="rr-m-grade">Grade C</span>
+          <span class="rr-m-num">26</span>
+          <span class="rr-m-unit">disputed</span>
+          <span class="rr-m-den">of 3,978 markets</span>
+          <span class="rr-m-rate">0.65% dispute rate</span>
+        </div>
+      </div>
+      <p class="rr-note"><a href="/research/resolution-clarity-index/" target="_blank" rel="noopener">Full backtest, method, and the volume-confound control &rarr;</a></p>
+    </section>
+
+    <!-- USE CASES — promoted above the moat so partners hit the adjacencies right after the evidence -->
+    <section class="rr-sec">
+      <p class="rr-label">Two ways to put the grade to work</p>
+      <p class="rr-uses-sub">The same graded, cross-venue book underwrites both a priced tail and a screened basket.</p>
+      <div class="rr-uses">
+        <div class="rr-use">
+          <p class="rr-use-tag">Underwrite resolution cover</p>
+          <p>Resolution disputes are a classic tail: rare, concentrated, and until now unpriced. ClearMarket supplies the independent baseline that makes the cover underwritable.</p>
+          <p>The 7,155-contract backtest is the raw evidence an underwriter prices against. <strong>Grade A and B markets show a historical 0% dispute rate</strong>, so premiums scale against Grade C dispute risk alone.</p>
+          <p>Because ClearMarket links the same question across Polymarket and Kalshi, <strong>the exposure is hedgeable</strong>: a position on one venue offsets the other. The actuarial model stays yours; ClearMarket supplies the risk tier and the cross-venue book beneath it.</p>
+        </div>
+        <div class="rr-use">
+          <p class="rr-use-tag">Build or screen an index</p>
+          <p>An index is only as sound as the markets inside it. <strong>ClearMarket supplies the resolution-clarity screen</strong>.</p>
+          <p>Use the grade as a hard inclusion filter, A and B only, <strong>dropping Grade C to keep the basket free of ambiguous-resolution risk</strong>.</p>
+          <p>Weight and compose as you see fit. ClearMarket supplies the transparent, reproducible line an allocator expects: every holding screened for resolution clarity, graded from the rules, before settlement.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- MOAT — typographic beat -->
+    <section class="rr-sec rr-moat">
+      <p class="rr-moat-statement">No venue. No book. No flow.</p>
+      <div class="rr-prose">
+        <p>Won't Polymarket and Kalshi just tighten their own resolutions? They will, and it won't matter. A venue can't authoritatively grade its own settlement any more than a bond issuer can rate its own bond. Oil companies can't publish the oil benchmark because they trade it; Platts does. Banks couldn't aggregate each other's CDS books without revealing positions; Markit did. Every market that grew up got a neutral reference layer. Prediction markets don't have one yet.</p>
+      </div>
+    </section>
+
+    <!-- MECHANICS — 01/02/03 -->
+    <section class="rr-sec">
+      <p class="rr-label">How the grade works</p>
+      <ol class="rr-steps">
+        <li>
+          <span class="rr-step-n">01</span>
+          <div class="rr-step-body">
+            <h3>Before it resolves</h3>
+            <p>The grade reads only the resolution rules, never the outcome. It is a forward-looking signal, not hindsight.</p>
+          </div>
+        </li>
+        <li>
+          <span class="rr-step-n">02</span>
+          <div class="rr-step-body">
+            <h3>Seven factors, then capped</h3>
+            <p>A weighted score over seven documented failure modes, source commitment, trigger objectivity, arbiter incentive, and more, banded A/B/C, with hard caps so a single fatal flaw can't be averaged away.</p>
+          </div>
+        </li>
+        <li>
+          <span class="rr-step-n">03</span>
+          <div class="rr-step-body">
+            <h3>Open and reproducible</h3>
+            <p>Full methodology published; grading model and data open on GitHub. <a href="/methodology/" target="_blank" rel="noopener">Read the methodology &rarr;</a></p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- WHAT YOU GET -->
+    <section class="rr-sec">
+      <p class="rr-label">What you get</p>
+      <dl class="rr-spec">
+        <div class="rr-spec-row"><dt>Coverage</dt><dd>Every market graded and cross-venue linked across Polymarket and Kalshi, refreshed continuously.</dd></div>
+        <div class="rr-spec-row"><dt>Eligibility</dt><dd>Jurisdiction-specific distribution screens, available on request.</dd></div>
+        <div class="rr-spec-row"><dt>Access</dt><dd>Free API and MCP endpoint for evaluation. Full schema. Open methodology and reproducible code.</dd></div>
+        <div class="rr-spec-row"><dt>Licensing</dt><dd>Ratings-data access under NDA for product evaluation.</dd></div>
+      </dl>
+    </section>
+
+    <!-- CLOSING -->
+    <section class="rr-close">
+      <h2>Price the risk the market doesn't show you.</h2>
+      <a class="rr-btn rr-btn-primary rr-btn-lg" href="mailto:hello@clearmarket.fyi?subject=ClearMarket%20evaluation%20key%20request">Request an evaluation key</a>
+      <p class="rr-close-meta"><a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a> &nbsp; &middot; &nbsp; <a href="/api/" target="_blank" rel="noopener">API + MCP</a> &nbsp; &middot; &nbsp; <a href="/methodology/" target="_blank" rel="noopener">Open methodology</a> &nbsp; &middot; &nbsp; <a href="https://github.com/JDSource/clearmarket" target="_blank" rel="noopener">github.com/JDSource/clearmarket</a></p>
+    </section>
+  </div>
+
+  <style>
+    .rr { --a: #10d894; --c: #f0a830; --txt: #c9ced6; max-width: 1080px; padding-bottom: 16px; }
+    .rr-prose { max-width: 62ch; }
+    .rr-prose p { margin: 0 0 14px; }
+    .rr-prose p:last-child { margin-bottom: 0; }
+
+    /* shared type — brighter body so long-form prose doesn't read faded on pure black */
+    .rr p { font-size: 16px; line-height: 1.66; color: var(--txt); }
+    .rr strong { color: var(--va-fg); }
+    .rr a:not(.rr-btn) { color: var(--va-accent); text-decoration: none; }
+    .rr a:not(.rr-btn):hover { text-decoration: underline; }
+
+    /* HERO */
+    .rr-hero { display: grid; grid-template-columns: 1.55fr 1fr; gap: 56px; align-items: start; padding: 28px 0 52px; }
+    .rr p.rr-kick { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--va-accent); margin: 0 0 20px; }
+    .rr-hero h1 { font-family: var(--va-sans); font-size: clamp(34px, 4.4vw, 50px); line-height: 1.04; font-weight: 700; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 22px; }
+    .rr-lede { font-size: 18px !important; line-height: 1.5 !important; color: var(--txt); margin: 0 0 30px; max-width: 50ch; }
+    .rr-cta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    /* HERO reference table — no boxes, hairline rules */
+    .rr-ref { border-top: 1px solid var(--va-border); padding-top: 14px; margin-top: 8px; }
+    .rr p.rr-ref-head { font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); margin: 0 0 4px; }
+    .rr-ref-row { display: grid; grid-template-columns: 20px 1fr auto; gap: 14px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--va-rule); }
+    .rr-ref-g { font-family: var(--va-mono); font-size: 17px; font-weight: 700; }
+    .rr-ref-d { font-size: 13px !important; line-height: 1.35 !important; color: var(--va-fg-muted); }
+    .rr-ref-t { font-family: var(--va-mono); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); white-space: nowrap; }
+    .rr-ref-a .rr-ref-g { color: var(--a); }
+    .rr-ref-b .rr-ref-g { color: var(--va-fg-muted); }
+    .rr-ref-c .rr-ref-g, .rr-ref-c .rr-ref-t { color: var(--c); }
+
+    /* Hero "graded now" sample cards — demo the grade at a glance, balance the right rail */
+    .rr-sample { margin-top: 16px; padding: 16px; background: var(--va-bg-2); border: 1px solid var(--va-border); }
+    .rr-sample-a { margin-top: 24px; }
+    .rr-sample-meta { display: flex; justify-content: space-between; margin-bottom: 12px; font-family: var(--va-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); }
+    .rr p.rr-sample-q { font-family: var(--va-sans); font-size: 14px !important; line-height: 1.4 !important; color: var(--va-fg); margin: 0 0 14px !important; }
+    .rr-sample-grade { display: flex; gap: 12px; padding-top: 12px; border-top: 1px solid var(--va-rule); }
+    .rr-sample-g { font-family: var(--va-mono); font-size: 22px; font-weight: 700; line-height: 1; flex: none; }
+    .rr-sample-a .rr-sample-g { color: var(--a); }
+    .rr-sample-c .rr-sample-g { color: var(--c); }
+    .rr-sample-r { font-size: 12px !important; line-height: 1.4 !important; color: var(--txt); }
+
+    /* Use-cases subhead */
+    .rr p.rr-uses-sub { font-size: 15px !important; line-height: 1.55 !important; color: var(--txt); margin: -10px 0 36px !important; max-width: 58ch; }
+
+    /* Buttons — sharp, mono */
+    .rr-btn { display: inline-block; font-family: var(--va-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; padding: 11px 20px; border-radius: 2px; text-decoration: none !important; transition: all 0.13s; }
+    .rr-btn-primary { background: var(--va-fg); color: var(--va-bg); border: 1px solid var(--va-fg); }
+    .rr-btn-primary:hover { background: #fff; border-color: #fff; }
+    .rr-btn-ghost { background: transparent; color: var(--va-fg-muted); border: 1px solid var(--va-border); }
+    .rr-btn-ghost:hover { color: var(--va-fg); border-color: var(--va-fg-faint); }
+    .rr-btn-lg { font-size: 14px; padding: 14px 26px; }
+
+    /* Sections — ruled, no cards. Generous vertical rhythm signals institutional patience. */
+    .rr-sec { padding: 56px 0; border-top: 1px solid var(--va-border); }
+    .rr p.rr-label { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--va-fg-faint); margin: 0 0 22px; }
+
+    /* $527K loss — stripped, on bare bg */
+    .rr-loss { display: grid; grid-template-columns: minmax(0, auto) 1fr; gap: 48px; align-items: end; padding: 30px 0; margin: 24px 0; border-top: 1px solid var(--va-rule); border-bottom: 1px solid var(--va-rule); }
+    .rr-loss-tag { display: block; font-family: var(--va-mono); font-size: 12.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c); margin-bottom: 6px; }
+    .rr-loss-num { font-family: var(--va-sans); font-size: clamp(52px, 8vw, 92px); font-weight: 700; line-height: 0.9; letter-spacing: -0.04em; color: var(--va-fg); }
+    .rr-loss-body { font-size: 15.5px !important; line-height: 1.65 !important; color: var(--txt); max-width: 42ch; align-self: end; }
+
+    /* PROOF */
+    .rr-proof-head { font-family: var(--va-sans); font-size: clamp(28px, 3.6vw, 40px); line-height: 1.1; font-weight: 700; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 16px; max-width: 18ch; }
+    .rr-proof-sub { font-size: 16px !important; line-height: 1.55 !important; color: var(--txt); margin: 0 0 36px; max-width: 62ch; }
+    .rr-matrix { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--va-border); border-bottom: 1px solid var(--va-border); }
+    .rr-mcol { display: flex; flex-direction: column; padding: 26px 26px 24px; border-left: 1px solid var(--va-rule); }
+    .rr-mcol:first-child { border-left: 0; padding-left: 0; }
+    .rr-m-grade { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; padding-bottom: 14px; margin-bottom: 18px; border-bottom: 1px solid var(--va-rule); }
+    .rr-m-num { font-family: var(--va-sans); font-size: clamp(46px, 5.2vw, 60px); font-weight: 700; line-height: 0.95; letter-spacing: -0.04em; color: var(--va-fg); }
+    .rr-m-unit { font-size: 14px !important; color: var(--txt); margin-top: 6px; }
+    .rr-m-den { font-family: var(--va-mono); font-size: 15px; color: var(--txt); margin-top: 16px; }
+    .rr-m-rate { font-family: var(--va-mono); font-size: 14px; color: var(--va-fg-muted); margin-top: 4px; }
+    .rr-m-a .rr-m-grade { color: var(--a); }
+    .rr-m-b .rr-m-grade { color: var(--va-fg-muted); }
+    .rr-m-c .rr-m-grade { color: var(--c); }
+    .rr-m-c .rr-m-num { color: var(--c); }
+    .rr-note { margin: 24px 0 0 !important; font-size: 14px !important; }
+
+    /* MOAT */
+    .rr p.rr-moat-statement { font-family: var(--va-sans); font-size: clamp(28px, 4.4vw, 44px); font-weight: 700; line-height: 1.05; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 24px; }
+
+    /* MECHANICS */
+    .rr-steps { list-style: none; margin: 0; padding: 0; }
+    .rr-steps li { display: grid; grid-template-columns: 56px 1fr; gap: 28px; padding: 24px 0; border-top: 1px solid var(--va-rule); }
+    .rr-steps li:first-child { border-top: 0; padding-top: 0; }
+    .rr-step-n { font-family: var(--va-mono); font-size: 24px; font-weight: 300; color: var(--va-fg-faint); line-height: 1; }
+    .rr-step-body h3 { font-family: var(--va-sans); font-size: 17px; font-weight: 600; color: var(--va-fg); margin: 0 0 8px; }
+    .rr-step-body p { font-size: 15px !important; max-width: 64ch; }
+
+    /* USE CASES */
+    .rr-uses { display: grid; grid-template-columns: 1fr 1fr; gap: 52px; }
+    .rr-use:nth-child(2) { padding-left: 52px; border-left: 1px solid var(--va-border); margin-left: -52px; }
+    .rr p.rr-use-tag { font-family: var(--va-sans); font-size: 20px; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: var(--va-fg); margin: 0 0 16px !important; }
+    .rr-use p:not(.rr-use-tag) { font-size: 15px !important; line-height: 1.7 !important; max-width: 52ch; margin: 0 0 14px; }
+    .rr-use p:last-child { margin-bottom: 0; }
+    .rr-use strong { color: var(--va-fg); font-weight: 600; }
+
+    /* WHAT YOU GET — spec list */
+    .rr-spec { margin: 0; }
+    .rr-spec-row { display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: 16px 0; border-top: 1px solid var(--va-rule); }
+    .rr-spec-row:first-child { border-top: 0; padding-top: 0; }
+    .rr-spec dt { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); padding-top: 2px; }
+    .rr-spec dd { margin: 0; font-size: 15px; line-height: 1.55; color: var(--txt); max-width: 60ch; }
+
+    /* CLOSING */
+    .rr-close { padding: 56px 0 24px; border-top: 1px solid var(--va-border); }
+    .rr-close h2 { font-family: var(--va-sans); font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 24px; max-width: 18ch; }
+    .rr p.rr-close-meta { font-family: var(--va-mono); font-size: 12px; letter-spacing: 0.03em; color: var(--va-fg-faint); margin: 28px 0 0 !important; }
+    .rr p.rr-close-meta a { color: var(--va-fg-faint); text-decoration: none; }
+    .rr p.rr-close-meta a:hover { color: var(--va-fg); }
+
+    @media (max-width: 860px) {
+      .rr-hero { grid-template-columns: 1fr; gap: 36px; }
+      .rr-ref { max-width: 420px; }
+      .rr-loss { grid-template-columns: 1fr; gap: 18px; }
+      .rr-matrix { grid-template-columns: 1fr; }
+      .rr-mcol { border-left: 0; border-top: 1px solid var(--va-rule); padding-left: 0; padding-right: 0; }
+      .rr-mcol:first-child { border-top: 0; }
+      .rr-uses { grid-template-columns: 1fr; gap: 0; }
+      .rr-use:nth-child(2) { padding-left: 0; border-left: 0; margin-left: 0; border-top: 1px solid var(--va-rule); padding-top: 28px; margin-top: 28px; }
+    }
+  </style>
+</Site>

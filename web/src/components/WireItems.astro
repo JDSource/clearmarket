@@ -9,8 +9,18 @@ import { displayTitle, composeTelemetry } from '../lib/signal-display';
 const { event } = Astro.props as { event: Event };
 
 const allSignals = await getCollection('signals');
-const linked = allSignals
-  .filter((s) => s.data.event_id === event.event_id || (s.data.linked_event_ids ?? []).some((id: string) => id === event.event_id))
+const linkedAll = allSignals
+  .filter((s) => s.data.event_id === event.event_id || (s.data.linked_event_ids ?? []).some((id: string) => id === event.event_id));
+// The pipeline emits one wire per market per day, so a settling market stacks up near-identical
+// daily snapshots. Collapse to the latest wire per distinct signal (market), then newest-first.
+// ISO-8601 published_at with a fixed +00:00 offset sorts correctly as strings.
+const latestBySlug = new Map();
+for (const s of linkedAll) {
+  const prev = latestBySlug.get(s.data.signal_slug);
+  if (!prev || s.data.published_at > prev.data.published_at) latestBySlug.set(s.data.signal_slug, s);
+}
+const linked = [...latestBySlug.values()]
+  .sort((a, b) => (a.data.published_at < b.data.published_at ? 1 : -1))
   .slice(0, 5);
 ---
 <section id="signal" class="cm-section">
