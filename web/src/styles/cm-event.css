@@ -2057,7 +2057,7 @@
     .rv-grade { font-family: var(--cm-font-mono); font-size: 28px; font-weight: 700; line-height: 1;
       width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border: 2px solid; }
     .rv-grade-a { color: var(--cm-positive); border-color: var(--cm-positive); }
-    .rv-grade-b { color: var(--cm-fg-secondary); border-color: var(--cm-border-emphasis); }
+    .rv-grade-b { color: var(--cm-caution); border-color: var(--cm-caution); background: rgba(244,214,58,0.06); }
     .rv-grade-c { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); }
     .rv-grade-split { color: var(--cm-divergence); border-color: var(--cm-divergence); background: rgba(240,168,48,0.06); font-size: 18px; }
     .rv-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
