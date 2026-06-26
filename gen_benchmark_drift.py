@@ -15,7 +15,7 @@ import os, json, sys, time, re
 from pathlib import Path
 import requests
 from dotenv import load_dotenv
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label, live_refresh
 
 ROOT = Path(__file__).parent
 load_dotenv(ROOT / ".env")
@@ -31,19 +31,25 @@ MAX = _arg("--max", 10, int)
 
 # ---------- benchmark fetch (cached + shared, rate-limit friendly) ----------
 _cache = {}
-def fred_value(sid):
-    k = ("fred", sid)
+def fred_value(sid, units="lin"):
+    # units="pc1" makes FRED return the 12-month percent change directly — use it for any
+    # YoY figure instead of hand-dividing index levels. Positional indexing (obs[12]) is unsafe:
+    # FRED drops missing-value months, so a single gap shifts every index and obs[12] silently
+    # becomes 13 months back (this exact bug read CPI at 4.5% vs the published 4.2%).
+    k = ("fred", sid, units)
     if k in _cache: return _cache[k]
     val = None
     try:
         r = requests.get("https://api.stlouisfed.org/fred/series/observations",
                          params={"series_id": sid, "api_key": FRED_KEY, "file_type": "json",
-                                 "sort_order": "desc", "limit": 14}, timeout=15)
+                                 "sort_order": "desc", "limit": 16, "units": units}, timeout=15)
         obs = [o for o in r.json().get("observations", []) if o.get("value") not in (".", None, "")]
         time.sleep(0.7)
         if obs:
             latest = float(obs[0]["value"])
-            yago = float(obs[12]["value"]) if len(obs) > 12 else None
+            # date-correct year-ago lookup (match the month exactly 12 back, never a fixed offset)
+            d0 = obs[0]["date"]; tgt = f"{int(d0[:4]) - 1:04d}-{d0[5:]}"
+            yago = next((float(o["value"]) for o in obs if o["date"] == tgt), None)
             val = {"value": latest, "date": obs[0]["date"], "yago": yago}
     except Exception:
         val = None
@@ -140,10 +146,12 @@ def benchmark_for(q, entity):
         thr = _num(q)
         if thr is not None and thr < 1.5:
             return None  # sub-1.5% threshold vs a YoY-CPI benchmark = a monthly-change market; skip the MoM-vs-YoY mismatch
-        v = fred_value("CPIAUCSL")
-        if v and v.get("yago"):
-            yoy = (v["value"] / v["yago"] - 1) * 100
-            return (f"CPI inflation, year-over-year (FRED)", f"{yoy:.1f}%", "https://fred.stlouisfed.org/series/CPIAUCSL")
+        # CPIAUCNS (Not Seasonally Adjusted) is the series BLS headlines and the series Kalshi/Polymarket
+        # CPI markets resolve against. units="pc1" returns FRED's own 12-month % change (the published
+        # 4.2% figure) — do NOT hand-divide index levels (that path read 4.5% off a one-month gap).
+        v = fred_value("CPIAUCNS", units="pc1")
+        if v:
+            return (f"CPI inflation, year-over-year (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/CPIAUCNS")
     if has("unemployment", "jobless", "jobs report", "nonfarm", "payroll"):
         v = fred_value("UNRATE")
         if v: return ("Unemployment rate (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/UNRATE")
@@ -164,8 +172,9 @@ def find_candidates():
     cands = []
     today = str(now_utc().date())
     for m in b["markets"]:
-        if (m.get("status") or "").lower() not in ("", "active", "open"):
-            continue
+        m = live_refresh(m)
+        if m is None:
+            continue  # not live on its venue (resolved/closed/aged-out since snapshot); also makes the price live + tier:direct honest
         ra = (m.get("resolve_at") or m.get("close_at") or "")[:10]
         if ra and ra < today:
             continue  # expired/resolved — never write about a dead market (the snapshot may be stale)

@@ -57,6 +57,106 @@ def now_utc():
     return datetime.now(timezone.utc)
 
 
+# ---- live marks (fetch-on-publish) ----------------------------------------------------------
+# CM Signal wires were shipping prices read from the monthly static bundle while stamping
+# tier:direct / retrieved_at:now — a false-freshness claim and the root cause of ~73% stale wires.
+# live_marks() pulls CURRENT prices for OPEN markets straight from the venue APIs at generation
+# time, keyed by platform_market_id (same fetch as fetch_marks.py). A resolved/closed market is
+# ABSENT from an open-only fetch, so absence == not-live: live_refresh() returns None and the caller
+# MUST skip it — never narrate a settled market as live, never stamp tier:direct on a snapshot price.
+# With a real live pull behind it, the existing tier:direct / retrieved_at:now provenance is TRUE.
+_KALSHI_BASE = "https://api.elections.kalshi.com/trade-api/v2"
+_POLY_GAMMA = "https://gamma-api.polymarket.com"
+_LIVE_MARKS = None
+
+
+def live_marks(force=False):
+    """{platform_market_id -> {platform, price, vol24, vol_total}} for OPEN markets on both venues.
+    Fetched once per process. Resolved/closed markets do not appear (open-only fetch)."""
+    global _LIVE_MARKS
+    if _LIVE_MARKS is not None and not force:
+        return _LIVE_MARKS
+    out, hdr = {}, {"User-Agent": "clearmarket-live/0.1"}
+    cursor = None  # Kalshi: paginate OPEN events w/ nested markets (key = ticker)
+    for _ in range(150):
+        params = {"limit": 200, "status": "open", "with_nested_markets": "true"}
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            data = requests.get(f"{_KALSHI_BASE}/events", params=params, timeout=30, headers=hdr).json()
+        except Exception:
+            break
+        for ev in data.get("events", []):
+            for m in ev.get("markets", []) or []:
+                t, lp = m.get("ticker"), m.get("last_price_dollars")
+                # An OPEN Kalshi event still nests SETTLED markets (status finalized/inactive) at
+                # their settlement price — require the market's OWN status be active, else a market
+                # resolved-since-snapshot would ship as "live" at a (genuinely fresh) terminal price.
+                if t and lp is not None and m.get("status") == "active":
+                    out[t] = {"platform": "kalshi", "price": float(lp),
+                              "vol24": float(m.get("volume_24h_fp") or 0),
+                              "vol_total": float(m.get("volume_fp") or 0)}
+        cursor = data.get("cursor")
+        if not cursor:
+            break
+    offset = 0  # Polymarket: paginate OPEN Gamma events w/ nested markets (key = conditionId)
+    for _ in range(150):
+        try:
+            batch = requests.get(f"{_POLY_GAMMA}/events", params={"closed": "false", "limit": 100, "offset": offset},
+                                 timeout=30, headers=hdr).json()
+        except Exception:
+            break
+        if not isinstance(batch, list):
+            batch = []
+        for ev in batch:
+            for m in ev.get("markets", []) or []:
+                cid, ltp = m.get("conditionId"), m.get("lastTradePrice")
+                # An OPEN Polymarket event still nests resolved markets (closed=true) at 1.0/0.001 —
+                # require the market itself be not-closed, else a since-snapshot resolution ships live.
+                if cid and ltp is not None and not m.get("closed"):
+                    out[cid] = {"platform": "polymarket", "price": float(ltp),
+                                "vol24": float(m.get("volume24hr") or 0),
+                                "vol_total": float(m.get("volume") or 0)}
+        offset += 100
+        if len(batch) < 100:
+            break
+    _LIVE_MARKS = out
+    return out
+
+
+def live_refresh(m):
+    """Copy of bundle market `m` with LIVE last_price + volumes if it is still OPEN on its venue;
+    None if not live (resolved/closed/delisted/unfetched). Callers MUST skip None.
+
+    Two gates, both required:
+      (a) data-layer status: resolved/closed is monotonic and can LEAD the venue's open flag (the
+          venue keeps a market open through its settlement timer), so trust a resolved snapshot.
+      (b) venue open-feed presence: catches markets that resolved SINCE the snapshot, where the
+          stale bundle still says open — this is the leak that put 4 settled markets on live wires."""
+    if (m.get("status") or "").lower() not in ("", "active", "open"):
+        return None
+    nid = m.get("platform_market_id")
+    d = live_marks().get(nid) if nid else None
+    if d is None:
+        return None
+    if d["price"] <= 0.0 or d["price"] >= 1.0:
+        return None  # pinned at the exact floor/ceiling = settled-but-status-lagging on the venue; never a live signal (0.99/0.01 near-certain markets still pass)
+    r = dict(m)
+    r["last_price"] = d["price"]
+    # Polymarket volumes are USD-native; Kalshi volumes are contract counts -> approx USD via price.
+    if d["platform"] == "polymarket":
+        r["volume_24h_usd"] = d["vol24"]
+        if d["vol_total"]:
+            r["volume_total_usd"] = d["vol_total"]
+    else:
+        r["volume_24h_usd"] = round(d["vol24"] * d["price"], 2)
+        if d["vol_total"]:
+            r["volume_total_usd"] = round(d["vol_total"] * d["price"], 2)
+    r["status"] = "open"  # verified live this run, not the stale snapshot value
+    r["_live"] = True
+    return r
+
+
 def slugify(s, maxlen=60):
     s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
     return s[:maxlen].rstrip("-")
@@ -182,6 +282,12 @@ def main():
         sys.exit("Missing EXA_API_KEY or ANTHROPIC_API_KEY in .env")
 
     bundle = json.loads(BUNDLE.read_text())
+    # fetch-on-publish (news_cycle): replace snapshot prices with LIVE venue prices and DROP markets
+    # that are not live, BEFORE any price reaches the LLM prompt, the ladder strike distribution, or
+    # the emitted frontmatter — so the authored headline % and bullets are never the stale snapshot
+    # value and tier:direct is honest. live_marks() is fetched once and cached. (Emit-time live_refresh
+    # downstream is now idempotent defense.)
+    bundle["markets"] = [lm for m in bundle["markets"] if (lm := live_refresh(m)) is not None]
     # freshness: drop fully-expired events (latest market resolve date already past) so a stale
     # snapshot never yields a wire about a dead market.
     _today = now_utc().date().isoformat()
@@ -406,6 +512,10 @@ def main():
                 it["event_label"] = "market-implied level"
         else:
             pm = mkt_by_id.get(ev.get("primary_market_id")) or {}
+        pm = live_refresh(pm) if pm else None
+        if not pm:
+            print(f"  skip: market not live (resolved/closed/aged-out since snapshot) for {eid}")
+            continue  # never narrate a settled/stale market as live; live_refresh also makes the wire's price + tier:direct honest
         date = (story.get("published_at") or now_utc().isoformat())[:10]
         slug = f'{slugify(it["headline"])}-{date}'
         sig_id = "CMSIG" + date.replace("-", "") + f"{n:02d}"

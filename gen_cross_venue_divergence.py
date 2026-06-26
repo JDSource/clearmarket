@@ -12,7 +12,7 @@ Usage: python3 gen_cross_venue_divergence.py [--dry] [--min-gap 0.08] [--min-vol
 import json, sys, re
 from collections import defaultdict
 from pathlib import Path
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label, live_refresh
 
 ROOT = Path(__file__).parent
 PAIRS = ROOT / "web/data/canon-pairs.json"
@@ -51,6 +51,9 @@ def find_divergences():
         po = next((m for m in grp if m["platform"] == "polymarket"), None)
         if not (k and po):
             continue
+        k, po = live_refresh(k), live_refresh(po)
+        if k is None or po is None:
+            continue  # either leg not live (resolved/aged-out) — a divergence on a dead claim is a stale artifact; both legs now carry live prices, so the gap is real
         kp, pp = k.get("last_price"), po.get("last_price")
         if kp is None or pp is None:
             continue

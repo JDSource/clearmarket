@@ -11,7 +11,7 @@ Usage: python3 gen_volume_spike.py [--dry] [--min-24h 10000] [--min-intensity 0.
 """
 import json, sys, re
 from pathlib import Path
-from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label
+from gen_news_cycle import now_utc, yz, no_dash, claude_json, OUT_DIR, BUNDLE, pct, compact_usd, venue_label, live_refresh
 
 ROOT = Path(__file__).parent
 SITE = "https://clearmarket.fyi"
@@ -35,8 +35,9 @@ def find_spikes():
     out = []
     today = str(now_utc().date())
     for m in b["markets"]:
-        if (m.get("status") or "").lower() not in ("", "active", "open"):
-            continue  # live markets only
+        m = live_refresh(m)
+        if m is None:
+            continue  # live markets only — resolved/aged-out return None (kills settled-as-live + stale-volume spikes); price + volume now live, tier:direct honest
         ra = (m.get("resolve_at") or m.get("close_at") or "")[:10]
         if ra and ra < today:
             continue  # expired/resolved — never surface a dead market (the snapshot may be stale)

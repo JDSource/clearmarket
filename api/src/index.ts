@@ -468,28 +468,30 @@ async function createKey(env: Env, req: Request): Promise<Response> {
 }
 
 // ---- marks cron (hourly) -----------------------------------------------
-// Keeps prices fresh — the credibility floor. Scoped to cross-venue-linked + each event's
-// primary market (~2.7k rows) to stay inside D1 free-tier writes. No marks-history table:
-// its only consumer was divergence, which is parked. UPDATE current last_price only.
+// Keeps prices fresh — the credibility floor. Scoped to ALL open markets (~11.5k) so no live
+// market goes stale (the old linked+primary scope silently froze ~8.8k open markets). Requires
+// Workers Paid for the D1 write budget; an unchanged-price guard keeps writes to actual movers,
+// so a typical hour is well under the included allowance. UPDATE current last_price only.
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
 async function refreshMarks(env: Env): Promise<void> {
   const { results } = await env.DB.prepare(
-    `SELECT market_id, platform_market_id FROM markets
-     WHERE platform_market_id IS NOT NULL
-       AND (question_id IS NOT NULL
-            OR market_id IN (SELECT primary_market_id FROM events WHERE primary_market_id IS NOT NULL))`
-  ).all<{ market_id: string; platform_market_id: string }>();
-  const want = new Map<string, string>();
-  for (const r of results) want.set(r.platform_market_id, r.market_id);
+    `SELECT market_id, platform_market_id, last_price FROM markets
+     WHERE platform_market_id IS NOT NULL AND status = 'open'`
+  ).all<{ market_id: string; platform_market_id: string; last_price: number | null }>();
+  const want = new Map<string, { mid: string; prev: number | null }>();
+  for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, prev: r.last_price });
   if (!want.size) return;
 
   const fresh = new Map<string, number>();
 
-  // Kalshi: paginate open events with nested markets
+  // Kalshi: paginate open events with nested markets. Caps are a safety backstop; the whole open
+  // venue universe must be scanned to cover ~11.5k tracked markets, so log if a cap is hit (tail
+  // would silently get no fresh price). Subrequest budget is fine on Workers Paid.
   let cursor: string | undefined;
-  for (let i = 0; i < 40; i++) {
+  let kHitCap = true;
+  for (let i = 0; i < 300; i++) {
     const u = new URL(`${KALSHI_BASE}/events`);
     u.searchParams.set('with_nested_markets', 'true');
     u.searchParams.set('status', 'open');
@@ -500,33 +502,37 @@ async function refreshMarks(env: Env): Promise<void> {
       for (const m of ev.markets ?? [])
         if (want.has(m.ticker) && m.last_price_dollars != null) fresh.set(m.ticker, Number(m.last_price_dollars));
     cursor = d.cursor;
-    if (!cursor) break;
+    if (!cursor) { kHitCap = false; break; }
   }
+  if (kHitCap) console.warn('marks refresh: Kalshi pagination cap hit — tail markets may be unrefreshed; raise cap');
 
   // Polymarket: paginate open Gamma events
   let offset = 0;
-  for (let i = 0; i < 80; i++) {
+  let pHitCap = true;
+  for (let i = 0; i < 300; i++) {
     const u = new URL(`${POLY_GAMMA}/events`);
     u.searchParams.set('closed', 'false');
     u.searchParams.set('limit', '100');
     u.searchParams.set('offset', String(offset));
     const b: any = await (await fetch(u.toString())).json();
-    if (!Array.isArray(b)) break;
+    if (!Array.isArray(b)) { pHitCap = false; break; }
     for (const ev of b)
       for (const m of ev.markets ?? [])
         if (want.has(m.conditionId) && m.lastTradePrice != null) fresh.set(m.conditionId, Number(m.lastTradePrice));
     offset += 100;
-    if (b.length < 100) break;
+    if (b.length < 100) { pHitCap = false; break; }
   }
+  if (pHitCap) console.warn('marks refresh: Polymarket pagination cap hit — tail markets may be unrefreshed; raise cap');
 
+  // Write only movers: unchanged prices are skipped, so a quiet hour costs almost no D1 writes.
   const stmts: D1PreparedStatement[] = [];
-  for (const [pmid, mid] of want) {
+  for (const [pmid, { mid, prev }] of want) {
     const p = fresh.get(pmid);
-    if (p == null) continue;
+    if (p == null || p === prev) continue;
     stmts.push(env.DB.prepare('UPDATE markets SET last_price = ? WHERE market_id = ?').bind(p, mid));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-  console.log(`marks refresh: ${stmts.length}/${want.size} linked+primary markets updated`);
+  console.log(`marks refresh: ${stmts.length} changed / ${want.size} open markets`);
 }
 
 // ---- crypto spot (free, keyless CoinGecko — underlying context for crypto price markets) ----
@@ -552,7 +558,7 @@ async function refreshSpot(env: Env): Promise<void> {
 // ---- end-of-day history snapshot --------------------------------------
 // Appends one row per refreshed market to marks_daily (the daily time-series). Runs once a
 // day at the EOD cron hour, AFTER refreshMarks, so it captures the day's freshest prices.
-// Scoped to the same linked+primary set the marks cron refreshes (others have stale last_price).
+// Scoped to all open markets — same set refreshMarks now keeps fresh.
 const EOD_UTC_HOUR = 21; // ~5pm EDT / 4pm EST — end of the US day
 
 async function snapshotDaily(env: Env): Promise<void> {
@@ -562,9 +568,7 @@ async function snapshotDaily(env: Env): Promise<void> {
     `INSERT INTO marks_daily (market_id, day, last_price, volume_24h_usd, volume_total_usd, captured_at)
      SELECT market_id, ?, last_price, volume_24h_usd, volume_total_usd, ?
        FROM markets
-      WHERE last_price IS NOT NULL
-        AND (question_id IS NOT NULL
-             OR market_id IN (SELECT primary_market_id FROM events WHERE primary_market_id IS NOT NULL))
+      WHERE last_price IS NOT NULL AND status = 'open'
      ON CONFLICT(market_id, day) DO UPDATE SET
         last_price = excluded.last_price,
         volume_24h_usd = excluded.volume_24h_usd,
