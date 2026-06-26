@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG2026062404"
+signal_id: "CMSIG2026062407"
 signal_slug: "us-iran-nuclear-deal-by-june-30-polymarket-51-2026-06-24"
 headline: "US-Iran nuclear deal by June 30: Polymarket 51%"
-semantic_title: "US-Iran nuclear deal by June 30 pricing wavers near coin-flip"
+semantic_title: "US-Iran nuclear deal by June 30 sits at near coin-flip"
 telemetry: "Polymarket 51%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
 pre_news_classification: "concurrent"
-published_at: "2026-06-24T09:41:25.000Z"
+published_at: "2026-06-24T12:32:00.000Z"
 event_id: "CM-EVT-LG47Z78CF2"
 event_slug: "us-iran-nuclear-deal-by-june-30"
 event_question: "Will the US and Iran reach a nuclear deal by June 30?"
@@ -20,10 +20,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-06-30T00:00:00Z"
 bullets:
-  - "Polymarket prices the US-Iran nuclear deal by June 30 at 51%, essentially a coin-flip with only six days remaining."
-  - "IAEA confirmation of inspector access is a positive signal, but the public US-Iran dispute over inspection terms keeps the market split."
-  - "The July 31 contract (CM-EVT-Y2L01CWLW3) sits at 59%, implying only an 8-point premium for an extra month, signaling compressed timeline doubt."
-  - "Resolves via UMA oracle; a formal signed agreement before June 30 close-of-day is required, not just technical-level arrangements."
+  - "Polymarket prices 51% on a US-Iran nuclear deal by June 30, effectively a coin-flip with four days left in the window."
+  - "IAEA inspections being confirmed is consistent with deal momentum, but the Hormuz drone strike the same day introduces conflicting signals the market has not resolved."
+  - "The companion contract on Iran agreeing to end uranium enrichment by June 30 prices at just 24%, showing the market sees process progress but not a full commitment yet."
+  - "Resolves via UMA oracle; the enrichment-end-by-July-31 contract at 29% and by-December-31 at 46% indicate the market expects a deal structure, if any, to take months to finalize."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,28 +31,28 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "IAEA chief confirmed inspectors will visit Iranian nuclear sites under an interim US-Iran deal, though the two sides publicly dispute inspection scope."
-    publisher: "By MARI YAMAGUCHI and JON GAMBRELL"
-    published_at: "2026-06-24T09:41:25.000Z"
-    source_url: "https://www.the-journal.com/articles/un-nuclear-agency-boss-says-inspectors-will-visit-irans-nuclear-sites-under-iran-us-interim-deal/"
+    story: "The IAEA chief confirmed nuclear inspectors will visit Iranian sites under a preliminary US-Iran peace agreement."
+    publisher: "bbc.co.uk"
+    published_at: "2026-06-24T12:32:00.000Z"
+    source_url: "https://www.bbc.co.uk/news/articles/cpd395zv81vo"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "By MARI YAMAGUCHI and JON GAMBRELL"
-        source_url: "https://www.the-journal.com/articles/un-nuclear-agency-boss-says-inspectors-will-visit-irans-nuclear-sites-under-iran-us-interim-deal/"
-        retrieved_at: "2026-06-24T10:45:49+00:00"
+        source: "bbc.co.uk"
+        source_url: "https://www.bbc.co.uk/news/articles/cpd395zv81vo"
+        retrieved_at: "2026-06-26T10:48:01+00:00"
   - type: "pm_response"
-    notes: "Polymarket's June 30 (51%) and July 31 (59%) contracts show a flat term structure, suggesting the market assigns most probability mass to a near-term resolution or none at all."
+    notes: "Polymarket's 51% on a June 30 deal sits in tension with the 24% on enrichment cessation, signaling the market prices a partial or framework deal rather than a complete agreement."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "By MARI YAMAGUCHI and JON GAMBRELL: UN nuclear agency boss says inspectors will visit Iran's nuclear sites"
-    url: "https://www.the-journal.com/articles/un-nuclear-agency-boss-says-inspectors-will-visit-irans-nuclear-sites-under-iran-us-interim-deal/"
-    published_at: "2026-06-24T09:41:25.000Z"
-    retrieved_at: "2026-06-24T10:45:49+00:00"
+  - label: "bbc.co.uk: UN nuclear chief says inspectors will visit Iran sites as part of war"
+    url: "https://www.bbc.co.uk/news/articles/cpd395zv81vo"
+    published_at: "2026-06-24T12:32:00.000Z"
+    retrieved_at: "2026-06-26T10:48:01+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
