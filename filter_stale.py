@@ -15,8 +15,9 @@ from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent
 BUNDLE = ROOT / "web/data/universe-enriched-linked.json"
-TODAY = date(2026, 6, 3)
-HORIZON = date(2028, 6, 3)  # today + 24 months
+TODAY = date.today()
+HORIZON = date(TODAY.year + 2, TODAY.month, TODAY.day) if (TODAY.month, TODAY.day) != (2, 29) \
+    else date(TODAY.year + 2, 3, 1)  # today + 24 months (leap-day guard)
 WRITE = "--write" in sys.argv
 
 def parse_d(s):

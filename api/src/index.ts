@@ -269,7 +269,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   // "live" = has at least one market still open (resolve/close in the future or unknown). Used to
   // subordinate resolved events (active first) and to support ?status filtering. Evaluated against
   // date('now') so it stays accurate continuously, not just at the last reseed.
-  const liveExpr = `EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND (
+  const liveExpr = `EXISTS (SELECT 1 FROM markets m WHERE m.event_id = e.event_id AND m.status = 'open' AND (
     (m.resolve_at IS NULL AND m.close_at IS NULL) OR COALESCE(m.resolve_at, m.close_at) >= date('now')))`;
   const status = (p.get('status') || 'all').toLowerCase();
   if (status === 'active') where.push(liveExpr);
@@ -483,17 +483,24 @@ async function createKey(env: Env, req: Request): Promise<Response> {
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
-async function refreshMarks(env: Env): Promise<void> {
+// Returns the set of platform_market_ids seen in the live OPEN venue feed this run, so the daily
+// reconcileStatus pass can reuse the exact same snapshot (zero extra open-feed subrequests, and no
+// drift between "what marks saw" and "what reconcile treats as still-listed").
+async function refreshMarks(env: Env): Promise<Set<string>> {
   const { results } = await env.DB.prepare(
     `SELECT market_id, platform_market_id, last_price, volume_24h_usd, volume_total_usd FROM markets
      WHERE platform_market_id IS NOT NULL AND status = 'open'`
   ).all<{ market_id: string; platform_market_id: string; last_price: number | null; volume_24h_usd: number | null; volume_total_usd: number | null }>();
   const want = new Map<string, { mid: string; price: number | null; v24: number | null; vtot: number | null }>();
   for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, price: r.last_price, v24: r.volume_24h_usd, vtot: r.volume_total_usd });
-  if (!want.size) return;
+  if (!want.size) return new Set();
 
   type Mark = { price: number; v24: number; vtot: number };
   const fresh = new Map<string, Mark>();
+  // Every tracked market the live OPEN feed returned this run (priced or not). This — NOT fresh —
+  // is the "still listed" signal handed to reconcileStatus, so an open-but-untraded market (no price,
+  // so absent from `fresh`) is never mistaken for delisted.
+  const seenOpen = new Set<string>();
 
   // Kalshi: paginate open events with nested markets. Caps are a safety backstop; the whole open
   // venue universe must be scanned to cover ~11.5k tracked markets, so log if a cap is hit (tail
@@ -509,10 +516,13 @@ async function refreshMarks(env: Env): Promise<void> {
     const d: any = await (await fetch(u.toString(), { headers: { 'User-Agent': 'clearmarket-marks/0.1' } })).json();
     for (const ev of d.events ?? [])
       for (const m of ev.markets ?? [])
-        if (want.has(m.ticker) && m.last_price_dollars != null) {
-          const px = Number(m.last_price_dollars);
-          // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
-          fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
+        if (want.has(m.ticker)) {
+          seenOpen.add(m.ticker);
+          if (m.last_price_dollars != null) {
+            const px = Number(m.last_price_dollars);
+            // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
+            fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
+          }
         }
     cursor = d.cursor;
     if (!cursor) { kHitCap = false; break; }
@@ -531,9 +541,12 @@ async function refreshMarks(env: Env): Promise<void> {
     if (!Array.isArray(b)) { pHitCap = false; break; }
     for (const ev of b)
       for (const m of ev.markets ?? [])
-        if (want.has(m.conditionId) && m.lastTradePrice != null)
-          // Polymarket volumes are USD-native.
-          fresh.set(m.conditionId, { price: Number(m.lastTradePrice), v24: Number(m.volume24hr ?? 0), vtot: Number(m.volume ?? 0) });
+        if (want.has(m.conditionId)) {
+          seenOpen.add(m.conditionId);
+          if (m.lastTradePrice != null)
+            // Polymarket volumes are USD-native.
+            fresh.set(m.conditionId, { price: Number(m.lastTradePrice), v24: Number(m.volume24hr ?? 0), vtot: Number(m.volume ?? 0) });
+        }
     offset += 100;
     if (b.length < 100) { pHitCap = false; break; }
   }
@@ -542,16 +555,18 @@ async function refreshMarks(env: Env): Promise<void> {
   // Write movers: skip only when price AND both volume figures are unchanged (the dead tail stays
   // cheap), so active markets get fresh price + volume — the latter feeds marks_daily → the /movers
   // day-over-day signal, which was inert while volume was frozen at the monthly seed value.
+  const nowIso = new Date().toISOString();
   const stmts: D1PreparedStatement[] = [];
   for (const [pmid, w] of want) {
     const f = fresh.get(pmid);
     if (f == null) continue;
     if (f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot) continue;
-    stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ? WHERE market_id = ?')
-      .bind(f.price, f.v24, f.vtot, w.mid));
+    stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?, last_updated_at = ? WHERE market_id = ?')
+      .bind(f.price, f.v24, f.vtot, nowIso, w.mid));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   console.log(`marks refresh: ${stmts.length} changed / ${want.size} open markets`);
+  return seenOpen;
 }
 
 // ---- crypto spot (free, keyless CoinGecko — underlying context for crypto price markets) ----
@@ -595,6 +610,145 @@ async function snapshotDaily(env: Env): Promise<void> {
         captured_at = excluded.captured_at`
   ).bind(day, now).run();
   console.log(`marks_daily snapshot ${day}: ${res.meta?.changes ?? '?'} rows`);
+}
+
+// ---- daily status reconciliation (zombie killer) ----------------------
+// The hourly cron refreshes PRICE for open markets but never STATUS, and silently skips markets the
+// venue stopped returning — so a resolved/delisted market stays status='open' with a frozen price
+// (and the API serves it as live). Once a day we reconcile: any open market ABSENT from today's live
+// open feed is venue-confirmed against the recently-settled feed and flipped to resolved/closed with
+// the true settlement price. Venue-authoritative — never inferred from staleness. A delisted market we
+// cannot confirm is left open (only closed if its own close date has already passed). Reuses the open
+// set refreshMarks already pulled this run (zero extra open-feed subrequests, same snapshot).
+const RECONCILE_UTC_HOUR = 6;   // 06:00 UTC — low-traffic, before the 08:00 cm-signal wire run
+const SETTLE_WINDOW_DAYS = 14;  // recently-settled lookback; tolerates a few missed daily runs
+
+type RowLite = { market_id: string; event_id: string; platform: string };
+function resLogRow(env: Env, m: RowLite, eventType: string, fromV: string | null, toV: string,
+                   finalPrice: number | null, occurredAt: string | null, recordedAt: string): D1PreparedStatement {
+  // occurred_at is half the (market_id, occurred_at) PK — never bind NULL (SQLite treats NULLs as
+  // distinct, which would let duplicate rows accrue), so fall back to the record time.
+  return env.DB.prepare(
+    `INSERT INTO resolution_log (market_id, event_id, platform, event_type, occurred_at, recorded_at, from_value, to_value, final_price, source, source_ref, actor)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(market_id, occurred_at) DO NOTHING`
+  ).bind(m.market_id, m.event_id, m.platform, eventType, occurredAt ?? recordedAt, recordedAt,
+         fromV, toV, finalPrice, 'platform_api', null, 'clearmarket-reconcile-cron');
+}
+
+async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
+  const { results } = await env.DB.prepare(
+    `SELECT market_id, event_id, platform, platform_market_id, close_at FROM markets
+     WHERE platform_market_id IS NOT NULL AND status = 'open'`
+  ).all<{ market_id: string; event_id: string; platform: string; platform_market_id: string; close_at: string | null }>();
+
+  const unseen = results.filter((r) => !seenOpen.has(r.platform_market_id));
+  if (!unseen.length) { console.log('reconcile: 0 unseen open markets'); return; }
+
+  // recently-settled feeds -> platform_market_id -> { resolved, price (settlement, 0..1), closeTime }
+  type Settle = { resolved: boolean; price: number | null; closeTime: string | null };
+  const settled = new Map<string, Settle>();
+  const cutoffMs = Date.now() - SETTLE_WINDOW_DAYS * 86_400_000;
+
+  // Kalshi settled markets (min_close_ts in unix SECONDS)
+  let kCursor: string | undefined;
+  let kCap = true;
+  for (let i = 0; i < 100; i++) {
+    const u = new URL(`${KALSHI_BASE}/markets`);
+    u.searchParams.set('status', 'settled');
+    u.searchParams.set('min_close_ts', String(Math.floor(cutoffMs / 1000)));
+    u.searchParams.set('limit', '1000');
+    if (kCursor) u.searchParams.set('cursor', kCursor);
+    const d: any = await (await fetch(u.toString(), { headers: { 'User-Agent': 'clearmarket-reconcile/0.1' } })).json();
+    for (const m of d.markets ?? []) {
+      const result = String(m.result ?? '').toLowerCase();
+      const closeTime = m.close_time ?? m.expiration_time ?? null;
+      if (result === 'yes' || result === 'no')
+        settled.set(m.ticker, { resolved: true, price: result === 'yes' ? 1.0 : 0.0, closeTime });
+      else
+        settled.set(m.ticker, { resolved: false, price: null, closeTime }); // settled w/o yes/no -> closed
+    }
+    kCursor = d.cursor;
+    if (!kCursor) { kCap = false; break; }
+  }
+  if (kCap) console.warn('reconcile: Kalshi settled pagination cap hit — raise cap or shorten window');
+
+  // Polymarket closed events, newest-first by EVENT endDate. Record ONLY UMA-resolved markets: a closed
+  // event whose UMA outcome isn't final yet may still resolve, so we leave those 'open' to re-check next
+  // run rather than terminalize them. Stop at PAGE granularity on the event sort key — a still-recent
+  // multi-outcome event can nest an old eliminated sub-market, so a per-market endDate must never halt
+  // pagination (that silently truncated the feed ~1800 events short of the genuinely recent settlements).
+  let pOffset = 0;
+  let pStop = false;
+  for (let i = 0; i < 200 && !pStop; i++) {
+    const u = new URL(`${POLY_GAMMA}/events`);
+    u.searchParams.set('closed', 'true');
+    u.searchParams.set('limit', '100');
+    u.searchParams.set('offset', String(pOffset));
+    u.searchParams.set('order', 'endDate');
+    u.searchParams.set('ascending', 'false');
+    const b: any = await (await fetch(u.toString())).json();
+    if (!Array.isArray(b) || !b.length) break;
+    let pageMaxEnd = NaN;
+    for (const ev of b) {
+      const evEnd = ev.endDate ? Date.parse(ev.endDate) : NaN;
+      if (Number.isFinite(evEnd)) pageMaxEnd = Number.isFinite(pageMaxEnd) ? Math.max(pageMaxEnd, evEnd) : evEnd;
+      for (const m of ev.markets ?? []) {
+        if (!m.conditionId) continue;
+        if (String(m.umaResolutionStatus ?? '').toLowerCase() !== 'resolved') continue; // not final -> leave open
+        let price: number | null = null;
+        if (m.outcomePrices != null) {
+          try {
+            const p = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
+            if (Array.isArray(p) && p.length) price = Number(p[0]);
+          } catch { /* unparseable -> leave null, handled as PENDING below */ }
+        }
+        settled.set(m.conditionId, { resolved: true, price, closeTime: m.endDate ?? null });
+      }
+    }
+    pOffset += 100;
+    if (Number.isFinite(pageMaxEnd) && pageMaxEnd < cutoffMs) pStop = true; // whole page older than the window
+  }
+
+  const nowIso = new Date().toISOString();
+  const stmts: D1PreparedStatement[] = [];
+  const logStmts: D1PreparedStatement[] = [];
+  const counts = { resolved: 0, closed: 0, left: 0 };
+
+  for (const m of unseen) {
+    const s = settled.get(m.platform_market_id);
+    if (s && s.resolved && s.price != null) {
+      const outcome = s.price >= 0.5 ? 'YES' : 'NO';
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, last_price=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
+        .bind('resolved', s.price, s.closeTime, nowIso, m.market_id));
+      logStmts.push(resLogRow(env, m, 'resolved', 'open', outcome, s.price, s.closeTime ?? m.close_at, nowIso));
+      counts.resolved++;
+    } else if (s && s.resolved) {
+      // venue says resolved but no parseable settlement price — flip status, keep price, outcome PENDING (no guess)
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
+        .bind('resolved', s.closeTime, nowIso, m.market_id));
+      logStmts.push(resLogRow(env, m, 'resolved', 'open', 'PENDING', null, s.closeTime ?? m.close_at, nowIso));
+      counts.resolved++;
+    } else if (s) {
+      // Kalshi affirmatively SETTLED with no determinable yes/no outcome (void/cancelled) -> terminal 'closed'.
+      // (Polymarket never lands here: the Poly pull only records UMA-resolved markets above.)
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, reconciled_at=? WHERE market_id=?')
+        .bind('closed', nowIso, m.market_id));
+      logStmts.push(resLogRow(env, m, 'status_change', 'open', 'closed', null, s.closeTime ?? m.close_at, nowIso));
+      counts.closed++;
+    } else {
+      // Absent from the live open feed AND from the in-window settled/resolved feeds. Could be closed-
+      // awaiting-settlement, a true delist, or settled outside the window. NEVER terminalize here — that
+      // would drop the eventual YES/NO outcome. Leave it 'open' and just record the check; the monthly
+      // settle_status_sweep.py queries each carried market directly (no window) and makes the firm call,
+      // and liveExpr's status+date logic already keeps a past-date open market out of the 'active' set.
+      stmts.push(env.DB.prepare('UPDATE markets SET reconciled_at=? WHERE market_id=?').bind(nowIso, m.market_id));
+      counts.left++;
+    }
+  }
+
+  for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
+  for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
+  console.log(`reconcile: ${unseen.length} unseen / ${results.length} open -> resolved ${counts.resolved}, closed ${counts.closed}, left-open ${counts.left}`);
 }
 
 // ---- router ------------------------------------------------------------
@@ -709,10 +863,17 @@ export default {
   // Hourly cron (0 * * * *) — refresh prices for linked + primary markets + crypto spot.
   // Once a day at EOD_UTC_HOUR, also append the daily history snapshot (after the refresh).
   async scheduled(_event: any, env: Env, ctx: any): Promise<void> {
-    if (new Date().getUTCHours() === EOD_UTC_HOUR) {
+    const hour = new Date().getUTCHours();
+    if (hour === EOD_UTC_HOUR) {
       ctx.waitUntil((async () => {
         await refreshMarks(env);
         await snapshotDaily(env);
+        await refreshSpot(env);
+      })());
+    } else if (hour === RECONCILE_UTC_HOUR) {
+      ctx.waitUntil((async () => {
+        const seen = await refreshMarks(env);
+        await reconcileStatus(env, seen);
         await refreshSpot(env);
       })());
     } else {

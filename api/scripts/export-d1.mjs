@@ -125,6 +125,8 @@ CREATE TABLE markets (
   last_price REAL,
   volume_24h_usd REAL,
   volume_total_usd REAL,
+  last_updated_at TEXT,      -- ISO; stamped by the hourly marks cron on every price write (NULL until first refresh)
+  reconciled_at TEXT,        -- ISO; stamped by the daily reconcileStatus cron when it confirms a market's status vs the venue
   settlement_style TEXT,
   direction TEXT,
   threshold REAL,
@@ -193,10 +195,11 @@ CREATE TABLE resolution_log (
   market_id TEXT NOT NULL,
   event_id TEXT NOT NULL,
   platform TEXT,
-  event_type TEXT,            -- 'resolved'
+  event_type TEXT,            -- 'resolved' | 'status_change'
   occurred_at TEXT,           -- when it settled
-  recorded_at TEXT,           -- pull date that observed it
-  to_value TEXT,              -- 'YES' | 'NO' | 'PENDING'
+  recorded_at TEXT,           -- pull date that first observed it
+  from_value TEXT,            -- prior state (e.g. 'open'); NULL for legacy rows
+  to_value TEXT,              -- 'YES' | 'NO' | 'PENDING' (resolved) | 'closed' (status_change)
   final_price REAL,
   source TEXT,
   source_ref TEXT,
@@ -276,7 +279,7 @@ try {
   const rlog = JSON.parse(readFileSync(RESLOG_PATH, 'utf-8'));
   rlRows = (Array.isArray(rlog) ? rlog : []).map((r) => `(${[
     q(r.market_id), q(r.event_id), q(r.platform), q(r.event_type),
-    q(r.occurred_at), q(r.recorded_at), q(r.to_value), q(r.final_price),
+    q(r.occurred_at), q(r.recorded_at), q(r.from_value ?? null), q(r.to_value), q(r.final_price),
     q(r.source), q(r.source_ref), q(r.actor),
   ].join(',')})`);
   console.error(`resolution log: ${rlRows.length} resolved markets`);
@@ -288,7 +291,7 @@ const batches = [
   ...chunkBySize(eRows, 'INSERT INTO events (event_id,slug,question,category,tags,primary_market_id,event_type,ladder_distribution,catalyst_types,catalyst_dates,venue,editorial_notes,is_demo,published,created_at,updated_at) VALUES'),
   ...chunkBySize(mRows, 'INSERT INTO markets (market_id,event_id,platform,platform_market_id,question_raw,description_raw,contract_type,settlement_currency,underlying_reference,close_at,resolve_at,status,resolution_rules_raw,arbitration_model,resolution_proposer,resolution_source,source_citation,resolution_source_type,resolution_source_quality,source_commitment,source_commitment_subtype,source_hedge_text,resolution_clarity_grade,rcg_score,rcg_caps,rcg_applied_factors,last_price,volume_24h_usd,volume_total_usd,settlement_style,direction,threshold,question_id,also_on,tags,eligibility_screens) VALUES'),
   ...(calRows.length ? chunkBySize(calRows, 'INSERT INTO catalyst_calendar (type,label,source_url,dates) VALUES') : []),
-  ...(rlRows.length ? chunkBySize(rlRows, 'INSERT INTO resolution_log (market_id,event_id,platform,event_type,occurred_at,recorded_at,to_value,final_price,source,source_ref,actor) VALUES') : []),
+  ...(rlRows.length ? chunkBySize(rlRows, 'INSERT INTO resolution_log (market_id,event_id,platform,event_type,occurred_at,recorded_at,from_value,to_value,final_price,source,source_ref,actor) VALUES') : []),
 ];
 
 writeFileSync(resolve(SEED_DIR, 'schema.sql'), schema);
