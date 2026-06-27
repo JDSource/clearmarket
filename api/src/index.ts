@@ -417,6 +417,14 @@ async function listMovers(env: Env, url: URL): Promise<Response> {
       notice: `Need two daily snapshots to compute a move; have ${days.length}. Series accrues nightly.` });
   }
   const [dayNow, dayPrev] = [days[0].day, days[1].day];
+  // Day-over-day only: if the prior snapshot is stale (seed-era rows after a deploy, or a cron
+  // outage), a fresh-vs-frozen volume ratio is a mechanical artifact, not a real move — and it would
+  // feed a fake "volume spike" straight into published wires. Require near-adjacent snapshots.
+  const gapDays = Math.round((Date.parse(dayNow) - Date.parse(dayPrev)) / 86400000);
+  if (gapDays > 3) {
+    return json({ metric: 'volume_24h', min_mult: minMult, count: 0, movers: [],
+      notice: `Prior snapshot is ${gapDays} days old; a day-over-day move needs near-adjacent snapshots. Series re-accrues nightly.` });
+  }
   const { results } = await env.DB.prepare(
     `SELECT t.market_id, t.last_price, t.volume_24h_usd AS vol_now, p.volume_24h_usd AS vol_prev,
             m.platform, m.question_raw, m.event_id, e.slug, e.question AS event_question, e.category
@@ -477,14 +485,15 @@ const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
 async function refreshMarks(env: Env): Promise<void> {
   const { results } = await env.DB.prepare(
-    `SELECT market_id, platform_market_id, last_price FROM markets
+    `SELECT market_id, platform_market_id, last_price, volume_24h_usd, volume_total_usd FROM markets
      WHERE platform_market_id IS NOT NULL AND status = 'open'`
-  ).all<{ market_id: string; platform_market_id: string; last_price: number | null }>();
-  const want = new Map<string, { mid: string; prev: number | null }>();
-  for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, prev: r.last_price });
+  ).all<{ market_id: string; platform_market_id: string; last_price: number | null; volume_24h_usd: number | null; volume_total_usd: number | null }>();
+  const want = new Map<string, { mid: string; price: number | null; v24: number | null; vtot: number | null }>();
+  for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, price: r.last_price, v24: r.volume_24h_usd, vtot: r.volume_total_usd });
   if (!want.size) return;
 
-  const fresh = new Map<string, number>();
+  type Mark = { price: number; v24: number; vtot: number };
+  const fresh = new Map<string, Mark>();
 
   // Kalshi: paginate open events with nested markets. Caps are a safety backstop; the whole open
   // venue universe must be scanned to cover ~11.5k tracked markets, so log if a cap is hit (tail
@@ -500,7 +509,11 @@ async function refreshMarks(env: Env): Promise<void> {
     const d: any = await (await fetch(u.toString(), { headers: { 'User-Agent': 'clearmarket-marks/0.1' } })).json();
     for (const ev of d.events ?? [])
       for (const m of ev.markets ?? [])
-        if (want.has(m.ticker) && m.last_price_dollars != null) fresh.set(m.ticker, Number(m.last_price_dollars));
+        if (want.has(m.ticker) && m.last_price_dollars != null) {
+          const px = Number(m.last_price_dollars);
+          // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
+          fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
+        }
     cursor = d.cursor;
     if (!cursor) { kHitCap = false; break; }
   }
@@ -518,18 +531,24 @@ async function refreshMarks(env: Env): Promise<void> {
     if (!Array.isArray(b)) { pHitCap = false; break; }
     for (const ev of b)
       for (const m of ev.markets ?? [])
-        if (want.has(m.conditionId) && m.lastTradePrice != null) fresh.set(m.conditionId, Number(m.lastTradePrice));
+        if (want.has(m.conditionId) && m.lastTradePrice != null)
+          // Polymarket volumes are USD-native.
+          fresh.set(m.conditionId, { price: Number(m.lastTradePrice), v24: Number(m.volume24hr ?? 0), vtot: Number(m.volume ?? 0) });
     offset += 100;
     if (b.length < 100) { pHitCap = false; break; }
   }
   if (pHitCap) console.warn('marks refresh: Polymarket pagination cap hit — tail markets may be unrefreshed; raise cap');
 
-  // Write only movers: unchanged prices are skipped, so a quiet hour costs almost no D1 writes.
+  // Write movers: skip only when price AND both volume figures are unchanged (the dead tail stays
+  // cheap), so active markets get fresh price + volume — the latter feeds marks_daily → the /movers
+  // day-over-day signal, which was inert while volume was frozen at the monthly seed value.
   const stmts: D1PreparedStatement[] = [];
-  for (const [pmid, { mid, prev }] of want) {
-    const p = fresh.get(pmid);
-    if (p == null || p === prev) continue;
-    stmts.push(env.DB.prepare('UPDATE markets SET last_price = ? WHERE market_id = ?').bind(p, mid));
+  for (const [pmid, w] of want) {
+    const f = fresh.get(pmid);
+    if (f == null) continue;
+    if (f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot) continue;
+    stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ? WHERE market_id = ?')
+      .bind(f.price, f.v24, f.vtot, w.mid));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   console.log(`marks refresh: ${stmts.length} changed / ${want.size} open markets`);
