@@ -80,13 +80,33 @@ npm run seed:remote       # reseed D1 (drops+recreates events/markets/resolution
 npx wrangler deploy       # deploy the Worker
 ```
 
+**If the Worker writes a NEW column, apply its migration BEFORE `wrangler deploy`** — the live tables won't
+have the column until then, and the cron's `UPDATE` will throw "no such column" and silently stall. e.g.:
+```bash
+cd api && wrangler d1 execute clearmarket --remote --file=zombie-cols-migration.sql   # last_updated_at, reconciled_at, from_value (run from api/)
+```
+**ALTER-only deploys: do NOT run `npm run seed:remote`.** A reseed drops+recreates `markets` from the bundle,
+which clobbers the cron-fresh `last_price`/`volume`/`status` in D1 with the (older) bundle snapshot. For a
+Worker-logic + new-column change (like the zombie fix), the steps are just: apply the migration, then
+`wrangler deploy`. Reseed only when you have a genuinely newer bundle to ship.
+
 Worker code is defensive where it reads not-yet-seeded tables (e.g. `resolution_log` returns `[]` until the reseed), so the Worker can ship ahead of the reseed without 500-ing.
 
 ## Full re-enrichment (monthly) — regenerate the bundle from scratch
 
-`build-data.sh` is the canonical chain (runs on a FRESH enriched+linked bundle, NOT a patched one):
+After unify/link, run `./reconcile-bundle.sh` (REQUIRED — the step that used to get forgotten): it runs
+`settle_status_sweep.py` (re-marks carried markets the venue has settled/delisted) then
+`build_resolution_log.py`. Skip it and the bundle re-ships the "zombie" markets (status='open', frozen
+price) the union carried verbatim. Kept out of `build-data.sh` because the sweep makes ~thousands of
+venue calls (~10 min) — a plain site rebuild shouldn't trigger it.
+
+`build-data.sh` is the canonical chain (runs on a FRESH, reconciled, enriched+linked bundle, NOT a patched one):
 `fix_questions → retitle_multidate_events → patch_ladders → patch_sources → merge_canon → export D1 → build site`.
-Then upload the rebuilt bundle + `canon-pairs.json` + `resolution-log.json` to R2 (Procedure B upload), reseed D1 (Procedure C), `wrangler deploy`, `pages deploy`. See `now.md` "Monthly re-enrich" for the pull→enrich→unify→link→filter_stale→build_resolution_log front half.
+Then upload the rebuilt bundle + `canon-pairs.json` + `resolution-log.json` to R2 (Procedure B upload), reseed D1 (Procedure C), `wrangler deploy`, `pages deploy`. See `now.md` "Monthly re-enrich" for the pull→enrich→unify→link→filter_stale→reconcile-bundle→build_resolution_log front half.
+
+Note: the live data layer also self-heals daily — the Worker's `reconcileStatus` cron (06:00 UTC) flips
+zombies to resolved/closed in D1 between re-enrichments. The monthly sweep is the comprehensive/backlog
+pass + the only one that reaches the static event pages (which render from the bundle, not D1).
 
 ## Verify live
 
