@@ -34,9 +34,9 @@ Open by default: full universe, no key, 1,000 requests/day per IP. CORS open.
 Streamable HTTP at https://api.clearmarket.fyi/mcp. Open, read-only.
 
 Tools:
-- list_events : browse or search the universe (set q for free-text)
-- get_event : full graded record for one event
-- get_market : price and resolution provenance for one market
+- list_events : browse or search the universe (short keyword q; returns grade, rcg_score, status per event)
+- get_event : full graded record for one event (set detail=concise for a lean grade/price view of big multi-market events)
+- get_market : price and resolution provenance for one market (accepts a CM-MKT id, a venue-native id/ticker, or a market URL best-effort — Kalshi URLs resolve; Polymarket needs the conditionId)
 - list_upcoming_catalysts : scheduled catalysts in the next N days
 - list_signals : browse the CM Signal wire (filter by event_id, category, venue, detection_path)
 - get_signal : full wire bulletin by slug

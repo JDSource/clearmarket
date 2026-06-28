@@ -13,7 +13,7 @@
  * differentiators (graded resolution clarity, cross-venue links, provenance).
  * These are solid drafts pending the copy-optimization pass.
  */
-import { Env, num, parseJson, marketOut, eventSummary, loadCalendar, windowCatalysts, logCall, provenance } from './index';
+import { Env, num, parseJson, marketOut, marketConcise, findMarketRow, eventSummary, loadCalendar, windowCatalysts, logCall, provenance } from './index';
 
 const PROTOCOL_VERSION = '2025-06-18';
 const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
@@ -34,10 +34,11 @@ const TOOLS = [
     name: 'list_events',
     description:
       'Browse or search ClearMarket prediction-market events. Filter by category, platform, Resolution Clarity ' +
-      'Grade, or free-text (set `q` to search event questions, e.g. "recession", "bitcoin 150k", "fed rate"). ' +
-      'Returns compact graded summaries (slug, question, venues covered, primary grade, price). Start here when you ' +
-      'have a topic but not a slug; then call get_event for the full graded record. ' +
-      'Categories: ' + CATEGORIES.join(', ') + '.',
+      'Grade, or free-text `q`. `q` is token-AND across question + tags, so SHORT KEYWORD queries match best ' +
+      '("microstrategy bitcoin", "fed rate") — natural-language phrases often return nothing. Returns compact ' +
+      'graded summaries: slug, question, venues_covered, primary grade, rcg_score (0-100, for ranking clarity), ' +
+      'last_price, and status (open / resolved). Start here when you have a topic but not a slug; then call ' +
+      'get_event for the full graded record. Categories: ' + CATEGORIES.join(', ') + '.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -56,24 +57,38 @@ const TOOLS = [
       'Fetch the full ClearMarket record for one event by slug: the canonical question, every market in this event\'s ' +
       'single-venue bundle, each market\'s current price + Resolution Clarity Grade (A/B/C) + resolution-source ' +
       'provenance, the canonical question_id where the question is linked across venues/events (null otherwise; also_on lists the same question priced on the other venue, when it trades there), and the upcoming catalyst dates that move it before it resolves. ' +
+      'In the default detail="full", each market in the bundle is FULLY detailed (grade, rcg.caps, provenance, direction, settlement_style, also_on) — you do not need a separate get_market call for markets already in this event. ' +
+      'Note: a shared question_id means same topic across venues; in rare cases it links structurally-different contracts (e.g. a "hike" vs a "cut-count" market), so verify the contract shape before treating two as an arbitrage pair. ' +
       'Use when you need the authoritative, graded view of a SPECIFIC event — including its cross-venue twins via also_on — before reasoning about or ' +
-      'acting on a prediction market. If you only have a topic (not a slug), call list_events first.',
+      'acting on a prediction market. If you only have a topic (not a slug), call list_events first. ' +
+      'Set detail="concise" for a quick grade/price/source check (each market trimmed to the essentials — much smaller for events with many markets); ' +
+      'use the default detail="full" when you need every market\'s rules, contract shape, and complete provenance.',
     inputSchema: {
       type: 'object',
-      properties: { slug: { type: 'string', description: 'Event slug, e.g. "kxgdpyear-26".' } },
+      properties: {
+        slug: { type: 'string', description: 'Event slug, e.g. "kxgdpyear-26".' },
+        detail: { type: 'string', enum: ['concise', 'full'], default: 'full', description: 'concise = essentials only (grade, price, source, also_on per market); full = the complete record. Default full.' },
+      },
       required: ['slug'],
     },
   },
   {
     name: 'get_market',
     description:
-      'Fetch one market by market_id: raw question, current price / implied probability, the Resolution Clarity Grade ' +
-      'with the factors behind it, full resolution-source provenance (who resolves it, named source, source type & quality), ' +
-      'the canonical question_id where linked (null when the question has no recognized twin), and also_on (the same question priced on other venues, with prices). Use when you have a specific market and need its resolution trustworthiness and ' +
-      'provenance before trusting its price.',
+      'Fetch one market and judge whether its price can be trusted. Accepts whatever id you have: a ClearMarket id ' +
+      '(CM-MKT-…), a venue-native market id or Kalshi ticker, or a market URL (best-effort — Kalshi tickers / a ' +
+      'native id in the path resolve; for Polymarket pass the conditionId, not the slug URL). Returns: raw ' +
+      'question, current price / implied probability, the Resolution Clarity Grade with rcg.score (0-100) and ' +
+      'rcg.caps (a cap such as "uncommitted_placeholder" hard-limits the grade — that is why a single-source market ' +
+      'can still be C), full resolution provenance (arbitration_model = who resolves it, named source, source_type, ' +
+      'and a graded source_status on EVERY market: named / no-committed-source / none / unknown), the contract ' +
+      'shape (direction, settlement_style, threshold), ' +
+      'the canonical question_id where linked, and also_on (the same question priced on other venues). The returned ' +
+      'market_id is ALWAYS the canonical ClearMarket id (CM-MKT-…) — store and reuse THAT, not the venue id. Use ' +
+      'before trusting or acting on a price.',
     inputSchema: {
       type: 'object',
-      properties: { market_id: { type: 'string', description: 'Market id, e.g. "CM-MKT-001828".' } },
+      properties: { market_id: { type: 'string', description: 'A ClearMarket id (CM-MKT-…), a venue-native market id / Kalshi ticker, or a market URL (best-effort: Kalshi URLs resolve; for Polymarket pass the conditionId).' } },
       required: ['market_id'],
     },
   },
@@ -126,7 +141,7 @@ const TOOLS = [
 ];
 
 // ---- data builders (open; full universe; no auth) ----------------------
-async function buildEvent(env: Env, slug: string): Promise<any | null> {
+async function buildEvent(env: Env, slug: string, detail: string = 'full'): Promise<any | null> {
   const e = await env.DB.prepare('SELECT * FROM events WHERE slug = ? AND published = 1').bind(slug).first<any>();
   if (!e) return null;
   const { results: mkts } = await env.DB.prepare('SELECT * FROM markets WHERE event_id = ?').bind(e.event_id).all<any>();
@@ -142,7 +157,7 @@ async function buildEvent(env: Env, slug: string): Promise<any | null> {
     event_type: e.event_type ?? 'BINARY', ladder_distribution: parseJson(e.ladder_distribution, null),
     tags: parseJson(e.tags, []), catalyst_types: parseJson(e.catalyst_types, []), catalyst_dates: catalysts,
     editorial_notes: e.editorial_notes, venues_covered: venues, primary_market_id: e.primary_market_id,
-    markets: mkts.map(marketOut),
+    markets: mkts.map(detail === 'concise' ? marketConcise : marketOut),
     _provenance: provenance(e.event_id),
   };
 }
@@ -169,7 +184,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
-    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score FROM markets WHERE event_id IN (${ph})`
+    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
@@ -177,8 +192,10 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   return { count: out.length, total, limit, offset, events: out };
 }
 
-async function buildMarket(env: Env, id: string): Promise<any | null> {
-  const m = await env.DB.prepare('SELECT * FROM markets WHERE market_id = ?').bind(id).first<any>();
+async function buildMarket(env: Env, raw: string): Promise<any | null> {
+  // Shared resolver (CM id → venue-native id/ticker → best-effort URL). Returned market_id is
+  // always the canonical CM id — the venue id is just an on-ramp.
+  const m = await findMarketRow(env, raw);
   return m ? { ...marketOut(m), _provenance: provenance(m.market_id) } : null;
 }
 
@@ -222,13 +239,14 @@ async function buildSignal(env: Env, slug: string): Promise<any | null> {
 async function callTool(env: Env, name: string, a: Record<string, any>): Promise<any> {
   switch (name) {
     case 'get_event': {
-      const r = await buildEvent(env, String(a.slug ?? ''));
+      const r = await buildEvent(env, String(a.slug ?? ''), a.detail === 'concise' ? 'concise' : 'full');
       return r ?? { error: `No event with slug "${a.slug}". Try search or list_events.` };
     }
     case 'list_events': return buildList(env, a);
     case 'get_market': {
-      const r = await buildMarket(env, String(a.market_id ?? ''));
-      return r ?? { error: `No market with id "${a.market_id}".` };
+      const key = String(a.market_id ?? a.market ?? '');
+      const r = await buildMarket(env, key);
+      return r ?? { error: `No market matched "${key}". Pass a ClearMarket id (CM-MKT-…), a venue-native market id / Kalshi ticker, or a market URL — or use list_events to find it by topic.` };
     }
     case 'list_upcoming_catalysts': return buildUpcoming(env, Number(a.days ?? 30));
     case 'list_signals': return buildSignalsList(env, a);

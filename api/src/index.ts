@@ -153,6 +153,30 @@ export function marketOut(m: any) {
   };
 }
 
+// Concise per-market view: a STRICT SUBSET of marketOut() — identical field names, fewer of them.
+// Keeps the high-signal "can I trust this price" fields and drops the heavy prose (rules_raw,
+// description) + long-tail metadata. Used by get_event(detail="concise") to keep big multi-market
+// events small. Computed off marketOut() so names/shapes can never drift from the full view.
+export function marketConcise(m: any) {
+  const f: any = marketOut(m);
+  return {
+    market_id: f.market_id,
+    platform: f.platform,
+    question: f.question,
+    last_price: f.last_price,
+    implied_probability: f.implied_probability,
+    status: f.status,
+    rcg: { grade: f.rcg.grade, score: f.rcg.score },
+    resolution: {
+      arbitration_model: f.resolution.arbitration_model,
+      source: f.resolution.source,
+      source_status: f.resolution.source_status,
+    },
+    question_id: f.question_id,
+    also_on: f.also_on,
+  };
+}
+
 export function eventSummary(e: any, mkts: any[]) {
   const venues = [...new Set(mkts.map((m) => m.platform))].sort();
   const primary = mkts.find((m) => m.market_id === e.primary_market_id) ?? null;
@@ -169,6 +193,7 @@ export function eventSummary(e: any, mkts: any[]) {
     grade: primary?.resolution_clarity_grade ?? null,
     rcg_score: num(primary?.rcg_score),
     last_price: num(primary?.last_price),
+    status: primary?.status ?? null,   // open / resolved — lets an agent filter without a get_event round-trip
     updated_at: e.updated_at,
     _provenance: provenance(e.event_id),
   };
@@ -322,7 +347,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
-    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score FROM markets WHERE event_id IN (${ph})`
+    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
@@ -341,7 +366,8 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   });
 }
 
-async function getEvent(env: Env, slug: string, auth: Auth): Promise<Response> {
+async function getEvent(env: Env, slug: string, auth: Auth, detail: string = 'full'): Promise<Response> {
+  const concise = detail === 'concise';
   const e = await env.DB.prepare('SELECT * FROM events WHERE slug = ? AND published = 1').bind(slug).first<any>();
   if (!e) return err(404, 'Event not found');
   const { results: mkts } = await env.DB.prepare('SELECT * FROM markets WHERE event_id = ?').bind(e.event_id).all<any>();
@@ -392,14 +418,34 @@ async function getEvent(env: Env, slug: string, auth: Auth): Promise<Response> {
     current_primary_mark: primary ? { last_price: num(primary.last_price), implied_probability: num(primary.last_price) } : null,
     created_at: e.created_at,
     updated_at: e.updated_at,
-    markets: mkts.map(marketOut),
+    markets: mkts.map(concise ? marketConcise : marketOut),
     resolution_log: resolutionLog,
     _provenance: provenance(e.event_id),
   });
 }
 
+// Resolve a market by whatever id the caller has — deterministic + index-friendly:
+//   1) ClearMarket id (CM-MKT-… — PK, ALWAYS wins)
+//   2) venue-native market id / Kalshi ticker (platform_market_id, indexed)
+//   3) best-effort: trailing segments of a URL (resolves Kalshi tickers / any native id that appears
+//      in the path; Polymarket slug URLs won't match — pass the Polymarket conditionId instead).
+// Two ordered point-lookups (not an OR) so market_id wins and each query uses an index.
+export async function findMarketRow(env: Env, raw: string): Promise<any | null> {
+  const id = (raw || '').trim();
+  if (!id) return null;
+  let m = await env.DB.prepare('SELECT * FROM markets WHERE market_id = ? LIMIT 1').bind(id).first<any>();
+  if (!m) m = await env.DB.prepare('SELECT * FROM markets WHERE platform_market_id = ? LIMIT 1').bind(id).first<any>();
+  if (!m && /[/?#]/.test(id)) {
+    for (const seg of id.split(/[/?#]/).filter(Boolean).slice(-2).reverse()) {
+      m = await env.DB.prepare('SELECT * FROM markets WHERE platform_market_id = ? LIMIT 1').bind(seg.trim()).first<any>();
+      if (m) break;
+    }
+  }
+  return m ?? null;
+}
+
 async function getMarket(env: Env, id: string, _auth: Auth): Promise<Response> {
-  const m = await env.DB.prepare('SELECT * FROM markets WHERE market_id = ?').bind(id).first<any>();
+  const m = await findMarketRow(env, id);
   if (!m) return err(404, 'Market not found');
   return json({ ...marketOut(m), _provenance: provenance(m.market_id) });
 }
@@ -853,7 +899,7 @@ export default {
     }
     if (path === '/v1/markets/movers') { logCall(env, ctx, req, 'rest', 'list_movers'); return listMovers(env, url); }
     const evMatch = path.match(/^\/v1\/events\/([^/]+)$/);
-    if (evMatch) { const slug = decodeURIComponent(evMatch[1]); logCall(env, ctx, req, 'rest', 'get_event', slug); return getEvent(env, slug, auth); }
+    if (evMatch) { const slug = decodeURIComponent(evMatch[1]); logCall(env, ctx, req, 'rest', 'get_event', slug); return getEvent(env, slug, auth, url.searchParams.get('detail') ?? 'full'); }
     const mkMatch = path.match(/^\/v1\/markets\/([^/]+)$/);
     if (mkMatch) { const id = decodeURIComponent(mkMatch[1]); logCall(env, ctx, req, 'rest', 'get_market', id); return getMarket(env, id, auth); }
 

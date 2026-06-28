@@ -111,8 +111,8 @@ const updated = '2026-05-29';
         <pre><code>{`curl -s '${API}/v1/events?category=economics&grade=A&limit=5' \\
   | jq '.events[] | {slug, grade, question}'`}</code></pre>
 
-        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/events/{`{slug}`}</span></div>
-        <p class="ep-desc">Full event: linked markets, grades, windowed catalysts.</p>
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/events/{`{slug}`}?detail=concise</span></div>
+        <p class="ep-desc">Full event: linked markets, grades, windowed catalysts. <code>?detail=concise</code> trims each market to the essentials (grade, price, source) for large multi-market events.</p>
         <pre><code>{`curl -s ${API}/v1/events/${sampleSlug} \\
   | jq '{question, catalyst_dates, markets: (.markets | length)}'`}</code></pre>
 
@@ -132,8 +132,8 @@ const updated = '2026-05-29';
         <div class="console">
           <div class="console-h">tools</div>
           <div class="tool"><span class="tool-name">list_events</span><span class="tool-desc">browse / search the universe (set <code>q</code>)</span></div>
-          <div class="tool"><span class="tool-name">get_event</span><span class="tool-desc">full graded record for one event</span></div>
-          <div class="tool"><span class="tool-name">get_market</span><span class="tool-desc">price + resolution provenance</span></div>
+          <div class="tool"><span class="tool-name">get_event</span><span class="tool-desc">full graded record for one event. <code>detail=concise</code> trims each market to grade + price + source (much smaller for many-market events)</span></div>
+          <div class="tool"><span class="tool-name">get_market</span><span class="tool-desc">price + resolution provenance. Accepts a ClearMarket id (<code>CM-MKT-…</code>), a venue-native id / Kalshi ticker, or a market URL (best-effort — Kalshi URLs resolve; Polymarket needs the conditionId) — returns the canonical <code>CM-MKT-…</code> id</span></div>
           <div class="tool"><span class="tool-name">list_upcoming_catalysts</span><span class="tool-desc">scheduled catalysts, next N days</span></div>
           <div class="tool"><span class="tool-name">list_signals</span><span class="tool-desc">browse the CM Signal wire (filter by event, category, venue, type)</span></div>
           <div class="tool"><span class="tool-name">get_signal</span><span class="tool-desc">full wire bulletin by slug</span></div>
