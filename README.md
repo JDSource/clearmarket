@@ -25,7 +25,7 @@ curl -s "https://api.clearmarket.fyi/v1/events/kxfed-26jul"
 curl -s "https://clearmarket.fyi/signals.json"
 ```
 
-**MCP** (agent clients — Claude Desktop, Cursor, VS Code): streamable HTTP at `https://api.clearmarket.fyi/mcp`, six read-only tools (`list_events`, `get_event`, `get_market`, `list_upcoming_catalysts`, `list_signals`, `get_signal`). One-click install:
+**MCP** (agent clients — Claude Desktop, Cursor, VS Code): streamable HTTP at `https://api.clearmarket.fyi/mcp`, six read-only tools (`list_events`, `get_event`, `get_market`, `list_upcoming_catalysts`, `list_signals`, `get_signal`). `get_market` accepts a ClearMarket id, a venue-native id/ticker, or a market URL (best-effort — Kalshi URLs resolve; for Polymarket pass the conditionId); `get_event` takes `detail=concise` for a lean grade/price view of large multi-market events. Agent manifest at [`/AGENTS.md`](https://clearmarket.fyi/AGENTS.md). One-click install:
 
 [![Add to Cursor](https://img.shields.io/badge/Add_to-Cursor-000000?logo=cursor&logoColor=white)](https://cursor.com/install-mcp?name=clearmarket&config=eyJ1cmwiOiJodHRwczovL2FwaS5jbGVhcm1hcmtldC5meWkvbWNwIn0%3D)
 [![Install in VS Code](https://img.shields.io/badge/Install_in-VS_Code-0098FF?logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=clearmarket&config=%7B%22type%22%3A%22http%22%2C%22url%22%3A%22https%3A%2F%2Fapi.clearmarket.fyi%2Fmcp%22%7D)

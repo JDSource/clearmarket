@@ -139,6 +139,7 @@ CREATE INDEX idx_markets_event ON markets(event_id);
 CREATE INDEX idx_markets_grade ON markets(resolution_clarity_grade);
 CREATE INDEX idx_markets_platform ON markets(platform);
 CREATE INDEX idx_markets_question ON markets(question_id);
+CREATE INDEX idx_markets_platform_mkt ON markets(platform_market_id);
 
 -- Auth (Option 3): free-key signup + per-day rate limiting.
 CREATE TABLE IF NOT EXISTS api_keys (
