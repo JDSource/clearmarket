@@ -805,6 +805,14 @@ export default {
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    // Attribution beacon. A static page (e.g. /for-data/?partner=tmx) fetches this on load so a
+    // named-recipient visit lands in call_log (ts, ip, country, ua) — the HTML layer is otherwise
+    // invisible to the Worker. `p` names the recipient; nothing is served back.
+    if (path === '/v1/ping') {
+      logCall(env, ctx, req, 'rest', 'ping', url.searchParams.get('p') || null);
+      return new Response(null, { status: 204, headers: { ...CORS, 'Cache-Control': 'no-store' } });
+    }
+
     if (path === '/' || path === '/health') {
       const ev = await env.DB.prepare('SELECT COUNT(*) AS n FROM events').first<{ n: number }>();
       const mk = await env.DB.prepare('SELECT COUNT(*) AS n FROM markets').first<{ n: number }>();

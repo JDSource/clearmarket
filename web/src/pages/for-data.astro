@@ -32,10 +32,16 @@ const jsonld = {
         <p class="fd-kick" id="fd-kick-default">Reference data &middot; prediction markets</p>
         <p class="fd-kick fd-kick-tmx" id="fd-kick-tmx" hidden><span class="fd-pf-spec">Prepared for</span> <span class="fd-pf-div">/</span> <span class="fd-pf-name">TMX Datalinx</span> <span class="fd-pf-div">/</span> <span class="fd-pf-doc">Reference data overview</span></p>
         <script is:inline>
-          if (location.search.includes('partner=tmx')) {
+          var _partner = new URLSearchParams(location.search).get('partner');
+          if (_partner === 'tmx') {
             var d = document.getElementById('fd-kick-default'), t = document.getElementById('fd-kick-tmx');
             if (d) d.hidden = true;
             if (t) t.hidden = false;
+          }
+          // Attribution beacon: a named-recipient (?partner=…) open is logged server-side (call_log)
+          // so we know who checked the page. Static HTML is otherwise invisible to the Worker.
+          if (_partner) {
+            try { fetch('https://api.clearmarket.fyi/v1/ping?p=' + encodeURIComponent(_partner), { keepalive: true, mode: 'no-cors' }); } catch (e) {}
           }
         </script>
         <h1>The reference layer for prediction markets.</h1>
