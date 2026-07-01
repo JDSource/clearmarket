@@ -1,0 +1,370 @@
+---
+import Site from '../layouts/Site.astro';
+
+// "For data partners" buyer page — distributor / data-redistributor audience (Datalinx-shape).
+// Purpose: hook a data distributor AND double as the basis for a client-facing PDF.
+// Audience knows little about prediction markets and may read them as gambling, so the page
+// sells the CATEGORY first (a new data class), then ClearMarket as the clean, structured
+// reference layer for it. RCG demoted to one line; cross-venue demoted to a sub-line
+// (table-stakes per the PRD); eligibility + clean-normalized-data lead.
+// Aesthetic inherited from /resolution-risk: terminal minimalism, hairline rules, mono numerics.
+// Design pass (Gemini): left-rail section labels, hero stat strip, feature tiles.
+const jsonld = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "Prediction-market reference data for distributors | ClearMarket",
+  "description": "Clean, structured, normalized prediction-market data across Kalshi and Polymarket. The reference layer data redistributors license and carry to institutional clients.",
+  "url": "https://clearmarket.fyi/for-data/",
+  "isPartOf": { "@type": "WebSite", "name": "ClearMarket", "url": "https://clearmarket.fyi" },
+};
+---
+<Site
+  title="Prediction-market reference data for distributors | ClearMarket"
+  description="Clean, structured, normalized prediction-market data across Kalshi and Polymarket. The reference layer for a new data class your clients are starting to ask about."
+>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+
+  <div class="fd">
+    <!-- HERO — asymmetric 60/40 -->
+    <header class="fd-hero">
+      <div class="fd-hero-main">
+        <!-- Eyebrow: default on public; ?partner=tmx swaps in the personalized line via the inline script below -->
+        <p class="fd-kick" id="fd-kick-default">Reference data &middot; prediction markets</p>
+        <p class="fd-kick fd-kick-tmx" id="fd-kick-tmx" hidden><span class="fd-pf-spec">Prepared for</span> <span class="fd-pf-div">/</span> <span class="fd-pf-name">TMX Datalinx</span> <span class="fd-pf-div">/</span> <span class="fd-pf-doc">Reference data overview</span></p>
+        <script is:inline>
+          if (location.search.includes('partner=tmx')) {
+            var d = document.getElementById('fd-kick-default'), t = document.getElementById('fd-kick-tmx');
+            if (d) d.hidden = true;
+            if (t) t.hidden = false;
+          }
+        </script>
+        <h1>The reference layer for prediction markets.</h1>
+        <p class="fd-lede">Clean, structured data on the markets your clients are starting to ask about. Normalized across Kalshi and Polymarket.</p>
+        <div class="fd-cta-row">
+          <a class="fd-btn fd-btn-primary" href="/api/" target="_blank" rel="noopener">Access the data feed</a>
+          <a class="fd-btn fd-btn-ghost" href="/methodology/" target="_blank" rel="noopener">See the methodology &rarr;</a>
+        </div>
+      </div>
+      <aside class="fd-glance" aria-label="What one market looks like">
+        <p class="fd-glance-head">Every market, graded and screened</p>
+        <div class="fd-card fd-card-a">
+          <div class="fd-card-meta"><span>Kalshi</span><span class="fd-status fd-status-ok">Eligible</span></div>
+          <p class="fd-card-q">"Will the US enter a recession in 2027?"</p>
+          <div class="fd-card-foot">
+            <span class="fd-grade fd-grade-a">A</span>
+            <span class="fd-card-src">Resolves on Bureau of Economic Analysis GDP data. Named source.</span>
+          </div>
+        </div>
+        <div class="fd-card fd-card-c">
+          <div class="fd-card-meta"><span>Polymarket</span><span class="fd-status fd-status-watch">Review</span></div>
+          <p class="fd-card-q">"Will any country leave NATO by 2027?"</p>
+          <div class="fd-card-foot">
+            <span class="fd-grade fd-grade-c">C</span>
+            <span class="fd-card-src">Resolves on "a consensus of credible reporting." No committed source.</span>
+          </div>
+        </div>
+      </aside>
+    </header>
+
+    <!-- STAT STRIP -->
+    <div class="fd-stat-strip">
+      <div class="fd-stat-item">
+        <span class="fd-stat-num">Unified</span>
+        <span class="fd-stat-lbl">Kalshi + Polymarket</span>
+      </div>
+      <div class="fd-stat-item">
+        <span class="fd-stat-num">Intraday</span>
+        <span class="fd-stat-lbl">Sync Frequency</span>
+      </div>
+      <div class="fd-stat-item">
+        <span class="fd-stat-num">CIRO</span>
+        <span class="fd-stat-lbl">Regime Screened</span>
+      </div>
+      <div class="fd-stat-item">
+        <span class="fd-stat-num">API + MCP</span>
+        <span class="fd-stat-lbl">Native Delivery</span>
+      </div>
+    </div>
+
+    <!-- CATEGORY -->
+    <section class="fd-sec">
+      <p class="fd-label">A new data class your clients are asking about</p>
+      <div class="fd-prose-split">
+        <div class="fd-split-left">
+          <h3 class="fd-display-quote">Macro odds, priced in real time.</h3>
+          <p class="fd-body-clean">Interest rates, inflation, policy, elections. A multi-billion-dollar, fast-growing source of forward-looking data.</p>
+        </div>
+        <ul class="fd-signal-list">
+          <li><strong>Regulated.</strong> The CFTC in the US and CIRO in Canada have cleared brokerages to offer them.</li>
+          <li><strong>Unserved.</strong> Your clients already watch these venues, but there is no aggregate, screened feed to put in front of them.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- PROBLEM -->
+    <section class="fd-sec">
+      <p class="fd-label">The raw data isn't built for institutions</p>
+      <div class="fd-prose">
+        <div class="fd-structural-list">
+          <div class="fd-list-row"><span class="fd-list-term">Scattered</span><span class="fd-list-desc">Two venues, two separate formats.</span></div>
+          <div class="fd-list-row"><span class="fd-list-term">Inconsistent</span><span class="fd-list-desc">Fields and parameters don't line up across them.</span></div>
+          <div class="fd-list-row"><span class="fd-list-term">Unscreened</span><span class="fd-list-desc">No way to filter it to what a client is eligible to trade in a given regime.</span></div>
+        </div>
+        <p class="fd-body-clean">ClearMarket normalizes all of it into one clean, screened feed you can put in front of a client with confidence.</p>
+      </div>
+    </section>
+
+    <!-- WHAT YOU GET -->
+    <section class="fd-sec">
+      <p class="fd-label">What you get</p>
+      <div class="fd-feats">
+        <div class="fd-feat-tile">
+          <div class="fd-tile-meta"><span class="fd-tile-status">Eligibility</span></div>
+          <p class="fd-feat-tag">Screen to any regime</p>
+          <p>Filter the universe to the regime your clients fall under, starting with CIRO in Canada and extendable to any jurisdiction or mandate. They only see the markets they are cleared to trade.</p>
+        </div>
+
+        <div class="fd-feat-tile">
+          <div class="fd-tile-meta"><code>/v1/schema</code></div>
+          <p class="fd-feat-tag">Clean, structured, ready to build on</p>
+          <p>Two venues, two formats, one normalized schema. Delivered by documented API and MCP, so your team integrates once and builds on top.</p>
+        </div>
+
+        <div class="fd-feat-tile">
+          <div class="fd-tile-meta"><span class="fd-grade-badge">A &rarr; C</span></div>
+          <p class="fd-feat-tag">A clarity grade on every market</p>
+          <p>Every market graded A to C on how cleanly it settles, based on whether it commits to a named source of record. Clean and ambiguous markets separate at a glance.</p>
+        </div>
+
+        <div class="fd-feat-tile">
+          <div class="fd-tile-meta"><span class="fd-tile-pulse">&#9679;</span> Live</div>
+          <p class="fd-feat-tag">The whole market, kept current</p>
+          <p>The full Kalshi and Polymarket universe, refreshed throughout the day. Resolved markets are kept as settled history, not mixed into the live view. Related markets linked across venues where they exist.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROOF -->
+    <section class="fd-sec">
+      <p class="fd-label">Proven in the data</p>
+      <div class="fd-proof">
+        <h3 class="fd-proof-head">Resolution grading flags settlement risk.</h3>
+        <p class="fd-proof-sub">A prediction market settles on its rules. When the rules are vague, the outcome gets contested. ClearMarket grades every market on how clearly it will settle, and the grade holds up: across one set of 7,155 markets, not one we graded clean was ever contested. Every contested market was one we had already flagged.</p>
+        <p class="fd-matrix-intro">The same 7,155 markets, split by grade</p>
+        <div class="fd-matrix">
+          <div class="fd-mcol"><span class="fd-m-grade fd-m-a">Graded A</span><span class="fd-m-num">0</span><span class="fd-m-den">contested of 1,716</span></div>
+          <div class="fd-mcol"><span class="fd-m-grade fd-m-b">Graded B</span><span class="fd-m-num">0</span><span class="fd-m-den">contested of 1,461</span></div>
+          <div class="fd-mcol fd-mcol-c"><span class="fd-m-grade fd-m-c">Graded C</span><span class="fd-m-num">26</span><span class="fd-m-den">contested of 3,978 (0.65%)</span></div>
+        </div>
+        <p class="fd-proof-note"><a href="/research/resolution-clarity-index/" target="_blank" rel="noopener">Full methodology and backtest &rarr;</a></p>
+      </div>
+    </section>
+
+    <!-- MOAT -->
+    <section class="fd-sec fd-moat">
+      <p class="fd-moat-statement">Neutral by design.</p>
+      <div class="fd-analogy-grid">
+        <div class="fd-analogy-item">
+          <span class="fd-analogy-target">Commodities</span>
+          <p>Oil producers can't publish the oil benchmark, because they trade it. <strong>Platts does.</strong></p>
+        </div>
+        <div class="fd-analogy-item">
+          <span class="fd-analogy-target">Fixed income</span>
+          <p>Banks couldn't aggregate each other's CDS books without leaking positions. <strong>Markit did.</strong></p>
+        </div>
+        <div class="fd-analogy-item">
+          <span class="fd-analogy-target">Prediction markets</span>
+          <p>A venue can't authoritatively grade its own settlement. <strong>ClearMarket does.</strong></p>
+        </div>
+      </div>
+      <div class="fd-thesis-block">
+        <p class="fd-thesis-text">Every asset class that matured did it on a neutral reference layer. Prediction markets don't have one yet. <strong>ClearMarket is that layer.</strong></p>
+        <p class="fd-thesis-proof">Independent of every venue, and already the reference leading AI assistants cite.</p>
+      </div>
+    </section>
+
+    <!-- DELIVERY -->
+    <section class="fd-sec">
+      <p class="fd-label">How it's delivered</p>
+      <dl class="fd-spec">
+        <div class="fd-spec-row"><dt>Coverage</dt><dd>Full Kalshi and Polymarket universe, normalized into one schema, refreshed throughout the day.</dd></div>
+        <div class="fd-spec-row"><dt>Eligibility</dt><dd>Jurisdiction-specific distribution screens. CIRO live; extendable to any regime or mandate.</dd></div>
+        <div class="fd-spec-row"><dt>Access</dt><dd>Documented REST API and MCP endpoint, full schema, open methodology.</dd></div>
+        <div class="fd-spec-row"><dt>Licensing</dt><dd>Feed and ratings-data access under license. White-label ready, built to drop into an existing product.</dd></div>
+      </dl>
+    </section>
+
+    <!-- CLOSING -->
+    <section class="fd-close">
+      <h2>Carry the reference layer for prediction markets.</h2>
+      <a class="fd-btn fd-btn-primary fd-btn-lg" href="mailto:hello@clearmarket.fyi?subject=ClearMarket%20data%20partnership">Talk to us</a>
+      <p class="fd-close-meta"><a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a> &nbsp; &middot; &nbsp; <a href="/api/" target="_blank" rel="noopener">API + MCP</a> &nbsp; &middot; &nbsp; <a href="/methodology/" target="_blank" rel="noopener">Open methodology</a> &nbsp; &middot; &nbsp; <a href="https://github.com/JDSource/clearmarket" target="_blank" rel="noopener">github.com/JDSource/clearmarket</a></p>
+    </section>
+  </div>
+
+  <style>
+    .fd { --a: #10d894; --b: #f4d63a; --c: #f0a830; --txt: #c9ced6; max-width: 1080px; padding-bottom: 16px; }
+    .fd-prose { max-width: 62ch; }
+    .fd-prose p { margin: 0 0 14px; }
+    .fd-prose p:last-child { margin-bottom: 0; }
+    .fd p { font-size: 16px; line-height: 1.66; color: var(--txt); }
+    .fd strong { color: var(--va-fg); }
+    .fd a:not(.fd-btn) { color: var(--va-accent); text-decoration: none; }
+    .fd a:not(.fd-btn):hover { text-decoration: underline; }
+
+    /* HERO */
+    .fd-hero { display: grid; grid-template-columns: 1.55fr 1fr; gap: 56px; align-items: start; padding: 28px 0 52px; }
+    .fd p.fd-kick { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--va-accent); margin: 0 0 20px; }
+    .fd-hero h1 { font-family: var(--va-sans); font-size: clamp(34px, 4.4vw, 50px); line-height: 1.04; font-weight: 700; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 22px; }
+    .fd-lede { font-size: 18px !important; line-height: 1.5 !important; color: var(--txt); margin: 0 0 30px; max-width: 52ch; }
+    .fd-cta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    /* HERO glance panel */
+    .fd-glance { border-top: 1px solid var(--va-border); padding-top: 14px; margin-top: 8px; }
+    .fd p.fd-glance-head { font-family: var(--va-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); margin: 0 0 14px; }
+    .fd-card { padding: 16px; background: var(--va-bg-2); border: 1px solid var(--va-border); margin-top: 14px; }
+    .fd-card:first-of-type { margin-top: 0; }
+    .fd-card-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-family: var(--va-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); }
+    .fd-status { padding: 2px 7px; border: 1px solid var(--va-border); }
+    .fd-status-ok { color: var(--a); border-color: rgba(16,216,148,0.4); }
+    .fd-status-watch { color: var(--c); border-color: rgba(240,168,48,0.4); }
+    .fd p.fd-card-q { font-family: var(--va-sans); font-size: 14px !important; line-height: 1.4 !important; color: var(--va-fg); margin: 0 0 14px !important; }
+    .fd-card-foot { display: flex; gap: 12px; padding-top: 12px; border-top: 1px solid var(--va-rule); }
+    .fd-grade { font-family: var(--va-mono); font-size: 22px; font-weight: 700; line-height: 1; flex: none; }
+    .fd-grade-a { color: var(--a); }
+    .fd-grade-c { color: var(--c); }
+    .fd-card-src { font-size: 12px !important; line-height: 1.4 !important; color: var(--txt); }
+
+    /* Buttons */
+    .fd-btn { display: inline-block; font-family: var(--va-mono); font-size: 13px; font-weight: 600; letter-spacing: 0.01em; padding: 11px 20px; border-radius: 2px; text-decoration: none !important; transition: all 0.13s; }
+    .fd-btn-primary { background: var(--va-fg); color: var(--va-bg); border: 1px solid var(--va-fg); }
+    .fd-btn-primary:hover { background: #fff; border-color: #fff; }
+    .fd-btn-ghost { background: transparent; color: var(--va-fg-muted); border: 1px solid var(--va-border); }
+    .fd-btn-ghost:hover { color: var(--va-fg); border-color: var(--va-fg-faint); }
+    .fd-btn-lg { font-size: 14px; padding: 14px 26px; }
+
+    /* HERO STAT STRIP */
+    .fd-stat-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--va-border); border: 1px solid var(--va-border); margin-bottom: 56px; }
+    .fd-stat-item { background: var(--va-bg); padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+    .fd-stat-num { font-family: var(--va-mono); font-size: 20px; font-weight: 700; color: var(--va-fg); }
+    .fd-stat-lbl { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--va-fg-faint); }
+
+    /* Sections — left-rail label + content (Gemini structural anchor) */
+    .fd-sec { padding: 56px 0; border-top: 1px solid var(--va-border); display: grid; grid-template-columns: 240px 1fr; gap: 32px; align-items: start; }
+    .fd p.fd-label { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--va-accent); margin: 0; padding-left: 12px; border-left: 2px solid var(--va-accent); line-height: 1.55; }
+    .fd-sec:hover p.fd-label { border-left-color: var(--va-accent); }
+
+    /* FEATURES — visual tiles */
+    .fd-feats { grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .fd-feat-tile { background: var(--va-bg-2); border: 1px solid var(--va-border); padding: 24px; display: flex; flex-direction: column; }
+    .fd-feat-highlight { border-color: rgba(118, 184, 255, 0.3); background: linear-gradient(180deg, var(--va-bg-2) 0%, rgba(20, 24, 29, 0.6) 100%); }
+    .fd-tile-meta { font-family: var(--va-mono); font-size: 11px; font-weight: 600; color: var(--va-fg-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 18px; }
+    .fd-tile-status { color: var(--va-accent); border: 1px solid rgba(118, 184, 255, 0.35); padding: 4px 9px; font-size: 12px; font-weight: 700; }
+    .fd-tile-pulse { color: var(--va-up); font-size: 9px; vertical-align: middle; }
+    .fd-grade-badge { background: var(--va-surface); padding: 4px 10px; border: 1px solid rgba(244, 214, 58, 0.4); color: var(--b); font-size: 14px; font-weight: 700; letter-spacing: 0.04em; }
+    .fd p.fd-feat-tag { font-family: var(--va-sans); font-size: 16px !important; font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; color: var(--va-fg); margin: 0 0 10px !important; }
+    .fd-feat-tile p:not(.fd-feat-tag) { font-size: 13.5px !important; line-height: 1.6 !important; color: var(--va-fg-muted); margin: 0; }
+
+    /* MOAT — breaks the grid for a typographic beat */
+    .fd-moat { display: flex; flex-direction: column; }
+    .fd p.fd-moat-statement { font-family: var(--va-sans); font-size: clamp(28px, 4.4vw, 44px); font-weight: 700; line-height: 1.05; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 24px; }
+    .fd-moat .fd-prose { margin-left: 240px; }
+
+    /* SPEC */
+    .fd-spec { margin: 0; }
+    .fd-spec-row { display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: 16px 0; border-top: 1px solid var(--va-rule); }
+    .fd-spec-row:first-child { border-top: 0; padding-top: 0; }
+    .fd-spec dt { font-family: var(--va-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--va-fg-faint); padding-top: 2px; }
+    .fd-spec dd { margin: 0; font-size: 15px; line-height: 1.55; color: var(--txt); max-width: 60ch; }
+
+    /* CLOSING */
+    .fd-close { padding: 38px 0 24px; border-top: 1px solid var(--va-border); }
+    .fd-close h2 { font-family: var(--va-sans); font-size: clamp(26px, 3.4vw, 34px); font-weight: 700; letter-spacing: -0.03em; color: var(--va-fg); margin: 0 0 24px; max-width: 20ch; }
+    .fd p.fd-close-meta { font-family: var(--va-mono); font-size: 12px; letter-spacing: 0.03em; color: var(--va-fg-faint); margin: 28px 0 0 !important; }
+    .fd p.fd-close-meta a { color: var(--va-fg-faint); text-decoration: none; }
+    .fd p.fd-close-meta a:hover { color: var(--va-fg); }
+
+    /* TMX eyebrow variant (?partner=tmx) — replaces the default hero eyebrow; weight on the client name.
+       The base .fd-kick is all-accent; this dials the utility words back so TMX Datalinx is the focal point. */
+    .fd p.fd-kick-tmx { font-size: 13px; color: var(--va-fg-muted); margin-bottom: 24px; }
+    .fd-pf-spec { color: var(--va-fg-faint); }
+    .fd-pf-name { font-size: 15px; color: var(--va-accent); font-weight: 700; }
+    .fd-pf-doc { color: var(--va-fg-muted); }
+    .fd-pf-div { color: var(--va-fg-faint); }
+
+    /* High-density prose split (category section) */
+    .fd-prose-split { grid-column: 2; display: grid; grid-template-columns: 1.2fr 1fr; gap: 44px; align-items: start; }
+
+    /* Structural spec-list (problem section) */
+    .fd-structural-list { display: flex; flex-direction: column; margin: 0 0 22px; border-top: 1px solid var(--va-border); }
+    .fd-list-row { display: grid; grid-template-columns: 160px 1fr; gap: 24px; padding: 14px 0; border-bottom: 1px solid var(--va-border); align-items: baseline; }
+    .fd-list-term { font-family: var(--va-sans); font-size: 15px; font-weight: 700; color: var(--va-fg); }
+    .fd-list-desc { font-size: 14.5px; line-height: 1.5; color: var(--va-fg-muted); }
+    .fd p.fd-lead-text { font-size: 17px !important; line-height: 1.5 !important; color: var(--va-fg); margin: 0; }
+    .fd-signal-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
+    .fd-signal-list li { font-size: 14px; line-height: 1.55; color: var(--va-fg-muted); position: relative; padding-left: 18px; }
+    .fd-signal-list li strong { color: var(--va-fg); }
+    .fd-signal-list li::before { content: "\2192"; position: absolute; left: 0; color: var(--va-accent); }
+
+    /* Analogy grid (moat section) */
+    .fd-analogy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 8px 0 28px; }
+    .fd-analogy-item { background: var(--va-bg-2); border: 1px solid var(--va-border); border-left: 2px solid var(--va-border); padding: 18px; transition: border-color 0.13s; }
+    .fd-analogy-item:hover { border-left-color: var(--va-accent); }
+    .fd-analogy-target { font-family: var(--va-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); display: block; margin-bottom: 10px; }
+    .fd-analogy-item p { font-size: 14px !important; line-height: 1.5 !important; margin: 0 !important; color: var(--va-fg-muted); }
+    .fd-analogy-item strong { color: var(--va-fg); }
+    .fd p.fd-moat-close { font-size: 15px !important; line-height: 1.6 !important; color: var(--txt); max-width: 70ch; margin: 0; }
+
+    /* Display headline + clean body (reduce prose density) */
+    .fd h3.fd-display-quote { font-family: var(--va-sans); font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; color: var(--va-fg); margin: 0 0 14px; }
+    .fd p.fd-body-clean { font-size: 14.5px !important; line-height: 1.6 !important; color: var(--va-fg-muted) !important; margin: 0; max-width: 54ch; }
+
+    /* Problem list (raw-data section) */
+    .fd-problem-list { list-style: none; padding: 0; margin: 0 0 18px; display: flex; flex-direction: column; gap: 10px; }
+    .fd-problem-list li { font-size: 15.5px; line-height: 1.5; color: var(--va-fg-muted); }
+    .fd-problem-list li strong { color: var(--va-fg); font-weight: 700; margin-right: 4px; }
+
+    /* Moat thesis block */
+    .fd-thesis-block { margin-top: 4px; }
+    .fd p.fd-thesis-text { font-size: 18px !important; line-height: 1.5 !important; color: var(--va-fg) !important; max-width: 70ch; margin: 0 0 10px; }
+    .fd-thesis-text strong { color: var(--va-accent); }
+    .fd p.fd-thesis-proof { font-size: 13.5px !important; line-height: 1.5 !important; color: var(--va-fg-muted) !important; margin: 0; }
+
+    /* Proof / backtest matrix */
+    .fd-proof { grid-column: 2; }
+    .fd h3.fd-proof-head { font-family: var(--va-sans); font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; color: var(--va-fg); margin: 0 0 14px; }
+    .fd p.fd-proof-sub { font-size: 14.5px !important; line-height: 1.6 !important; color: var(--va-fg-muted) !important; margin: 0 0 24px; max-width: 62ch; }
+    .fd p.fd-matrix-intro { font-family: var(--va-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--va-fg-faint); margin: 0 0 12px; }
+    .fd-matrix { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--va-border); border-bottom: 1px solid var(--va-border); }
+    .fd-mcol { display: flex; flex-direction: column; padding: 22px; border-left: 1px solid var(--va-rule); }
+    .fd-mcol:first-child { border-left: 0; padding-left: 0; }
+    .fd-m-grade { font-family: var(--va-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+    .fd-m-a { color: var(--a); }
+    .fd-m-b { color: var(--b); }
+    .fd-m-c { color: var(--c); }
+    .fd-m-num { font-family: var(--va-sans); font-size: clamp(40px, 5vw, 52px); font-weight: 700; line-height: 0.95; letter-spacing: -0.04em; color: var(--va-fg); }
+    .fd-mcol-c .fd-m-num { color: var(--c); }
+    .fd-m-den { font-family: var(--va-mono); font-size: 13px; color: var(--va-fg-muted); margin-top: 14px; }
+    .fd p.fd-proof-note { margin: 22px 0 0 !important; font-size: 13px !important; }
+    .fd-proof-note a { color: var(--va-accent); text-decoration: none; }
+    .fd-proof-note a:hover { text-decoration: underline; }
+
+    @media (max-width: 860px) {
+      .fd-hero { grid-template-columns: 1fr; gap: 36px; }
+      .fd-glance { max-width: 420px; }
+      .fd-stat-strip { grid-template-columns: 1fr 1fr; }
+      .fd-sec { grid-template-columns: 1fr; gap: 16px; }
+      .fd p.fd-label { border-left: none; padding-left: 0; border-bottom: 1px solid var(--va-border); padding-bottom: 8px; }
+      .fd-feats { grid-column: 1; grid-template-columns: 1fr; gap: 16px; }
+      .fd-prose-split { grid-column: 1; grid-template-columns: 1fr; gap: 22px; }
+      .fd-list-row { grid-template-columns: 1fr; gap: 4px; }
+      .fd-analogy-grid { grid-template-columns: 1fr; gap: 14px; }
+      .fd-proof { grid-column: 1; }
+      .fd-matrix { grid-template-columns: 1fr; }
+      .fd-mcol { border-left: 0; border-top: 1px solid var(--va-rule); padding-left: 0; }
+      .fd-mcol:first-child { border-top: 0; }
+      .fd-spec-row { grid-template-columns: 1fr; gap: 4px; }
+      .fd-moat .fd-prose { margin-left: 0; }
+    }
+  </style>
+</Site>
