@@ -34,4 +34,4 @@ python3 scripts/settle_status_sweep.py $SWEEP_FLAG
 echo "[2/2] build_resolution_log — capture history from the reconciled status"
 python3 build_resolution_log.py
 
-echo "reconcile-bundle DONE — now run ./build-data.sh to export the D1 seed + build the site."
+echo "reconcile-bundle DONE — now run ./build-data.sh (it runs fix_questions THEN the date-review queue)."

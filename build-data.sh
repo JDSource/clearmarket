@@ -29,6 +29,9 @@ python3 patch_sources.py --write
 echo "[5/7] merge_canon — stamp canonical cross-venue claim_sigs + emit canon-pairs.json (needs canon-registry.json)"
 python3 merge_canon.py
 
+echo "[*] date-review — surface residual temporally-suspect markets on the CLEANED bundle (post fix_questions/patch_ladders; informational, never blocks)"
+python3 report_date_review.py || true   # exits 1 when non-empty; must run AFTER fix_questions so the queue reflects post-fix state
+
 echo "[6/7] export D1 seed from the cleaned + patched bundle"
 ( cd api && npm run export )
 

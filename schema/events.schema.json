@@ -71,6 +71,20 @@
       "type": ["string", "null"],
       "description": "Public-facing editorial context (why this event is grouped, source quality caveats, cross-platform observations). Surfaced in API responses — this is the editorial layer platforms don't ship."
     },
+    "venue": {
+      "type": ["string", "null"],
+      "enum": ["kalshi", "polymarket", null],
+      "description": "Primary venue this event was ingested from. (Cross-venue coverage is surfaced via venues_covered at serve time.)"
+    },
+    "bundle_type": {
+      "type": ["string", "null"],
+      "enum": ["categorical", "date_ladder", "strike_ladder", "augmented_negrisk", "singleton", null],
+      "description": "Resolution-inheritance shape of the event's child markets (OCC class->series analog). Determines which resolution fields are event-level shared vs per-child native."
+    },
+    "resolution_reference": {
+      "type": ["string", "null"],
+      "description": "Generic, subject-free event-level resolution ontology (the OCC class-level settlement rule): the data source, mechanism, and deadline that resolve ANY outcome in this event, inherited by all children. Never names a specific child's subject; per-child references are composed from this plus each child's group_item_title."
+    },
     "created_at": {
       "type": "string",
       "format": "date-time",
@@ -104,6 +118,7 @@
             "enum": [
               "platform_api",
               "clearmarket_editorial",
+              "clearmarket_editorial_fallback",
               "derived",
               "imputed",
               "null_by_venue_limitation"

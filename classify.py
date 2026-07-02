@@ -28,6 +28,7 @@ Run `python3 classify.py` for the self-test against real specimen records.
 
 from __future__ import annotations
 
+import calendar
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -38,6 +39,117 @@ CATEGORIES_IN = (
     "economics", "financials", "crypto", "companies", "technology",
     "health", "politics", "geopolitics", "climate",
 )
+
+# -----------------------------------------------------------------
+# Bundle-type classifier (2026-07-01) — routes a multi-outcome event to its
+# resolution-inheritance shape so enrichment knows which fields are event-level
+# shared vs per-child native. Pure logic; unit-testable. See
+# outputs/clearmarket/event-child-resolution-fix-spec-2026-07-01.md.
+# -----------------------------------------------------------------
+_MONTH_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b|\bq[1-4]\b|\b20\d{2}\b", re.I
+)
+_THRESHOLD_RE = re.compile(r"[<>]=?|\$|\bbps\b|\b\d[\d,.]*\s*(k|m|b|bn|trillion|billion|million)?\b", re.I)
+
+
+def _looks_like_date(title: str) -> bool:
+    return bool(_MONTH_RE.search(title or ""))
+
+
+def _looks_like_threshold(title: str) -> bool:
+    t = (title or "").strip()
+    if _looks_like_date(t):          # a year is a date, not a strike
+        return False
+    return bool(_THRESHOLD_RE.search(t))
+
+
+def _ladder_kind(markets: list) -> str:
+    titles = [(m.get("groupItemTitle") or m.get("yes_sub_title") or "") for m in markets]
+    n = len(titles) or 1
+    date_like = sum(1 for t in titles if _looks_like_date(t))
+    num_like = sum(1 for t in titles if _looks_like_threshold(t))
+    if date_like / n >= 0.6:
+        return "date_ladder"
+    if num_like / n >= 0.6:
+        return "strike_ladder"
+    return "categorical"
+
+
+def classify_bundle_type(ev: dict, venue: str) -> str:
+    """categorical | date_ladder | strike_ladder | augmented_negrisk | singleton.
+
+    Determines resolution-field inheritance: for every non-singleton type the
+    resolution RULE/SOURCE is event-level (one, generic, inherited); dates are
+    per-child native for ladders, shared for categoricals; augmented_negrisk
+    additionally needs a per-child grade override on its placeholder ("Other") leg.
+    """
+    markets = ev.get("markets") or []
+    if len(markets) <= 1:
+        return "singleton"
+    if venue == "polymarket":
+        if ev.get("negRiskAugmented"):
+            return "augmented_negrisk"
+        if ev.get("negRisk") or ev.get("enableNegRisk"):
+            return "categorical"
+        return _ladder_kind(markets)      # cumulativeMarkets or plain multi
+    # kalshi
+    if ev.get("mutually_exclusive"):
+        return "categorical"
+    return _ladder_kind(markets)
+
+
+_MON = {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
+_MON.update({m.lower(): i for i, m in enumerate(calendar.month_name) if m})
+
+
+def parse_ladder_deadline(title, year_hint=None):
+    """Derive an ISO settlement date from a date-ladder rung's groupItemTitle when the
+    venue ships a degenerate shared endDate across the ladder (the fed-rate B1 case).
+    Handles 'June 2026', 'March 31, 2026', 'December 31', 'Q3 2026', bare '2027'.
+    Returns 'YYYY-MM-DDT00:00:00Z' or None (None -> keep native, stay flagged)."""
+    if not title:
+        return None
+    t = title.strip().lower()
+    # Reject strike/threshold titles ('$2000', 'above 2050', '1.65 million') — a price digit-string
+    # can look like a year (2000-2099) and must NEVER be parsed as a date. Callers also gate this to
+    # date_ladder only, but defend here too.
+    if "$" in t or _looks_like_threshold(t):
+        return None
+    # comparison words signal a strike/threshold rung ('above 2000', 'below 5%'), never a date
+    if re.search(r"\b(above|below|over|under|at least|at most|more than|fewer than|less than|greater)\b", t):
+        return None
+    yr_m = re.search(r"\b(20\d{2})\b", t)
+    year = int(yr_m.group(1)) if yr_m else year_hint
+    if not year:
+        return None
+    # strip the year token so it can't be mistaken for a day number later
+    t_noyear = re.sub(r"\b20\d{2}\b", " ", t)
+    # Quarter / Half
+    q = re.search(r"\bq([1-4])\b", t_noyear)
+    if q:
+        month = int(q.group(1)) * 3
+        day = calendar.monthrange(year, month)[1]
+        return f"{year:04d}-{month:02d}-{day:02d}T00:00:00Z"
+    h = re.search(r"\bh([12])\b", t_noyear)
+    if h:
+        month = 6 if h.group(1) == "1" else 12
+        day = calendar.monthrange(year, month)[1]
+        return f"{year:04d}-{month:02d}-{day:02d}T00:00:00Z"
+    # Month [day]
+    mon = None
+    for name, idx in _MON.items():
+        if re.search(r"\b" + re.escape(name) + r"\b", t_noyear):
+            mon = idx
+            break
+    if mon:
+        day_m = re.search(r"\b(\d{1,2})\b", t_noyear)   # year already stripped -> safe
+        day = int(day_m.group(1)) if day_m and 1 <= int(day_m.group(1)) <= 31 else calendar.monthrange(year, mon)[1]
+        day = min(day, calendar.monthrange(year, mon)[1])
+        return f"{year:04d}-{mon:02d}-{day:02d}T00:00:00Z"
+    # bare year -> Dec 31
+    if yr_m:
+        return f"{year:04d}-12-31T00:00:00Z"
+    return None
 CATEGORIES_OUT = ("sports", "entertainment", "mentions")
 ALL_CATEGORIES = CATEGORIES_IN + CATEGORIES_OUT
 

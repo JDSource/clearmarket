@@ -30,12 +30,14 @@ Data-completeness TODOs (not cost-relevant, do in a later pass):
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import enhance as E  # reuse llm_call, prompts, cache, cost stats, helpers
-from classify import CATEGORIES_IN, grade_market
+from classify import (CATEGORIES_IN, grade_market, classify_bundle_type,
+                     parse_ladder_deadline)
 
 UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
 OUT_DIR      = Path.home() / "jeremy-os/outputs/clearmarket/samples-universe"
@@ -71,11 +73,14 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
         "event_id":              event_id,
         "question_raw":          m.get("title"),
         "description_raw":       m.get("yes_sub_title") or m.get("subtitle"),
+        "group_item_title":      m.get("yes_sub_title") or m.get("subtitle"),   # per-child subject (compose)
         "contract_type":         "binary",
         "settlement_currency":   "USD",
         "underlying_reference":  E.EDITORIAL_STUB,   # filled per-event below (editorial gloss)
         "close_at":              m.get("close_time"),
         "resolve_at":            m.get("expected_expiration_time") or m.get("expiration_time"),
+        "_expiration_time":          m.get("expiration_time"),           # native per-rung (ladder reconcile)
+        "_expected_expiration_time": m.get("expected_expiration_time"),  # rollup estimate
         "status":                _kalshi_status(m.get("status")),
         "resolution_rules_raw":  rules or None,
         "arbitration_model":     "kalshi_staff",
@@ -105,11 +110,13 @@ def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
         "event_id":              event_id,
         "question_raw":          m.get("question"),
         "description_raw":       (m.get("description") or "")[:600] or None,
+        "group_item_title":      m.get("groupItemTitle"),   # per-child subject (compose)
         "contract_type":         "binary",
         "settlement_currency":   "USDC",
         "underlying_reference":  E.EDITORIAL_STUB,   # filled per-event below (editorial gloss)
         "close_at":              m.get("endDate"),
-        "resolve_at":            m.get("endDate"),
+        # child's OWN native settlement date (prefer umaEndDate); never the event rollup — Family-B fix
+        "resolve_at":            m.get("umaEndDate") or m.get("endDate"),
         "status":                "open" if (m.get("active") and not m.get("closed")) else "closed",
         "resolution_rules_raw":  (m.get("description") or None),
         "arbitration_model":     "uma_oracle",
@@ -161,31 +168,112 @@ def build_cm_event(ev: dict, venue: str) -> tuple[dict, list[dict]]:
         "category":          cm.get("category"),          # 9-enum
         "tags":              cm.get("mapped_tags") or [],
         "primary_market_id": primary_market_id,
+        "bundle_type":       classify_bundle_type(ev, venue),   # categorical|date_ladder|strike_ladder|augmented_negrisk|singleton
         "catalyst_dates":    [],
         "published":         True,
         "venue":             venue,
         "editorial_notes":   E.EDITORIAL_STUB,
+        "resolution_reference": E.EDITORIAL_STUB,   # generic subject-free event ontology (filled per-event below)
         "created_at":        RUN_AT,
         "updated_at":        RUN_AT,
         "field_provenance":  {"question": {"source": "platform_api"}},  # lets canonical-question rewrite fire
     }
+    _reconcile_ladder_dates(event, markets)   # Family-B: per-rung dates (runs even with LLM off)
     return event, markets
+
+
+def _reconcile_ladder_dates(event: dict, markets: list[dict]) -> None:
+    """Family-B fix. For date ladders, make each rung carry its OWN deadline instead of
+    the event rollup: (1) prefer Kalshi's native per-rung `expiration_time`; (2) if the
+    ladder's dates are still degenerate (all identical — the Poly fed-rate case where the
+    venue copies one endDate to every child), derive each rung's date from its title."""
+    if event.get("bundle_type") not in ("date_ladder", "strike_ladder") or len(markets) < 2:
+        return
+    # (1) Kalshi: rollup estimate was preferred in the builder; swap to native per-rung
+    for m in markets:
+        if m.get("_expiration_time"):
+            m["resolve_at"] = m["_expiration_time"]
+            m.setdefault("field_provenance", {})["resolve_at"] = {"source": "native:expiration_time"}
+    # (2) title-derive is DATE ladders ONLY — a strike rung title ('$2050', 'above 2000') looks
+    #     like a year and must never be parsed as a date. Also: ignore None when testing degeneracy
+    #     (a single null-date child must not mask a genuinely degenerate ladder).
+    if event.get("bundle_type") != "date_ladder":
+        return
+    nonnull = {d for d in (m.get("resolve_at") for m in markets) if d}
+    if len(nonnull) <= 1:
+        yr = None
+        for d in nonnull:
+            mm = re.search(r"(20\d{2})", str(d))
+            if mm:
+                yr = int(mm.group(1)); break
+        for m in markets:
+            derived = parse_ladder_deadline(m.get("group_item_title"), year_hint=yr)
+            if derived:
+                m["resolve_at"] = derived
+                m.setdefault("field_provenance", {})["resolve_at"] = {"source": "derived:group_item_title"}
 
 
 # -----------------------------------------------------------------
 # Per-event enrichment (the refactor: underlying_reference ONCE per event)
 # -----------------------------------------------------------------
+def _stamp_child_provenance(m: dict, source: str) -> None:
+    fp = m.setdefault("field_provenance", {})
+    fp["underlying_reference"] = {"source": source}
+
+
+def _subject_leaks(ontology: str, subjects: list[str]) -> list[str]:
+    """The event ontology must be SUBJECT-FREE, so ANY child subject appearing in it is a leak —
+    INCLUDING the representative child's own subject (the ontology is generated from the rep's
+    question, so its subject, e.g. 'SpaceX', is the single most likely thing to leak). Word-boundary
+    match so 'Ripple' does not false-match inside 'Ripple Labs'."""
+    onto_l = ontology or ""
+    out = []
+    for s in subjects:
+        s = (s or "").strip()
+        if not s or len(s) <= 3:
+            continue
+        if re.search(r"\b" + re.escape(s) + r"\b", onto_l, re.I):
+            out.append(s)
+    return out
+
+
 def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     if not enabled or not markets:
         return
     rep = next((m for m in markets if m["market_id"] == event.get("primary_market_id")), markets[0])
+    bundle_type = event.get("bundle_type", "singleton")
 
-    # 1 call — shared to all child markets (the ladder saving)
+    # Family-A fix: settlement defined ONCE at the event (OCC class->series), inherited.
     try:
-        ref = E.llm_underlying_reference(rep)
-        for m in markets:
-            m["underlying_reference"] = ref
-            m["field_provenance_underlying_ai"] = True
+        if bundle_type == "singleton" or len(markets) == 1:
+            # single outcome: the ref legitimately names its own (only) subject
+            ref = E.llm_underlying_reference(rep)
+            markets[0]["underlying_reference"] = ref
+            _stamp_child_provenance(markets[0], "clearmarket_editorial")
+        else:
+            # multi-outcome: 1 call for a GENERIC subject-free ontology (the ladder saving,
+            # kept), stored on the event; each child's ref composed from its OWN subject so
+            # no sibling's identity ever leaks (kills the SpaceX/Anthropic broadcast bug).
+            ontology = E.llm_event_resolution_ontology(rep)
+            subjects = [(m.get("group_item_title") or "").strip() for m in markets]
+
+            # Leak guard WITH ACTION: if the generic ontology contains ANY child subject (incl.
+            # the rep's own), do not ship it — fall back to neutral phrasing + flag for review.
+            leaked = _subject_leaks(ontology, subjects)
+            if leaked:
+                # keep the leaked draft inside provenance (not a new top-level field) for review
+                event.setdefault("field_provenance", {})["subject_leak"] = {
+                    "flag": True, "leaked": leaked, "raw_ontology": ontology}
+                ontology = "Resolution per the event's stated source and mechanism (subject supplied per market)."
+                print(f"    subject_leak in {event['event_id']}: {leaked!r} -> fell back to neutral ontology",
+                      file=sys.stderr)
+
+            event["resolution_reference"] = ontology
+            src = "clearmarket_editorial_fallback" if leaked else "clearmarket_editorial"
+            event.setdefault("field_provenance", {})["resolution_reference"] = {"source": src}
+            for m in markets:
+                m["underlying_reference"] = E.compose_child_reference(m.get("group_item_title"), ontology)
+                _stamp_child_provenance(m, "composed:event+child")
     except Exception as e:
         print(f"    underlying_reference failed for {event['event_id']}: {e}", file=sys.stderr)
 
@@ -200,7 +288,7 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     except Exception as e:
         print(f"    tags failed for {event['event_id']}: {e}", file=sys.stderr)
     try:
-        q = E.llm_canonical_question(event)
+        q = E.llm_canonical_question(event, markets)
         if q:
             event["question"] = q
     except Exception as e:
@@ -319,6 +407,19 @@ def main() -> None:
         print(f"dedup: dropped {len(all_events)-len(dedup_events)} duplicate events, "
               f"{len(all_markets)-len(dedup_markets)} duplicate markets", flush=True)
     all_events, all_markets = dedup_events, dedup_markets
+
+    # strip pipeline-internal transient keys (leading underscore) before serialization
+    for mk in all_markets:
+        for k in [k for k in mk if k.startswith("_")]:
+            mk.pop(k, None)
+
+    # surface the new guard counts (subject leaks + date incoherence) — never silent
+    n_leak = sum(1 for ev in all_events if ev.get("field_provenance", {}).get("subject_leak"))
+    n_derived = sum(1 for mk in all_markets
+                    if (mk.get("field_provenance", {}).get("resolve_at") or {}).get("source", "").startswith(("derived", "native:expiration")))
+    print(f"guards: {n_leak} events with subject_leak fallback, "
+          f"{n_derived} markets ladder-date reconciled "
+          f"(run report_date_review.py for the date-review queue)", flush=True)
 
     bundle = {"_meta": {"generated_at": RUN_AT, "schema": "v0.2.0-universe",
                         "event_count": len(all_events), "market_count": len(all_markets)},

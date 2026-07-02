@@ -70,7 +70,11 @@
     },
     "underlying_reference": {
       "type": ["string", "null"],
-      "description": "Editorial: specific real-world data reference (e.g., 'BLS Series CUUR0000SA0', 'S&P 500 index close per S&P Dow Jones Indices', 'Credible news reporting — no specific feed')."
+      "description": "Editorial: specific real-world data reference (e.g., 'BLS Series CUUR0000SA0', 'S&P 500 index close per S&P Dow Jones Indices', 'Credible news reporting — no specific feed'). For multi-outcome events this is COMPOSED per child from the event's generic resolution_reference + this market's group_item_title, so each child names its own subject and no sibling's identity leaks."
+    },
+    "group_item_title": {
+      "type": ["string", "null"],
+      "description": "Per-child subject within a multi-outcome event (the OSI-symbol analog): the candidate, company, strike, or date this market resolves on ('María Corina Machado', 'Discord', '$2 trillion', 'June 2026'). Native from the venue; composes underlying_reference against the event-level resolution_reference."
     },
     "close_at": {
       "type": ["string", "null"],
@@ -270,6 +274,11 @@
             "enum": [
               "platform_api",
               "clearmarket_editorial",
+              "clearmarket_editorial_fallback",
+              "composed:event+child",
+              "inherited:event",
+              "native:expiration_time",
+              "derived:group_item_title",
               "derived",
               "imputed",
               "null_by_venue_limitation"

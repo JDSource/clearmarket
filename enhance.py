@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -889,6 +890,54 @@ def llm_underlying_reference(market: dict) -> str:
     return llm_call(user, system=system, max_tokens=100)
 
 
+def llm_event_resolution_ontology(market: dict) -> str:
+    """Generic, SUBJECT-FREE resolution reference for a multi-outcome EVENT (parent).
+
+    OCC class->series: settlement is defined ONCE at the parent and inherited. This
+    replaces the old per-event broadcast that copied one representative child's ref
+    (naming that child's subject, e.g. 'SpaceX') onto every sibling. The subject is
+    supplied separately per child via compose_child_reference(), so no child's
+    identity ever leaks onto another. See event-child-resolution-fix-spec-2026-07-01.
+    """
+    system = (
+        "You are ClearMarket's editorial engine. Describe generically how ANY outcome in a "
+        "multi-outcome prediction market event resolves. Respond with ONE factual sentence, max 40 words. "
+        "CRITICAL: NEVER name a specific candidate, company, person, ticker, or subject drawn from the markets. "
+        "Naming one outcome's subject here corrupts every sibling market. Refer to the subject only generically "
+        "('the listed company', 'the named candidate', 'the referenced outcome'). "
+        "Name the data source, institution, or document that resolves the event, the mechanism, and the deadline. "
+        "Start directly with the data source or the generic subject noun. NEVER open with framing such as "
+        "'This market resolves', 'Market resolves', 'Resolution depends on', or 'The data source is'. "
+        "No em-dashes. No marketing language. "
+        + _EDITORIAL_PROSE_RULES
+    )
+    user = (
+        f"Platform: {market['platform']}\n"
+        f"Representative child question: {market.get('question_raw', '')}\n"
+        f"Description (trimmed): {(market.get('description_raw') or '')[:600]}\n"
+        f"Resolution mechanism: {market.get('arbitration_model')}\n"
+        f"Platform-named source: {market.get('resolution_source') or '(none)'}\n"
+        f"Source URL: {market.get('source_citation') or '(none)'}\n"
+        f"Event resolve_at (authoritative): {market.get('resolve_at')}\n\n"
+        f"Write the generic, subject-free event resolution reference. "
+        f"Take any date/year from resolve_at as authoritative; never infer a later year."
+    )
+    return llm_call(user, system=system, max_tokens=100)
+
+
+def compose_child_reference(subject: str | None, ontology: str) -> str:
+    """Build a child's underlying_reference deterministically from the generic event
+    ontology + the child's OWN subject. No LLM call, no cross-child contamination —
+    the structural fix for the SpaceX/Anthropic broadcast bug. Word-boundary match so
+    a short subject ('US') inside a larger token ('US Federal Reserve') still composes."""
+    subject = (subject or "").strip()
+    if not subject or not ontology:
+        return ontology
+    if re.search(r"\b" + re.escape(subject) + r"\b", ontology, re.I):
+        return ontology
+    return f"{subject}: {ontology}"
+
+
 def llm_editorial_notes(event: dict, event_markets: list) -> str:
     system = (
         "You are ClearMarket's editorial engine. Write institutional-grade notes about a "
@@ -1002,17 +1051,43 @@ def llm_tags(event: dict, event_markets: list) -> list:
     return None
 
 
-def llm_canonical_question(event: dict) -> str:
+def llm_canonical_question(event: dict, markets: list | None = None) -> str:
     # Only rewrite when the current question is still raw platform text
     src = event.get("field_provenance", {}).get("question", {}).get("source")
     if src != "platform_api":
         return event["question"]
+    raw = event.get("question", "") or ""
+
+    # settlement date is CONTEXT ONLY — never forced onto the question, because the subject
+    # year can legitimately differ from the settle year (e.g. '2026 deliveries' report in 2028).
+    anchor = None
+    for m in (markets or []):
+        if m.get("resolve_at"):
+            anchor = m["resolve_at"]; break
+
     system = (
         "Rewrite a prediction market question in clean grammatical English, "
         "preserving exact meaning, entities, and dates. Use 'Will X by DATE?' or equivalent. "
+        "CRITICAL DATE RULE: use ONLY years/dates already present in the source question. "
+        "NEVER introduce a specific year or date the source does not contain. If the source is "
+        "relative ('this year', 'last year', 'the next election'), keep it relative — do NOT "
+        "resolve it to a specific year. Do NOT change a source year to match the settlement date. "
         "Return ONLY the rewritten question. No preamble, no quotes."
     )
-    return llm_call(event["question"], system=system, max_tokens=80)
+    user = raw if not anchor else f"{raw}\n\n(Settlement date, context only, do not inject: {anchor})"
+    out = (llm_call(user, system=system, max_tokens=80) or "").strip()
+
+    # Deterministic guard: reject a rewrite that FABRICATED a year present in neither the
+    # source NOR the settlement date (the D bug: 'this year than last year' -> '2024 than 2023';
+    # '2026 House' -> '2022 Midterms'). Adding the settlement year as a deadline IS allowed.
+    src_years = set(re.findall(r"\b(20\d{2})\b", raw))
+    # scope the allowed settlement year to the ANCHOR child only — a union over all siblings would
+    # let a hallucinated year slip through whenever ANY rung happens to settle in that year.
+    settle_years = set(re.findall(r"\b(20\d{2})\b", str(anchor))) if anchor else set()
+    out_years = set(re.findall(r"\b(20\d{2})\b", out))
+    if not out or (out_years - src_years - settle_years):
+        return raw
+    return out
 
 
 # RCG factor rater — the FIVE LLM-judged factors, scored in ONE per-event call.
@@ -1151,7 +1226,7 @@ def enrich_with_llm(events: list, markets: list, enabled: bool = True):
         except Exception as e:
             print(f"\n    event {ev['event_id']} tags: {e}", file=sys.stderr)
         try:
-            new_q = llm_canonical_question(ev)
+            new_q = llm_canonical_question(ev, ev_markets)
             if new_q and new_q != ev["question"]:
                 ev["question"] = new_q
                 ev["field_provenance"]["question"] = {"source": "clearmarket_editorial", "ai_drafted": True}
