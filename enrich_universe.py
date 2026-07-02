@@ -85,11 +85,17 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
         "resolution_rules_raw":  rules or None,
         "arbitration_model":     "kalshi_staff",
         "resolution_proposer":   "platform_staff",
-        # DIRECT tier — from series settlement_sources (series-sources.json)
-        "resolution_source":     ksrc[0]["name"] if ksrc else None,
+        # DIRECT tier — from series settlement_sources (series-sources.json).
+        # DISPLAY stays the venue's verbatim field (first entry) per the "show the source in the
+        # venue's own words" methodology. PRESERVE the full list ONLY for independent grading, so
+        # a multi-outlet 'credible-reporting menu' can be classified as uncommitted without altering
+        # what the reader sees.
+        "resolution_source":     ksrc[0]["name"] if ksrc else None,   # verbatim venue field
         "source_citation":       ksrc[0]["url"] if ksrc else None,
+        "resolution_source_list":       [{"name": s.get("name"), "url": s.get("url")} for s in ksrc] or None,
+        "resolution_source_count":      len(ksrc) or None,
         "resolution_source_provenance": "kalshi_series_settlement_sources" if ksrc else None,
-        "resolution_source_quality":    (src or {}).get("quality"),   # authoritative | loose
+        "resolution_source_quality":    (src or {}).get("quality"),   # venue self-tag — NOT trusted for grading
         "resolution_source_type": None,             # RENAMED from source_type; TODO: classify
         "last_price":            E._to_float(m.get("last_price_dollars")),
         "volume_24h_usd":        E._mult(m.get("volume_24h_fp"), E._to_float(m.get("last_price_dollars"))),

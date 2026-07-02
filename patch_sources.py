@@ -65,6 +65,50 @@ KNOWN_TOKEN_AUTH = re.compile(
     r"forbes|cnbc|coingecko|coinmarketcap|nasdaq|nyse|binance|coinbase|kraken|"
     r"fiscal\.ai|tradingview|fanduel|draftkings|opensecrets|ballotpedia)\b", re.I)
 URL_RE = re.compile(r"^https?://\S+$", re.I)
+# General-news outlets. A Kalshi settlement list of TWO OR MORE of these is a
+# "credible-reporting menu" (no single controlling authority) => uncommitted, independent
+# of the venue's own quality tag. A SINGLE named outlet can still be a real commitment.
+NEWS_OUTLET = re.compile(
+    r"\b(abc|nbc|cbs|cnn|fox news|msnbc|wall street journal|wsj|new york times|nyt|"
+    r"washington post|the guardian|guardian|reuters|associated press|\bap\b|bloomberg|"
+    r"cnbc|axios|semafor|politico|npr|bbc|forbes|the hill|usa today|newsweek|"
+    r"financial times|the economist)\b", re.I)
+
+
+def is_nonnews_authority(name, url=""):
+    """A real committed authority that is NOT a general-news/wire outlet — the thing that, if
+    present in a source list, makes the market committed even amid a pile of news outlets
+    (SEC, EIA via .gov, CoinGecko, PACER, Federal Register, Fed, ...)."""
+    name = name or ""
+    url = url or ""
+    if NEWS_OUTLET.search(name):          # a news/wire outlet is not a distinguishing authority
+        return False
+    return bool(AUTHORITY.search(name) or OFFICIAL_HOST.search(url) or KNOWN_TOKEN_AUTH.match(name))
+
+
+def _source_list(m):
+    if m.get("resolution_source_list"):
+        return m["resolution_source_list"]
+    n = m.get("resolution_source")
+    return [{"name": n, "url": m.get("source_citation")}] if n else []
+
+
+def _news_menu_count(m):
+    return sum(1 for s in _source_list(m) if NEWS_OUTLET.search(s.get("name") or ""))
+
+
+def _has_nonnews_authority(m):
+    return any(is_nonnews_authority(s.get("name"), s.get("url")) for s in _source_list(m))
+
+
+# A DEFINED multi-source mechanism (precedence hierarchy or a source-anchored quorum) is clear
+# resolution, NOT a discretionary menu — do not demote it. The quorum/precedence phrase must be
+# tied to SOURCE/OUTLET/reporting words so unrelated prose ("majority of operations") can't match.
+STRUCTURED_SOURCE_RULE = re.compile(
+    r"primary source|takes precedence|controlling source|falls?\s*back|in the following order|"
+    r"if .{0,40}(source|outlet).{0,40}(unavailable|is silent|does not report|cannot|fails)|"
+    r"(at least (two|three|four|\d+)|two or more|majority)\s.{0,25}"
+    r"(sources|outlets|of these|of the following|report it|agree|call it)", re.I)
 
 RANK = {"A": 0, "B": 1, "C": 2}
 UNRANK = {0: "A", 1: "B", 2: "C"}
@@ -113,6 +157,13 @@ def classify(m):
     cite = m.get("source_citation")
     rules = m.get("resolution_rules_raw") or ""
 
+    # 0a. Multiple general-news outlets cited (a Kalshi "credible-reporting menu") -> no single
+    #     controlling authority -> uncommitted. Independent of the venue's quality self-tag.
+    #     EXEMPT when the list ALSO carries a real non-news authority (SEC, EIA, CoinGecko — that
+    #     IS the committed source), OR the rules define a mechanism (precedence / source-quorum).
+    if (_news_menu_count(m) >= 2 and not _has_nonnews_authority(m)
+            and not STRUCTURED_SOURCE_RULE.search(rules)):
+        return "uncommitted", "uncommitted_placeholder", None, name
     # 0. Unfilled template token ("<geography>", "<polling organization>") -> placeholder.
     #    Audit 2026-06-12: 383 markets served a literal angle-bracket template as a
     #    "named" source and were graded A off it.

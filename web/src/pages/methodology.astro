@@ -52,10 +52,10 @@ const updated = '2026-06-11';
         <p>Every market's resolution source is captured from <strong>platform-provided data</strong>, never invented by a model. The mechanism differs by venue.</p>
 
         <h3>Kalshi — structured (direct)</h3>
-        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Coverage across 734 unique series (2026-06-12 vintage):</p>
+        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Across 734 unique series (2026-06-12 vintage), Kalshi <em>self-tags</em> 98% "authoritative" — but we do not take the venue's word for it. Our independent commitment classification treats a multi-outlet "credible-reporting menu" (a list of general-news outlets — ABC, Fox News, MSNBC, WSJ — with no single controlling authority) as an <strong>uncommitted placeholder</strong>, exactly as the commitment axis below requires, even though Kalshi self-tags it authoritative. A menu is committed only when the list also names a real non-news authority (SEC, EIA, CoinGecko) — in which case that authority is the source of record.</p>
         <ul class="m-list">
-          <li><strong>98% authoritative</strong> — Federal Reserve, BLS, BEA, NWS, Library of Congress, ICE, CF Benchmarks.</li>
-          <li><strong>2% loose</strong> — a placeholder ("For example, Google Finance"), all in the equity-index family.</li>
+          <li><strong>~86% committed</strong> (series-level, independent) — a single named authority (Federal Reserve, BLS, BEA, NWS, ICE, CF Benchmarks), or a menu that also names a real non-news authority.</li>
+          <li><strong>~14% uncommitted</strong> — multi-outlet news menus Kalshi self-tags authoritative (88 series) plus loose placeholders ("For example, Google Finance", 18 series).</li>
           <li><strong>0% missing.</strong></li>
         </ul>
 
