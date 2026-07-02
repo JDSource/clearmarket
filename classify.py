@@ -364,24 +364,41 @@ def _rcg_caps(r: dict) -> list[tuple[str, str]]:
     return caps
 
 
-def resolution_clarity_grade(ratings: dict) -> dict:
-    """v2 engine. `ratings` maps each RCG_WEIGHTS factor to pass|partial|fail|na.
-    Re-normalizes over applicable (non-na) factors, bands, then applies cap ceilings."""
+# Engine per factor — stamped into the audit trail so any grade is reverse-engineerable.
+_LLM_FACTORS_SET = {"trigger_objectivity", "contested_reality", "source_conflict",
+                    "temporal_precision", "source_mutability"}
+# Source-commitment cap ceilings — folded in from the retired patch_sources (subtype -> ceiling).
+_COMMITMENT_CAP = {"uncommitted_illustrative": "B", "uncommitted_placeholder": "C", "none": "C"}
+
+
+def resolution_clarity_grade(ratings: dict, commitment_subtype: str | None = None) -> dict:
+    """v2 engine. `ratings` maps each RCG_WEIGHTS factor to pass|partial|fail|na. Re-normalizes
+    over applicable (non-na) factors, bands, applies factor cap ceilings + the source-commitment
+    ceiling (from the LLM commitment classification). Returns the grade PLUS a per-factor audit
+    breakdown (rating / engine / weight / points) so any grade re-derives from stamped values."""
     earned = possible = 0.0
+    factors = {}
     for f, w in RCG_WEIGHTS.items():
         rating = ratings.get(f, "na")
-        if rating == "na":
-            continue
-        possible += w
-        earned += w * RCG_FRACTION.get(rating, 0.0)
+        entry = {"rating": rating, "engine": "llm" if f in _LLM_FACTORS_SET else "deterministic",
+                 "weight": w}
+        if rating != "na":
+            possible += w
+            earned += w * RCG_FRACTION.get(rating, 0.0)
+            entry["points"] = round(w * RCG_FRACTION.get(rating, 0.0), 1)
+        factors[f] = entry
     score = round(100 * earned / possible) if possible else 0
     band = _rcg_band(score)
     caps = _rcg_caps(ratings)
+    cc = _COMMITMENT_CAP.get(commitment_subtype)
+    if cc:
+        caps = caps + [(f"commitment_{commitment_subtype}", cc)]
     rank = max([_RCG_RANK[band]] + [_RCG_RANK[c[1]] for c in caps])
     applied = sum(1 for f in RCG_WEIGHTS if ratings.get(f, "na") != "na")
     return {"grade": _RANK_RCG[rank], "score": score, "band": band,
             "applied_factors": applied, "total_factors": len(RCG_WEIGHTS),
-            "caps": [c[0] for c in caps]}
+            "caps": [c[0] for c in caps], "factors": factors,
+            "commitment_subtype": commitment_subtype}
 
 
 # ---- deterministic factor raters (source_clarity, arbiter); the 5 LLM factors are supplied at enrichment ----
@@ -453,7 +470,9 @@ def grade_market(market: dict, description: str = "", llm_ratings: dict | None =
                 "total_factors": len(RCG_WEIGHTS), "caps": [],
                 "reason": "awaiting per-event LLM factor ratings"}
     ratings.update({f: llm_ratings.get(f, "na") for f in _RCG_LLM_FACTORS})
-    return resolution_clarity_grade(ratings)
+    # commitment cap comes from the LLM source-commitment classification (stored at enrich);
+    # replaces the retired patch_sources deterministic re-cap.
+    return resolution_clarity_grade(ratings, commitment_subtype=market.get("source_commitment_subtype"))
 
 
 # -----------------------------------------------------------------

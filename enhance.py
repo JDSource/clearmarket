@@ -1186,6 +1186,74 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
     return out
 
 
+_SOURCE_COMMITMENT_SYSTEM = (
+    "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
+    "INDEPENDENT of any venue self-assessment. Commitment = whether the market commits to a "
+    "concrete controlling source of record. It is NOT about whether the outcome is objective.\n\n"
+    "Classes:\n"
+    "- named: a single concrete institutional AUTHORITY is the source of record — a government or "
+    "statistics agency (any country), regulator, central bank, exchange, official data provider, "
+    "court/official register, or a named authoritative index calculator. If the source list carries "
+    "such an authority EVEN alongside many general-news outlets, the market is committed to THAT "
+    "authority -> named; return it as source_of_record. A defined MECHANISM over multiple sources "
+    "(a stated precedence / primary-with-fallback, or 'resolves if N of these agree') is also named.\n"
+    "- uncommitted_placeholder: names a CATEGORY not an authority ('a consensus of credible "
+    "reporting', 'official sources'), OR a MENU of two or more interchangeable general-news / wire "
+    "outlets (ABC, Fox News, CNN, MSNBC, Reuters, AP, The Information, Puck, CoinDesk, etc.) with NO "
+    "single controlling authority and NO tie-break rule. A general-news, wire, or sports outlet "
+    "(including ESPN) is NOT an institutional authority.\n"
+    "- uncommitted_illustrative: a source gestured at with a hedge ('for example', 'e.g.', 'such "
+    "as') — a candidate, not a commitment.\n"
+    "- none: no source language at all.\n\n"
+    "Judge only from the sources and rules given; never invent a source. Return ONLY JSON: "
+    "{\"commitment\": \"named|uncommitted_illustrative|uncommitted_placeholder|none\", "
+    "\"source_of_record\": \"<authority name>\" or null, \"why\": \"<=15 words\"}."
+)
+
+
+def llm_source_commitment(market: dict) -> dict | None:
+    """LLM source-commitment classification — the reading-comprehension judgment that replaces the
+    deterministic patch_sources regexes (news-outlet allow-list, is_nonnews_authority, tie-break
+    regex). Fed the DETERMINISTICALLY-extracted source list so it cannot invent a source. Returns
+    {commitment, source_of_record, why} or None on failure (caller keeps the prior value)."""
+    srcs = market.get("resolution_source_list") or (
+        [{"name": market.get("resolution_source"), "url": market.get("source_citation")}]
+        if market.get("resolution_source") else [])
+    if not srcs:
+        return {"commitment": "none", "source_of_record": None, "why": "no source named"}
+    src_lines = "\n".join(
+        f"  - {s.get('name') or '(unnamed)'}" + (f"  [{s.get('url')}]" if s.get('url') else "")
+        for s in srcs)
+    rules = (market.get("resolution_rules_raw") or "")[:1400]
+    user = (
+        f"Question: {market.get('question_raw') or ''}\n"
+        f"Sources the venue lists ({len(srcs)}):\n{src_lines}\n\n"
+        f"Resolution rules:\n{rules or '(none provided)'}\n\n"
+        f"Classify the source commitment."
+    )
+
+    def _parse(text: str):
+        t = text.strip()
+        if t.startswith("```"):
+            t = t.strip("`").lstrip("json").strip()
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(t)
+            return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
+
+    raw = llm_call(user, system=_SOURCE_COMMITMENT_SYSTEM, max_tokens=150,
+                   validate=lambda t: _parse(t) is not None)
+    d = _parse(raw)
+    if d is None:
+        return None
+    c = (d.get("commitment") or "").strip().lower()
+    if c not in ("named", "uncommitted_illustrative", "uncommitted_placeholder", "none"):
+        return None
+    return {"commitment": c, "source_of_record": d.get("source_of_record"),
+            "why": (d.get("why") or "")[:80]}
+
+
 def enrich_with_llm(events: list, markets: list, enabled: bool = True):
     """Overwrite rule-based autofill with per-market/per-event LLM output.
 

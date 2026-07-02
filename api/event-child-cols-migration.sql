@@ -9,4 +9,7 @@
 -- markets.group_item_title    : per-child subject (the OSI-symbol analog; composes underlying_reference)
 ALTER TABLE events ADD COLUMN bundle_type TEXT;
 ALTER TABLE events ADD COLUMN resolution_reference TEXT;
+ALTER TABLE events ADD COLUMN rcg_factors TEXT;          -- JSON: 5 LLM factor ratings + "why" (audit)
 ALTER TABLE markets ADD COLUMN group_item_title TEXT;
+ALTER TABLE markets ADD COLUMN source_of_record TEXT;    -- committed authority the LLM named
+ALTER TABLE markets ADD COLUMN rcg TEXT;                 -- JSON per-factor audit breakdown

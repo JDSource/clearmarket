@@ -300,8 +300,26 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     except Exception as e:
         print(f"    question failed for {event['event_id']}: {e}", file=sys.stderr)
 
-    # RCG: one per-event Haiku rating of the four LLM factors → re-grade every market in
-    # the ladder (build-time grade was 'pending' without these). Failure leaves 'pending'.
+    # Source commitment: one per-event LLM classification (the reading-comprehension judgment that
+    # REPLACES the retired patch_sources deterministic regexes). MUST run before grading so the
+    # commitment cap is on the market. rep carries the series/event source; commitment is a
+    # property of the source, so it applies to every market in the event.
+    try:
+        sc = E.llm_source_commitment(rep)
+        if sc:
+            top = ("named" if sc["commitment"] == "named"
+                   else "none" if sc["commitment"] == "none" else "uncommitted")
+            for m in markets:
+                m["source_commitment"] = top
+                m["source_commitment_subtype"] = sc["commitment"]
+                m["source_of_record"] = sc.get("source_of_record")   # grade-only; display stays verbatim
+                m.setdefault("field_provenance", {})["source_commitment"] = {
+                    "source": "clearmarket_editorial", "ai_drafted": True, "why": sc.get("why")}
+    except Exception as e:
+        print(f"    source_commitment failed for {event['event_id']}: {e}", file=sys.stderr)
+
+    # RCG: one per-event Haiku rating of the LLM factors → grade every market (the commitment cap
+    # from above folds into grade_market). Stores a self-contained audit object per market.
     try:
         factors = E.llm_rcg_factors(event, markets)
         if factors:
@@ -312,6 +330,10 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
                 m["resolution_clarity_grade"] = rcg["grade"]
                 m["rcg_score"], m["rcg_caps"] = rcg["score"], rcg["caps"]
                 m["rcg_applied_factors"] = rcg.get("applied_factors")
+                m["rcg"] = {"grade": rcg["grade"], "score": rcg["score"], "caps": rcg["caps"],
+                            "factors": rcg.get("factors"),
+                            "commitment": {"class": m.get("source_commitment_subtype"),
+                                           "source_of_record": m.get("source_of_record")}}
     except Exception as e:
         print(f"    rcg_factors failed for {event['event_id']}: {e}", file=sys.stderr)
 
