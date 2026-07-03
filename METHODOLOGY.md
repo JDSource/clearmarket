@@ -38,19 +38,24 @@ it directly; no extraction. Coverage across 703 unique series:
 - **2% loose** — a placeholder ("For example, Google Finance"), all in the equity-index family
 - **0% missing**
 
-### Polymarket — hybrid extraction with a verbatim gate
-The source + URL are embedded in the market description free-text. We extract them **without ever
-letting a model mint a URL**:
-1. **Regex** extracts the candidate URLs present in the description (the deterministic floor).
-2. **By count:** 0 URLs → subjective/none; exactly 1 → used directly (no LLM); 2+ → an LLM selects
-   the primary *by number among the candidates*.
-3. **Verbatim gate:** the selected URL must appear verbatim in the description, or it is rejected
-   and flagged for review.
+### Polymarket — deterministic capture, gated judgment
+The sources are embedded in the market description free-text. We capture them **without ever
+letting a model mint an identifier**:
+1. **Regex** extracts every candidate URL in the description — including bare-domain citations
+   ("as posted on tesla.com") — and ALL candidates are kept in `resolution_source_list`
+   (the deterministic floor; nothing is collapsed away).
+2. **One per-event commitment judgment** (an LLM read of the full source list + rules prose,
+   against the versioned rubric) surfaces authorities the venue names *in words* with no URL
+   ("the official CME settlement price") and selects the controlling URL *by number among the
+   extracted candidates*.
+3. **Verbatim gate:** every identifier the judgment emits must appear in the venue's own text as
+   a whole token (word-boundary match), or it is discarded; a "named" classification whose
+   evidence does not survive the gate is demoted to uncommitted, never shipped uncapped.
 
-Result: **88% pure-deterministic** (49% subjective-no-URL + 39% single-URL), **12% gated-LLM**, and
-**zero hallucinated URLs** (6 borderline cases fell back to first-candidate and were flagged). The
-LLM is constrained to *selecting among URLs that provably exist in platform text* — it cannot
-introduce or mistype one.
+**Zero hallucinated URLs remains structural:** URLs enter the dataset only via regex extraction,
+and the judgment can only pick among them by index. Prose-surfaced names are tagged
+`clearmarket_editorial`. Extraction-mix statistics will be republished with the first enrichment
+under this pipeline.
 
 ### Provenance tiers
 Every value carries its origin: **`direct`** (platform API / structured field / verbatim-extracted

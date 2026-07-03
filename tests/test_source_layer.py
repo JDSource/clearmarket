@@ -85,13 +85,15 @@ def _mock_llm(monkeypatch, payload: dict):
     monkeypatch.setattr(E, "llm_call", lambda *a, **k: json.dumps(payload))
 
 
-def test_gate_invented_source_of_record_nulled(monkeypatch):
+def test_gate_invented_source_of_record_nulled_and_demoted(monkeypatch):
     _mock_llm(monkeypatch, {"commitment": "named", "source_of_record": "Federal Reserve",
                             "mechanism": "single_authority", "primary_source_number": 1,
                             "prose_sources": [], "why": "x"})
     out = E.llm_source_commitment(dict(MARKET_WITH_LIST))
-    assert out["commitment"] == "named"
     assert out["source_of_record"] is None          # "Federal Reserve" appears nowhere in venue text
+    # and a named claim with no gate-surviving evidence fails closed — no uncapped grade
+    # rides on a hallucinated authority
+    assert out["commitment"] == "uncommitted_placeholder"
 
 
 def test_gate_paraphrased_prose_sources_dropped(monkeypatch):
@@ -114,6 +116,21 @@ def test_gate_primary_number_valid_picks_url(monkeypatch):
     _mock_llm(monkeypatch, {"commitment": "named", "source_of_record": None, "mechanism": None,
                             "primary_source_number": 1, "prose_sources": [], "why": "x"})
     assert E.llm_source_commitment(dict(MARKET_WITH_LIST))["primary_url"] == "https://bls.gov/cpi"
+
+
+def test_gate_word_boundary_blocks_minted_acronyms(monkeypatch):
+    """Swarm-confirmed bypass (2026-07-03): 'SEC' must not pass via 'second/consecutive',
+    'Fed' via 'federal'. The gate is a word-boundary match, not a substring check."""
+    mkt = {"question_raw": "Will X happen?", "resolution_source_list": None,
+           "resolution_rules_raw": "Resolves on the second consecutive monthly federal report."}
+    _mock_llm(monkeypatch, {"commitment": "named", "source_of_record": "SEC",
+                            "mechanism": "single_authority", "primary_source_number": 0,
+                            "prose_sources": ["Fed", "SEC"], "why": "x"})
+    out = E.llm_source_commitment(mkt)
+    assert out["source_of_record"] is None
+    assert out["prose_sources"] == []
+    # and with no surviving evidence, the named claim itself fails closed
+    assert out["commitment"] == "uncommitted_placeholder"
 
 
 def test_gate_invalid_class_returns_none(monkeypatch):
@@ -278,15 +295,18 @@ def _bundle_markets():
 
 @pytest.mark.skipif(not BUNDLE, reason="CM_BUNDLE not set")
 def test_invariant_verbatim_gate_universe_wide():
-    """Every non-null source_of_record traces to venue text or the source list. Zero invented."""
+    """Every non-null source_of_record traces to venue text or the source list — as a
+    word-boundary token, not a bare substring ('SEC' must not count via 'second'). The
+    predicate MUST stay stricter-or-equal to the gate in enhance.llm_source_commitment."""
+    import re as _re
     bad = []
     for m in _bundle_markets():
-        sor = m.get("source_of_record")
+        sor = (m.get("source_of_record") or "").strip()
         if not sor:
             continue
         hay = ((m.get("resolution_rules_raw") or "") + "\n" +
-               json.dumps(m.get("resolution_source_list") or [])).lower()
-        if sor.strip().lower() not in hay:
+               json.dumps(m.get("resolution_source_list") or []))
+        if not _re.search(r"(?<![A-Za-z0-9])" + _re.escape(sor) + r"(?![A-Za-z0-9])", hay, _re.I):
             bad.append((m["market_id"], sor))
     assert not bad, f"{len(bad)} invented source_of_record values: {bad[:5]}"
 

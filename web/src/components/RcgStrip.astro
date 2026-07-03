@@ -6,15 +6,18 @@
  * the verbatim rules (#rules) and /methodology. Multi-venue = stacked strips.
  */
 import type { Event, Market } from '../lib/universe';
-import { rationaleFor, sourceLabel } from '../lib/labels';
+import { rationaleFor, sourceLabel, sourceStatusOf } from '../lib/labels';
 const { markets } = Astro.props as { event?: Event; markets: Market[] };
 
 const VENUES = Array.from(new Set(markets.map((m) => m.platform))) as ('kalshi' | 'polymarket')[];
 const lines = VENUES.map((v) => {
   const rep = markets.filter((m) => m.platform === v)[0];
   const r = rationaleFor(rep as any);
-  const src = sourceLabel(rep?.resolution_source, rep?.source_citation);
-  // short source: drop "Undefined / Ambiguous" verbosity to "no source"
+  // respect the STAMPED judgment: an uncommitted market's hedge text is not a source label
+  const committed = sourceStatusOf(rep as any) === 'platform_named';
+  const src = committed
+    ? (((rep as any)?.source_of_record as string) ?? sourceLabel(rep?.resolution_source, rep?.source_citation))
+    : (rep?.resolution_source || rep?.source_citation) ? 'no committed source' : 'no source';
   const srcShort = src === 'Undefined / Ambiguous' ? 'no source' : src;
   const score = (rep as any)?.rcg_score ?? null;
   return { venue: v, ...r, src: srcShort, score };

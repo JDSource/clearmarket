@@ -137,7 +137,7 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                   : <span class="vr-src-name">{s.name}</span>}
                 {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
                 <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
-                  {s.provenance === 'clearmarket_editorial' ? 'named in rules text' : 'venue-listed'}
+                  {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
                 </span>
               </li>
             ))}

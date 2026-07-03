@@ -43,11 +43,14 @@ BARE_RE = re.compile(
 _VENUE_HOSTS = ("polymarket.com", "kalshi.com", "kalshi.co")
 
 
+_TRAIL_PUNCT = '.,;:\'"!?*`“”‘’…'   # incl. typographic quotes, markdown *, ellipsis
+
+
 def clean_url(u: str) -> str:
     """Strip trailing punctuation, but keep a closing ')' that has a matching '(' inside
     the URL (bcb.gov.br ...(Copom) class — the old rstrip ate the balanced paren)."""
     while u:
-        if u[-1] in '.,;:\'"' or u[-1] in ']}':
+        if u[-1] in _TRAIL_PUNCT or u[-1] in ']}':
             u = u[:-1]
         elif u[-1] == ')' and u.count('(') < u.count(')'):
             u = u[:-1]
@@ -67,16 +70,22 @@ def extract_urls(text: str) -> list[str]:
             u += ')'
             end += 1
         out.append(clean_url(u))
-    covered = " ".join(out)
+    # covered-check by HOST, case-insensitive — a bare "Tesla.com" mention must be suppressed
+    # when https://tesla.com/x was already captured, and a distinct registry (tesla.com.br)
+    # must NOT be suppressed just because its string appears inside another URL's path.
+    def _host(u: str) -> str:
+        h = re.sub(r'^https?://', '', u, flags=re.I).split('/')[0].lower()
+        return h[4:] if h.startswith('www.') else h
+    covered_hosts = {_host(u) for u in out}
     for m in BARE_RE.finditer(text):
         dom = clean_url(m.group(0))
-        host = dom.split('/')[0].lower()
-        host = host[4:] if host.startswith('www.') else host
+        host = _host(dom)
         if any(host == v or host.endswith('.' + v) for v in _VENUE_HOSTS):
             continue
-        if dom in covered:  # already captured inside a scheme-ful URL
+        if host in covered_hosts:  # same host already captured via a scheme-ful URL
             continue
         out.append(dom)
+        covered_hosts.add(host)
     return list(dict.fromkeys(out))
 
 

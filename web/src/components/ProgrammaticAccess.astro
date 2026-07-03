@@ -4,6 +4,7 @@
  * Reuses cm-event.css classes (cm-endpoints-table / cm-provenance-note / cm-json-block).
  */
 import { SPECIMEN_GENERATED_AT, type Event, type Market } from '../lib/universe';
+import { sourceStatusOf } from '../lib/labels';
 const { event, markets } = Astro.props as { event: Event; markets: Market[] };
 
 const canonicalURL = `https://clearmarket.fyi/events/${event.slug}/`;
@@ -35,6 +36,9 @@ const machineRecord = {
   rcg_caps: (primary as any)?.rcg_caps ?? [],
   resolution_source: primary?.resolution_source ?? null,
   resolution_source_url: primary?.source_citation ?? null,
+  source_status: sourceStatusOf(primary as any),
+  source_of_record: (primary as any)?.source_of_record ?? null,
+  resolution_source_list: (primary as any)?.resolution_source_list ?? null,
   arbitration_model: primary?.arbitration_model ?? null,
   proposer_model: primary?.resolution_proposer ?? null,
   field_provenance: {

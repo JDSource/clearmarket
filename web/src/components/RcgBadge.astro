@@ -5,6 +5,7 @@
  * scorecard. The teaser, not the spine.
  */
 import type { Event, Market } from '../lib/universe';
+import { sourceStatusOf } from '../lib/labels';
 const { event, markets } = Astro.props as { event: Event; markets: Market[] };
 
 const primary = markets.find((m) => m.market_id === (event as any).primary_market_id) ?? markets[0];
@@ -18,7 +19,12 @@ function hostOf(url: string | null): string | null {
   if (!url) return null;
   return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0] || null;
 }
-const sourceLabel = sourceName ?? hostOf(sourceUrl) ?? 'no named source';
+// the label respects the STAMPED judgment: an uncommitted market must not badge its hedge
+// text as if it were a committed source (same-page contradiction with the stamped status)
+const committed = sourceStatusOf(primary as any) === 'platform_named';
+const sourceLabel = committed
+  ? ((primary as any)?.source_of_record ?? sourceName ?? hostOf(sourceUrl) ?? 'named source')
+  : (sourceName || sourceUrl) ? 'no committed source' : 'no named source';
 const provenanceTier = sourceUrl ? 'direct' : (primary?.underlying_reference ? 'editorial' : 'subjective');
 
 const CAP_FLAG: Record<string, string> = {

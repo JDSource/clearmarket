@@ -299,9 +299,10 @@
         "platform_named",
         "no_committed_source",
         "no_source_stated",
+        "unknown",
         null
       ],
-      "description": "THE stamped source judgment — pure function of the LLM commitment classification, stamped at enrichment. Every surface (API/MCP/web/.json/JSON-LD) reads this; none re-derives from raw field presence."
+      "description": "THE stamped source judgment — pure function of the LLM commitment classification, stamped at enrichment. Every surface (API/MCP/web/.json/JSON-LD) reads this; none re-derives from raw field presence. Serve layers emit 'unknown' for pre-refactor rows with no stamp and no commitment; the stored value is never 'unknown'."
     },
     "source_mechanism": {
       "type": [

@@ -68,6 +68,8 @@ if (stampedSC?.rating) {
     ? `Committed source of record${sor ? ` (${sor})` : ''}${mech === 'quorum' ? ' — quorum rule over multiple sources' : mech === 'precedence' ? ' — stated precedence rule' : ''}.`
     : commitSub === 'uncommitted_illustrative'
     ? 'Source gestured at with a hedge ("for example …") — a candidate, not a commitment.'
+    : commitSub === 'none'
+    ? 'No source language in the rules at all.'
     : commitSub
     ? 'No committed source — placeholder or menu language only.'
     : 'Derived from the stamped grade factors.';

@@ -350,7 +350,7 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
             m["source_citation"] = sc["primary_url"]
         m["source_commitment"] = top
         m["source_commitment_subtype"] = sc["commitment"]
-        m["source_of_record"] = sc.get("source_of_record")   # grade-only; display stays verbatim
+        m["source_of_record"] = sc.get("source_of_record")   # the committed authority (also displayed in the source table)
         m["source_mechanism"] = sc.get("mechanism")          # single_authority | precedence | quorum
         # THE stamped judgment — every surface reads this; no consumer re-derives from raw
         # field presence (kills the platform_named-on-a-hedge display bug at the root).
@@ -374,11 +374,18 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
                 m["resolution_clarity_grade"] = rcg["grade"]
                 m["rcg_score"], m["rcg_caps"] = rcg["score"], rcg["caps"]
                 m["rcg_applied_factors"] = rcg.get("applied_factors")
+                # the full audit object — every value the grade derives from, incl. the
+                # commitment's written why and whether it was a fail-closed default (so a
+                # buyer-facing surface can distinguish "venue committed to nothing" from
+                # "our judgment failed and we capped conservatively")
+                commit_fp = (m.get("field_provenance") or {}).get("source_commitment", {})
                 m["rcg"] = {"grade": rcg["grade"], "score": rcg["score"], "caps": rcg["caps"],
                             "factors": rcg.get("factors"),
                             "commitment": {"class": m.get("source_commitment_subtype"),
                                            "source_of_record": m.get("source_of_record"),
                                            "mechanism": m.get("source_mechanism"),
+                                           "why": commit_fp.get("why"),
+                                           "fail_closed": bool(commit_fp.get("fail_closed")),
                                            "rubric_version": E.SOURCE_RUBRIC_VERSION}}
     except Exception as e:
         print(f"    rcg_factors failed for {event['event_id']}: {e}", file=sys.stderr)

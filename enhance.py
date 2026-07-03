@@ -1305,19 +1305,26 @@ def llm_source_commitment(market: dict) -> dict | None:
         return None
 
     # --- verbatim gates: the LLM judges; it never mints an identifier ---
-    hay = (rules + "\n" + src_lines).lower()
+    # Word-boundary match, NOT bare substring: 'SEC' must not pass via 'second'/'consecutive',
+    # 'Fed' via 'federal', 'AP' via 'capture' (swarm-confirmed gate bypass, 2026-07-03).
+    def _verbatim(needle: str, haystack: str) -> bool:
+        return bool(re.search(r"(?<![A-Za-z0-9])" + re.escape(needle) + r"(?![A-Za-z0-9])",
+                              haystack, re.IGNORECASE))
+    hay = rules + "\n" + src_lines
     sor = d.get("source_of_record")
     if isinstance(sor, str):
         sor = sor.strip() or None
-        if sor and sor.lower() not in hay:
+        if sor and not _verbatim(sor, hay):
             sor = None          # gated: not traceable to venue text/list
     else:
         sor = None
     mech = d.get("mechanism") if d.get("mechanism") in ("single_authority", "precedence", "quorum") else None
     prose = []
     for p in (d.get("prose_sources") or [])[:8]:
-        if isinstance(p, str) and p.strip() and p.strip().lower() in rules.lower():
-            prose.append(p.strip())
+        p = p.strip() if isinstance(p, str) else ""
+        # min length 3: a 1-2 char "source" is noise even when it appears verbatim
+        if len(p) >= 3 and _verbatim(p, rules):
+            prose.append(p)
     purl = None
     try:
         n = int(d.get("primary_source_number") or 0)
@@ -1340,6 +1347,15 @@ def llm_source_commitment(market: dict) -> dict | None:
         sor = sor or auths[0]
         mech = mech or "single_authority"
         why = (why + " [reconciled: non-news authority present in venue source list]")[:300]
+
+    # A 'named' claim must survive its own evidence: if the gate nulled the source_of_record,
+    # no mechanism (precedence/quorum) carries the commitment, and no listed authority backs it,
+    # the named class rests on nothing traceable — fail closed rather than ship an uncapped
+    # grade on a hallucinated authority (swarm finding, 2026-07-03).
+    if c == "named" and sor is None and mech not in ("precedence", "quorum") and not auths:
+        c = "uncommitted_placeholder"
+        mech = None
+        why = (why + " [demoted: named claim had no gate-surviving evidence]")[:300]
 
     return {"commitment": c, "source_of_record": sor, "mechanism": mech,
             "primary_url": purl, "prose_sources": prose,
