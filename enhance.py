@@ -1145,11 +1145,21 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
     criteria = (rep.get("resolution_rules_raw") or rep.get("description_raw") or "").strip()
     if not criteria:
         return None
+    # Full source picture, not just the first name — source_conflict (the tie-break factor)
+    # judges precedence over MULTIPLE sources and was previously blind to the list/count.
+    srcs = rep.get("resolution_source_list") or []
+    if srcs:
+        names = "; ".join(filter(None, ((s.get("name") or s.get("url")) for s in srcs[:8])))
+        src_desc = f"{len(srcs)} listed — {names}" + (" …" if len(srcs) > 8 else "")
+    else:
+        src_desc = rep.get("resolution_source") or "none / subjective"
+    commitment = rep.get("source_commitment_subtype")
     user = (
         f"Question: {event.get('question')}\n"
         f"Category: {event.get('category')}\n"
-        f"Resolution source (named): {rep.get('resolution_source') or 'none / subjective'}\n"
-        f"Arbiter: {rep.get('arbitration_model')}\n\n"
+        f"Resolution source(s): {src_desc}\n"
+        + (f"Source commitment (pre-judged): {commitment}\n" if commitment else "")
+        + f"Arbiter: {rep.get('arbitration_model')}\n\n"
         f"Resolution criteria:\n{criteria[:1800]}"
     )
     # max_tokens 700: 420 truncated long-"why" responses on big ladder events, and the
@@ -1186,6 +1196,11 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
     return out
 
 
+# Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
+# grade change between vintages is always attributable to "rubric changed" or "venue text changed"
+# — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
+SOURCE_RUBRIC_VERSION = "v3-2026-07-03"
+
 _SOURCE_COMMITMENT_SYSTEM = (
     "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
     "INDEPENDENT of any venue self-assessment. Commitment = whether the market commits to a "
@@ -1193,10 +1208,12 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "Classes:\n"
     "- named: a single concrete institutional AUTHORITY is the source of record — a government or "
     "statistics agency (any country), regulator, central bank, exchange, official data provider, "
-    "court/official register, or a named authoritative index calculator. If the source list carries "
+    "court/official register, a named authoritative index calculator, or (for questions about a "
+    "specific company) that issuer's own official filings/announcements. If the source list carries "
     "such an authority EVEN alongside many general-news outlets, the market is committed to THAT "
     "authority -> named; return it as source_of_record. A defined MECHANISM over multiple sources "
-    "(a stated precedence / primary-with-fallback, or 'resolves if N of these agree') is also named.\n"
+    "is also named: a stated precedence / primary-with-fallback rule (mechanism=precedence), or a "
+    "rule that N sources must agree (mechanism=quorum).\n"
     "- uncommitted_placeholder: names a CATEGORY not an authority ('a consensus of credible "
     "reporting', 'official sources'), OR a MENU of two or more interchangeable general-news / wire "
     "outlets (ABC, Fox News, CNN, MSNBC, Reuters, AP, The Information, Puck, CoinDesk, etc.) with NO "
@@ -1204,31 +1221,45 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "(including ESPN) is NOT an institutional authority.\n"
     "- uncommitted_illustrative: a source gestured at with a hedge ('for example', 'e.g.', 'such "
     "as') — a candidate, not a commitment.\n"
-    "- none: no source language at all.\n\n"
-    "Judge only from the sources and rules given; never invent a source. Return ONLY JSON: "
-    "{\"commitment\": \"named|uncommitted_illustrative|uncommitted_placeholder|none\", "
-    "\"source_of_record\": \"<authority name>\" or null, \"why\": \"<=15 words\"}."
+    "- none: no source language at all — neither a listed source nor any source language in the "
+    "rules text.\n\n"
+    "ALSO read the rules text for sources named in prose (with or without a URL). Report every "
+    "concrete source/authority the venue's own text names in prose_sources, each copied EXACTLY "
+    "as it appears in the text (a verbatim substring — never paraphrase, never invent).\n\n"
+    "Judge only from the sources and rules given; never invent a source. Return ONLY JSON:\n"
+    "{\"commitment\": \"named|uncommitted_illustrative|uncommitted_placeholder|none\",\n"
+    " \"source_of_record\": \"<authority name>\" or null,\n"
+    " \"mechanism\": \"single_authority|precedence|quorum\" or null,\n"
+    " \"primary_source_number\": <number of the listed source that controls, or 0>,\n"
+    " \"prose_sources\": [\"<verbatim name>\", ...],\n"
+    " \"why\": \"<=40 words\"}"
 )
 
 
 def llm_source_commitment(market: dict) -> dict | None:
-    """LLM source-commitment classification — the reading-comprehension judgment that replaces the
-    deterministic patch_sources regexes (news-outlet allow-list, is_nonnews_authority, tie-break
-    regex). Fed the DETERMINISTICALLY-extracted source list so it cannot invent a source. Returns
-    {commitment, source_of_record, why} or None on failure (caller keeps the prior value)."""
+    """LLM source-commitment classification — ONE reading-comprehension judgment per event over
+    the full deterministically-extracted source list + the rules prose. Absorbs the retired
+    standalone select-primary call (primary_source_number picks BY INDEX among listed candidates,
+    so it can never mint a URL) and surfaces prose-named authorities (verbatim-gated below).
+    Returns {commitment, source_of_record, mechanism, primary_url, prose_sources, why,
+    rubric_version} or None on LLM failure (caller MUST fail closed — spec B1)."""
     srcs = market.get("resolution_source_list") or (
         [{"name": market.get("resolution_source"), "url": market.get("source_citation")}]
         if market.get("resolution_source") else [])
-    if not srcs:
-        return {"commitment": "none", "source_of_record": None, "why": "no source named"}
+    rules = (market.get("resolution_rules_raw") or "").strip()
+    if not srcs and not rules:
+        # deterministic: literally nothing to read — no structured source AND no rules text.
+        # (A prose-only market is NOT short-circuited; the LLM reads its rules below.)
+        return {"commitment": "none", "source_of_record": None, "mechanism": None,
+                "primary_url": None, "prose_sources": [], "why": "no source and no rules text",
+                "rubric_version": SOURCE_RUBRIC_VERSION}
     src_lines = "\n".join(
-        f"  - {s.get('name') or '(unnamed)'}" + (f"  [{s.get('url')}]" if s.get('url') else "")
-        for s in srcs)
-    rules = (market.get("resolution_rules_raw") or "")[:1400]
+        f"  {i}. {s.get('name') or '(unnamed)'}" + (f"  [{s.get('url')}]" if s.get('url') else "")
+        for i, s in enumerate(srcs, 1)) or "  (none listed)"
     user = (
         f"Question: {market.get('question_raw') or ''}\n"
         f"Sources the venue lists ({len(srcs)}):\n{src_lines}\n\n"
-        f"Resolution rules:\n{rules or '(none provided)'}\n\n"
+        f"Resolution rules:\n{rules[:2400] or '(none provided)'}\n\n"
         f"Classify the source commitment."
     )
 
@@ -1242,7 +1273,7 @@ def llm_source_commitment(market: dict) -> dict | None:
         except Exception:
             return None
 
-    raw = llm_call(user, system=_SOURCE_COMMITMENT_SYSTEM, max_tokens=150,
+    raw = llm_call(user, system=_SOURCE_COMMITMENT_SYSTEM, max_tokens=300,
                    validate=lambda t: _parse(t) is not None)
     d = _parse(raw)
     if d is None:
@@ -1250,8 +1281,31 @@ def llm_source_commitment(market: dict) -> dict | None:
     c = (d.get("commitment") or "").strip().lower()
     if c not in ("named", "uncommitted_illustrative", "uncommitted_placeholder", "none"):
         return None
-    return {"commitment": c, "source_of_record": d.get("source_of_record"),
-            "why": (d.get("why") or "")[:80]}
+
+    # --- verbatim gates: the LLM judges; it never mints an identifier ---
+    hay = (rules + "\n" + src_lines).lower()
+    sor = d.get("source_of_record")
+    if isinstance(sor, str):
+        sor = sor.strip() or None
+        if sor and sor.lower() not in hay:
+            sor = None          # gated: not traceable to venue text/list
+    else:
+        sor = None
+    mech = d.get("mechanism") if d.get("mechanism") in ("single_authority", "precedence", "quorum") else None
+    prose = []
+    for p in (d.get("prose_sources") or [])[:8]:
+        if isinstance(p, str) and p.strip() and p.strip().lower() in rules.lower():
+            prose.append(p.strip())
+    purl = None
+    try:
+        n = int(d.get("primary_source_number") or 0)
+        if 1 <= n <= len(srcs):
+            purl = srcs[n - 1].get("url")   # pick-by-index among real candidates only
+    except (TypeError, ValueError):
+        pass
+    return {"commitment": c, "source_of_record": sor, "mechanism": mech,
+            "primary_url": purl, "prose_sources": prose,
+            "why": (d.get("why") or "")[:300], "rubric_version": SOURCE_RUBRIC_VERSION}
 
 
 def enrich_with_llm(events: list, markets: list, enabled: bool = True):

@@ -427,17 +427,28 @@ def _is_placeholder_source_name(name: str) -> bool:
     return bool(name) and len(name.split()) <= 1
 
 def rate_source_clarity(market: dict) -> str:
+    # ONE source judgment: when the LLM commitment classification is stamped (enrichment), this
+    # factor DERIVES from it instead of second-guessing with word-count heuristics — a factor
+    # scoring "pass" while the commitment cap says "placeholder" was a self-contradicting audit
+    # trail (the cl-hit oil misgrade class). Methodology: pass = named authority + usable link.
+    sub = market.get("source_commitment_subtype")
+    if sub:
+        if sub == "named":
+            cite = market.get("source_citation")
+            return "pass" if (cite and not _is_placeholder_citation(cite)) else "partial"
+        if sub == "uncommitted_illustrative":
+            return "partial"
+        return "fail"   # uncommitted_placeholder / none
+    # Pre-commitment fallback (build-time only — the grade is 'pending' until the per-event
+    # LLM ratings exist, so this path never reaches a shipped grade).
     if market.get("resolution_source_quality") == "loose":
         return "partial"
     cite = market.get("source_citation")
     name = market.get("resolution_source")
     real_cite = cite and not _is_placeholder_citation(cite)
     real_name = name and not _is_placeholder_source_name(name)
-    # Full credit only when there's a real deep-link citation AND a named authority.
     if real_cite and real_name:
         return "pass"
-    # Partial: has one of the two (a real link OR a properly-named source), but not a
-    # clean placeholder-free pair. A venue that only cites its own homepage lands here.
     if real_cite or real_name or name:
         return "partial"
     return "fail"

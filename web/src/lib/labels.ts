@@ -1,6 +1,29 @@
 // Jargon mapping layer — translate DB code constants into professional terminal terms.
 // One source of truth so every component renders the same human label.
 
+// ---------------------------------------------------------------------------
+// source_status — THE stamped source judgment (source-layer refactor 2026-07-03)
+// ---------------------------------------------------------------------------
+// Stamped at enrichment as a pure function of the LLM commitment classification; every web
+// surface reads it through this ONE helper (no component re-derives from raw field presence).
+// The fallback covers pre-refactor bundles only and checks commitment BEFORE presence, so a
+// hedge with a non-empty verbatim source field can never read platform_named.
+// Keep in sync with api/src/index.ts marketOut().
+export function sourceStatusOf(m: {
+  source_status?: string | null;
+  source_commitment?: string | null;
+  resolution_source?: string | null;
+} | null | undefined): 'platform_named' | 'no_committed_source' | 'no_source_stated' | 'unknown' {
+  const stamped = (m as any)?.source_status;
+  if (stamped) return stamped;
+  const c = m?.source_commitment ?? null;
+  if (c === 'uncommitted') return 'no_committed_source';
+  if (c === 'none') return 'no_source_stated';
+  if (c === 'named') return 'platform_named';
+  const hasNamed = m?.resolution_source != null && String(m.resolution_source).trim() !== '';
+  return hasNamed ? 'platform_named' : 'unknown';
+}
+
 export function arbiterLabel(v: string | null | undefined): string {
   switch (v) {
     case 'uma_oracle': return 'Optimistic Oracle (UMA)';
@@ -100,9 +123,9 @@ export function sourceLabel(name: string | null | undefined, url: string | null 
 
 // RCG chip hover tooltips (institutional, plain English). Match the original event page.
 export const RCG_TOOLTIP: Record<'A' | 'B' | 'C', string> = {
-  A: 'Resolution Clarity Grade A — institutional-grade resolution. Named source, mechanical settlement, no judgment. Click to see source.',
-  B: 'Resolution Clarity Grade B — named source exists, but resolution involves oracle or staff judgment. Click to see source.',
-  C: 'Resolution Clarity Grade C — no named source, or contested / discretionary resolution. Click to see source.',
+  A: 'Resolution Clarity Grade A — institutional-grade resolution. Committed source, mechanical settlement, no judgment. Click to see source.',
+  B: 'Resolution Clarity Grade B — solid but not airtight: a hedged source, judgment step, or timing risk costs points. Click to see why.',
+  C: 'Resolution Clarity Grade C — elevated resolution risk: uncommitted source, or contested / discretionary resolution. Click to see why.',
 };
 
 // Per-market resolution rationale — the grade + one neutral plain-English sentence on WHY.
@@ -131,12 +154,27 @@ export function rationaleFor(m: {
     };
   }
   if (grade === 'B') {
+    // name the BINDING cause when a cap fired — never blame the arbiter for a source cap
+    if (caps.includes('commitment_uncommitted_illustrative')) {
+      return { grade, word: 'Hedged source', flag: 'source not committed',
+        text: `Source only gestured at ("for example …") — a candidate, not a commitment.` };
+    }
     return {
       grade, word: 'Some judgment', flag: 'judgment in settlement',
       text: src ? `Named source (${src}), but settlement involves some judgment.` : `Resolution involves some judgment.`,
     };
   }
-  // C — surface the single sharpest fact, neutrally
+  // C — surface the single BINDING fact, neutrally. Commitment caps first: they are the
+  // most common binding constraint, and naming a different factor here was the wrong-cause
+  // tooltip bug (cl-hit oil, 2026-06-28).
+  if (caps.includes('commitment_none')) {
+    return { grade, word: 'Elevated risk', flag: 'no source stated',
+      text: `The venue names no resolution source at all.` };
+  }
+  if (caps.some((c) => c.startsWith('commitment_'))) {
+    return { grade, word: 'Elevated risk', flag: 'no committed source',
+      text: `The venue committed to no controlling source — placeholder or menu language decides at resolution.` };
+  }
   if (caps.includes('adversarial_ground_truth')) {
     return { grade, word: 'Elevated risk', flag: 'contested outcome',
       text: `The outcome depends on a fact an interested party controls or can dispute.` };

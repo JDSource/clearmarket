@@ -94,14 +94,17 @@ export const provenance = (ref: string) => ({
 });
 
 export function marketOut(m: any) {
-  // A bare null `source` reads as "ClearMarket is missing data" when it actually means the platform
-  // committed to no named source — which is the signal, not a gap. Surface that explicitly + briefly.
-  const hasNamed = m.resolution_source != null && String(m.resolution_source).trim() !== '';
-  const source_status = hasNamed
-    ? 'platform_named'                                              // venue committed to a concrete authority
-    : m.source_commitment === 'uncommitted' ? 'no_committed_source' // venue gestured at a source but hedged/placeholder
-    : m.source_commitment === 'none' ? 'no_source_stated'           // venue named no source at all
-    : 'unknown';
+  // source_status is STAMPED at enrichment as a pure function of the LLM commitment judgment
+  // (enrich_universe.enrich_event) — the serve layer reads it, never re-derives from raw field
+  // presence. The fallback below exists ONLY for pre-refactor rows (seeded before 2026-07-03)
+  // and checks commitment BEFORE presence, so a hedge with a non-empty verbatim source field
+  // can never read platform_named. Keep in sync with web/src/lib/labels.ts sourceStatusOf().
+  const source_status = m.source_status
+    ?? (m.source_commitment === 'uncommitted' ? 'no_committed_source'
+    : m.source_commitment === 'none' ? 'no_source_stated'
+    : m.source_commitment === 'named' ? 'platform_named'
+    : (m.resolution_source != null && String(m.resolution_source).trim() !== '') ? 'platform_named'
+    : 'unknown');
   return {
     market_id: m.market_id,
     event_id: m.event_id,
@@ -122,6 +125,13 @@ export function marketOut(m: any) {
       source: m.resolution_source,
       source_status,   // always present: platform_named | no_committed_source | no_source_stated | unknown
       source_citation: m.source_citation,
+      // the FULL source set — every venue-listed source (provenance: platform_api) plus
+      // prose-named authorities surfaced by the commitment judgment (clearmarket_editorial).
+      // This is what separates "committed authority" from "menu of outlets" — visible, not
+      // just baked into the grade. null on pre-refactor rows.
+      sources: parseJson(m.resolution_source_list, null),
+      source_of_record: m.source_of_record ?? null,   // the committed authority (grade basis)
+      source_mechanism: m.source_mechanism ?? null,   // single_authority | precedence | quorum
       source_type: m.resolution_source_type,
       source_quality: m.resolution_source_quality,
       // source COMMITMENT: did the venue commit to a definitive source, or only hedge/placeholder?

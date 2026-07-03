@@ -22,7 +22,10 @@
     },
     "platform": {
       "type": "string",
-      "enum": ["kalshi", "polymarket"],
+      "enum": [
+        "kalshi",
+        "polymarket"
+      ],
       "description": "Source venue."
     },
     "platform_market_id": {
@@ -30,78 +33,131 @@
       "description": "Venue's native ID. Kalshi ticker (e.g., 'KXFED-26APR-T3.25') or Polymarket conditionId."
     },
     "event_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^CM-EVT-[0-9A-Z]{10}$",
       "description": "FK to events.event_id. Nullable — editorial assignment. Market can exist without an event."
     },
     "platform_event_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Platform's own grouping identifier (informational). Kalshi event_ticker; Polymarket event slug."
     },
     "question_raw": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Platform's short headline question."
     },
     "description_raw": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Platform's long prose description."
     },
     "category_raw": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Platform's own category classification."
     },
     "contract_type": {
       "type": "string",
-      "enum": ["binary", "scalar"],
+      "enum": [
+        "binary",
+        "scalar"
+      ],
       "description": "Binary YES/NO or true-scalar payout. v0.1 only populates binary; scalar support v0.2+."
     },
     "settlement_currency": {
       "type": "string",
-      "enum": ["USD", "USDC"],
+      "enum": [
+        "USD",
+        "USDC"
+      ],
       "description": "USD (Kalshi) or USDC (Polymarket)."
     },
     "tick_size": {
-      "type": ["number", "null"],
+      "type": [
+        "number",
+        "null"
+      ],
       "description": "Minimum price increment."
     },
     "contract_multiplier": {
-      "type": ["number", "null"],
+      "type": [
+        "number",
+        "null"
+      ],
       "description": "Notional per contract. Usually 1.0 for binaries."
     },
     "underlying_reference": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Editorial: specific real-world data reference (e.g., 'BLS Series CUUR0000SA0', 'S&P 500 index close per S&P Dow Jones Indices', 'Credible news reporting — no specific feed'). For multi-outcome events this is COMPOSED per child from the event's generic resolution_reference + this market's group_item_title, so each child names its own subject and no sibling's identity leaks."
     },
     "group_item_title": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Per-child subject within a multi-outcome event (the OSI-symbol analog): the candidate, company, strike, or date this market resolves on ('María Corina Machado', 'Discord', '$2 trillion', 'June 2026'). Native from the venue; composes underlying_reference against the event-level resolution_reference."
     },
     "close_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "description": "When trading stops (TIMESTAMPTZ)."
     },
     "last_trading_date": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "description": "Last tradeable date. May differ from close_at."
     },
     "resolve_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "description": "Expected payout date."
     },
     "status": {
       "type": "string",
-      "enum": ["open", "closed", "resolved", "amended"],
+      "enum": [
+        "open",
+        "closed",
+        "resolved",
+        "amended"
+      ],
       "description": "Market lifecycle state."
     },
     "resolution_rules_raw": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Full rules text from platform. Source for the parsed resolution_triggers."
     },
     "resolution_triggers": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "description": "Parsed machine-readable resolution structure. Editorial.",
       "properties": {
         "triggers": {
@@ -109,23 +165,43 @@
           "items": {
             "type": "object",
             "properties": {
-              "type": {"type": "string"},
-              "description": {"type": "string"},
-              "metric": {"type": "string"},
+              "type": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "metric": {
+                "type": "string"
+              },
               "threshold": {},
-              "source": {"type": "string"},
-              "deadline": {"type": ["string", "null"], "format": "date-time"}
+              "source": {
+                "type": "string"
+              },
+              "deadline": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
             }
           },
           "description": "Array of resolution trigger conditions."
         },
         "trigger_logic": {
           "type": "string",
-          "enum": ["AND", "OR", "SINGLE"]
+          "enum": [
+            "AND",
+            "OR",
+            "SINGLE"
+          ]
         },
         "exclusions": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "What explicitly does not count as resolution."
         },
         "resolution_risks": {
@@ -135,7 +211,10 @@
       }
     },
     "arbitration_model": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "uma_oracle",
         "kalshi_staff",
@@ -148,7 +227,10 @@
       "description": "Who arbitrates disputes. Stored column (not derived)."
     },
     "resolution_proposer": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "permissionless",
         "managed_whitelist",
@@ -159,16 +241,86 @@
       "description": "Who can propose resolution outcomes. 'managed_whitelist' captures UMA MOOV2 (Aug 2025 — whitelist of 37 proposers)."
     },
     "resolution_source": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "What data is cited. Editorial fill for Polymarket where API is blank or prose is vague ('consensus of credible reporting')."
     },
     "source_citation": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uri",
       "description": "Link to the data source itself (not the arbiter's admin page)."
     },
+    "resolution_source_list": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "description": "Full source set: every venue-listed source (provenance: platform_api) plus prose-named authorities surfaced by the commitment judgment (provenance: clearmarket_editorial). Added by the source-layer refactor 2026-07-03.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provenance": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "platform_api",
+              "clearmarket_editorial",
+              null
+            ]
+          }
+        }
+      }
+    },
+    "source_status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "platform_named",
+        "no_committed_source",
+        "no_source_stated",
+        null
+      ],
+      "description": "THE stamped source judgment — pure function of the LLM commitment classification, stamped at enrichment. Every surface (API/MCP/web/.json/JSON-LD) reads this; none re-derives from raw field presence."
+    },
+    "source_mechanism": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "single_authority",
+        "precedence",
+        "quorum",
+        null
+      ],
+      "description": "How multiple sources bind when commitment=named: one controlling authority, a stated precedence/fallback rule, or a quorum (N sources must agree). The CFTC-comment tie-break disclosure, structured."
+    },
     "source_type": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "gov_stat_agency",
         "central_bank",
@@ -184,31 +336,61 @@
       "description": "Objectivity classification of the data source."
     },
     "threshold": {
-      "type": ["number", "null"],
+      "type": [
+        "number",
+        "null"
+      ],
       "description": "Numeric resolution threshold (e.g. 150000 for 'Bitcoin reaches $150,000'). Typed top-level field for cross-venue matching; the verbose parse stays in resolution_triggers. Null for non-numeric (occurrence) markets."
     },
     "direction": {
-      "type": ["string", "null"],
-      "enum": ["above", "below", "reach", "between", "occurrence", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "above",
+        "below",
+        "reach",
+        "between",
+        "occurrence",
+        null
+      ],
       "description": "Polarity of the claim relative to the threshold. An ATTRIBUTE, not an event discriminator — 'above'/'below' at the same threshold/window/settlement_style are the SAME claim (complementary; comparison normalizes polarity before computing a spread)."
     },
     "settlement_style": {
-      "type": ["string", "null"],
-      "enum": ["touch", "terminal", "relative", "occurrence", null],
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "touch",
+        "terminal",
+        "relative",
+        "occurrence",
+        null
+      ],
       "description": "How the contract settles on the underlying: 'touch' (level ever reached in a window), 'terminal' (level at a single point in time), 'relative' (new high/low), 'occurrence' (a discrete event happens). Distinct from arbitration_model (who arbitrates). Part of the cross-venue event key."
     },
     "question_id": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^CMX-[0-9A-F]{10}$",
       "description": "Canonical question id. The normalized real-world question this market settles (subject + threshold + settlement_style, plus window for terminal). Markets sharing a question_id are the SAME question — across venues and across events within a venue. The stable join key CM Signal references. Null where the market has not been canonicalized. (Value prefix is CMX- for historical continuity; it is the ClearMarket question id.)"
     },
     "tags": {
       "type": "array",
-      "items": {"type": "string"},
+      "items": {
+        "type": "string"
+      },
       "description": "Entity tags for search + cross-cutting retrieval (e.g. 'bitcoin', 'deutsche-bank'). Market-level (events also carry tags). v1 plain strings; later resolved to sameAs Wikidata QIDs."
     },
     "regulatory_class": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "enum": [
         "DCM",
         "DeFi",
@@ -218,24 +400,39 @@
       "description": "Regulatory class of the venue. DCM: CFTC-regulated Designated Contract Market. DeFi: token-vote-arbitrated decentralized protocol. Other: anything not in those two buckets (e.g., Manifold, Augur, Zeitgeist, prediction-market projects without CFTC registration or token-vote arbitration)."
     },
     "analyst_notes": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "ClearMarket editorial note surfacing operational edge cases, dispute risks, or time-cutoff details for the market. v0.2: populated via per-venue fallback in render layer. v0.3+: populate via resolution_triggers.resolution_risks in enhance.py."
     },
     "contract_terms_url": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uri",
       "description": "Kalshi PDF link to full contract terms. Kalshi-only."
     },
     "resolution_outcome": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "Once resolved: 'YES', 'NO', or scalar value. Null until resolved."
     },
     "resolution_value": {
-      "type": ["number", "null"],
+      "type": [
+        "number",
+        "null"
+      ],
       "description": "For scalar markets: final numeric value. Null for binary."
     },
     "resolved_at": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "description": "Actual settlement timestamp."
     },
@@ -250,16 +447,38 @@
       "description": "Most recent ingestion update."
     },
     "also_on": {
-      "type": ["array", "null"],
+      "type": [
+        "array",
+        "null"
+      ],
       "description": "DERIVED. The SAME question (same question_id) priced on other venues. Non-null only when this market's question_id has markets on a different venue; null when the question is unique to this venue. Lets a consumer see the cross-venue twin(s) without a second lookup.",
       "items": {
         "type": "object",
         "properties": {
-          "venue": {"type": "string", "enum": ["kalshi", "polymarket"], "description": "The other venue this question trades on."},
-          "market_id": {"type": "string", "description": "FK to the counterpart market (market_id) on that venue."},
-          "price": {"type": ["number", "null"], "description": "Last price (implied probability) of the counterpart market."}
+          "venue": {
+            "type": "string",
+            "enum": [
+              "kalshi",
+              "polymarket"
+            ],
+            "description": "The other venue this question trades on."
+          },
+          "market_id": {
+            "type": "string",
+            "description": "FK to the counterpart market (market_id) on that venue."
+          },
+          "price": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Last price (implied probability) of the counterpart market."
+          }
         },
-        "required": ["venue", "market_id"],
+        "required": [
+          "venue",
+          "market_id"
+        ],
         "additionalProperties": false
       }
     },

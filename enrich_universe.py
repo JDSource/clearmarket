@@ -92,7 +92,10 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
         # what the reader sees.
         "resolution_source":     ksrc[0]["name"] if ksrc else None,   # verbatim venue field
         "source_citation":       ksrc[0]["url"] if ksrc else None,
-        "resolution_source_list":       [{"name": s.get("name"), "url": s.get("url")} for s in ksrc] or None,
+        # per-entry provenance (PRD taxonomy): a venue-listed source = platform_api; LLM-surfaced
+        # prose authorities are appended at enrichment as clearmarket_editorial (enrich_event)
+        "resolution_source_list":       [{"name": s.get("name"), "url": s.get("url"),
+                                          "provenance": "platform_api"} for s in ksrc] or None,
         "resolution_source_count":      len(ksrc) or None,
         "resolution_source_provenance": "kalshi_series_settlement_sources" if ksrc else None,
         "resolution_source_quality":    (src or {}).get("quality"),   # venue self-tag — NOT trusted for grading
@@ -109,6 +112,15 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
 
 def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
     psrc = src or {}
+    # Canonical full source list (source-layer refactor 2026-07-03). Previously Poly collapsed to
+    # ONE extracted URL and resolution_source_list was never populated — the grading judge could
+    # not tell a committed authority from a menu, and 92% of Poly (empty resolutionSource) was
+    # force-capped "none". Entries: the venue's structured resolutionSource field (if any) + ALL
+    # regex-extracted URL candidates. Prose-named authorities are appended at enrichment.
+    rs_prose = (m.get("resolutionSource") or "").strip() or None
+    src_list = ([{"name": rs_prose, "url": None, "provenance": "platform_api"}] if rs_prose else []) \
+             + [{"name": None, "url": u, "provenance": "platform_api"}
+                for u in (psrc.get("candidates") or [])]
     mk = {
         "market_id":             E.generate_market_id("polymarket:" + (m.get("conditionId") or m.get("id") or m.get("question") or "")),
         "platform":              "polymarket",
@@ -127,9 +139,11 @@ def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
         "resolution_rules_raw":  (m.get("description") or None),
         "arbitration_model":     "uma_oracle",
         "resolution_proposer":   "managed_whitelist",
-        # DIRECT (verified) tier — URL extracted verbatim from the market description (poly-sources.json)
-        "resolution_source":     m.get("resolutionSource") or None,
-        "source_citation":       psrc.get("source_url"),
+        # DIRECT (verified) tier — URLs extracted verbatim from the market description (poly-sources.json)
+        "resolution_source":     rs_prose,                    # verbatim venue field (display)
+        "source_citation":       psrc.get("source_url"),      # single-URL case; multi-URL selected by the commitment call
+        "resolution_source_list":       src_list or None,
+        "resolution_source_count":      len(src_list) or None,
         "resolution_source_provenance": psrc.get("source"),   # polymarket_description | subjective_or_none
         "resolution_source_verified":   psrc.get("verified"),
         "resolution_source_method":     psrc.get("method"),
@@ -303,20 +317,50 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     # Source commitment: one per-event LLM classification (the reading-comprehension judgment that
     # REPLACES the retired patch_sources deterministic regexes). MUST run before grading so the
     # commitment cap is on the market. rep carries the series/event source; commitment is a
-    # property of the source, so it applies to every market in the event.
+    # property of the source, so it applies to every market in the event (per-event keying
+    # verified safe 2026-07-03: 790/795 multi-market Poly events have uniform child sources).
     try:
         sc = E.llm_source_commitment(rep)
-        if sc:
-            top = ("named" if sc["commitment"] == "named"
-                   else "none" if sc["commitment"] == "none" else "uncommitted")
-            for m in markets:
-                m["source_commitment"] = top
-                m["source_commitment_subtype"] = sc["commitment"]
-                m["source_of_record"] = sc.get("source_of_record")   # grade-only; display stays verbatim
-                m.setdefault("field_provenance", {})["source_commitment"] = {
-                    "source": "clearmarket_editorial", "ai_drafted": True, "why": sc.get("why")}
     except Exception as e:
-        print(f"    source_commitment failed for {event['event_id']}: {e}", file=sys.stderr)
+        print(f"    source_commitment errored for {event['event_id']}: {e}", file=sys.stderr)
+        sc = None
+    if sc is None:
+        # FAIL CLOSED (spec B1): never ship an uncapped grade on a failed judgment.
+        sc = {"commitment": "uncommitted_placeholder", "source_of_record": None, "mechanism": None,
+              "primary_url": None, "prose_sources": [],
+              "why": "commitment judgment failed; capped fail-closed",
+              "rubric_version": E.SOURCE_RUBRIC_VERSION, "_fail_closed": True}
+        print(f"    source_commitment FAIL-CLOSED for {event['event_id']}", file=sys.stderr)
+    top = ("named" if sc["commitment"] == "named"
+           else "none" if sc["commitment"] == "none" else "uncommitted")
+    # LLM-surfaced prose authorities (verbatim-gated in enhance) join the canonical source
+    # list as editorial-tier entries — visible on every surface, not just baked into the grade.
+    prose_entries = [{"name": p, "url": None, "provenance": "clearmarket_editorial"}
+                     for p in sc.get("prose_sources") or []]
+    for m in markets:
+        if prose_entries:
+            existing = m.get("resolution_source_list") or []
+            have = {(e.get("name") or "").strip().lower() for e in existing}
+            add = [e for e in prose_entries if e["name"].strip().lower() not in have]
+            if add:
+                m["resolution_source_list"] = existing + add
+                m["resolution_source_count"] = len(m["resolution_source_list"])
+        # multi-URL Poly case: the commitment call selected the controlling URL by index
+        if not m.get("source_citation") and sc.get("primary_url"):
+            m["source_citation"] = sc["primary_url"]
+        m["source_commitment"] = top
+        m["source_commitment_subtype"] = sc["commitment"]
+        m["source_of_record"] = sc.get("source_of_record")   # grade-only; display stays verbatim
+        m["source_mechanism"] = sc.get("mechanism")          # single_authority | precedence | quorum
+        # THE stamped judgment — every surface reads this; no consumer re-derives from raw
+        # field presence (kills the platform_named-on-a-hedge display bug at the root).
+        m["source_status"] = ("platform_named" if top == "named"
+                              else "no_source_stated" if top == "none"
+                              else "no_committed_source")
+        m.setdefault("field_provenance", {})["source_commitment"] = {
+            "source": "clearmarket_editorial", "ai_drafted": True, "why": sc.get("why"),
+            "rubric_version": sc.get("rubric_version"),
+            **({"fail_closed": True} if sc.get("_fail_closed") else {})}
 
     # RCG: one per-event Haiku rating of the LLM factors → grade every market (the commitment cap
     # from above folds into grade_market). Stores a self-contained audit object per market.
@@ -333,7 +377,9 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
                 m["rcg"] = {"grade": rcg["grade"], "score": rcg["score"], "caps": rcg["caps"],
                             "factors": rcg.get("factors"),
                             "commitment": {"class": m.get("source_commitment_subtype"),
-                                           "source_of_record": m.get("source_of_record")}}
+                                           "source_of_record": m.get("source_of_record"),
+                                           "mechanism": m.get("source_mechanism"),
+                                           "rubric_version": E.SOURCE_RUBRIC_VERSION}}
     except Exception as e:
         print(f"    rcg_factors failed for {event['event_id']}: {e}", file=sys.stderr)
 

@@ -26,8 +26,14 @@ const CAP_FLAG: Record<string, string> = {
   adversarial_ground_truth: 'ADVERSARIAL GROUND TRUTH',
   discretionary_trigger_no_source: 'DISCRETIONARY TRIGGER',
   permissionless_oracle_discretionary: 'ORACLE + DISCRETIONARY',
+  commitment_uncommitted_placeholder: 'UNCOMMITTED SOURCE',
+  commitment_uncommitted_illustrative: 'HEDGED SOURCE',
+  commitment_none: 'NO SOURCE STATED',
 };
-const statusFlag = caps.length ? (CAP_FLAG[caps[0]] ?? caps[0].toUpperCase()) : (grade === 'A' ? 'CLEAN' : 'REVIEW');
+// commitment caps are the most common BINDING constraint — flag them first so the badge
+// names the actual cause (the wrong-cause tooltip bug class, 2026-06-28)
+const capOrder = [...caps].sort((a, b) => Number(b.startsWith('commitment_')) - Number(a.startsWith('commitment_')));
+const statusFlag = capOrder.length ? (CAP_FLAG[capOrder[0]] ?? capOrder[0].toUpperCase()) : (grade === 'A' ? 'CLEAN' : 'REVIEW');
 
 // sharpest single risk = first FAIL factor, else first PARTIAL
 const rf = ((event as any).rcg_factors ?? {}) as Record<string, { rating: string; why: string }>;

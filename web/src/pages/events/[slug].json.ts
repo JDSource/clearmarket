@@ -8,6 +8,7 @@
  */
 import type { APIRoute } from 'astro';
 import { getAllEvents, getEventBySlug, getMarketsForEvent, getMarksForEvent, getResolutionLogForEvent, SCHEMA_VERSION } from '../../lib/universe';
+import { sourceStatusOf } from '../../lib/labels';
 
 export async function getStaticPaths() {
   return getAllEvents().map((e) => ({ params: { slug: e.slug } }));
@@ -57,6 +58,11 @@ export const GET: APIRoute = ({ params }) => {
         resolution_source: m.resolution_source,
         resolution_source_type: m.resolution_source_type,
         source_commitment: m.source_commitment,
+        // stamped source judgment + full source set — same values as API/MCP (four-format rule)
+        source_status: sourceStatusOf(m as any),
+        resolution_source_list: (m as any).resolution_source_list ?? null,
+        source_of_record: (m as any).source_of_record ?? null,
+        source_mechanism: (m as any).source_mechanism ?? null,
         settlement_style: m.settlement_style,
         direction: m.direction,
         threshold: m.threshold,
