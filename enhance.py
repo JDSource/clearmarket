@@ -1199,7 +1199,7 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
 # Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
 # grade change between vintages is always attributable to "rubric changed" or "venue text changed"
 # — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
-SOURCE_RUBRIC_VERSION = "v3-2026-07-03"
+SOURCE_RUBRIC_VERSION = "v3.5-2026-07-03"
 
 _SOURCE_COMMITMENT_SYSTEM = (
     "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
@@ -1209,11 +1209,17 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "- named: a single concrete institutional AUTHORITY is the source of record — a government or "
     "statistics agency (any country), regulator, central bank, exchange, official data provider, "
     "court/official register, a named authoritative index calculator, or (for questions about a "
-    "specific company) that issuer's own official filings/announcements. If the source list carries "
-    "such an authority EVEN alongside many general-news outlets, the market is committed to THAT "
-    "authority -> named; return it as source_of_record. A defined MECHANISM over multiple sources "
-    "is also named: a stated precedence / primary-with-fallback rule (mechanism=precedence), or a "
-    "rule that N sources must agree (mechanism=quorum).\n"
+    "specific company) that issuer's own official filings/announcements. A defined MECHANISM over "
+    "multiple sources is also named — REGARDLESS of whether the sources are general-news outlets "
+    "(the mechanism, not the outlet type, is the commitment): mechanism=precedence ONLY when the "
+    "rule states an ORDER — which source controls if they conflict, or a fallback used only when "
+    "the primary is unavailable; mechanism=quorum when N sources must agree (a stated fallback for "
+    "no-quorum is fine). If you output mechanism=precedence or quorum, the commitment MUST be "
+    "named. Distinguish fallback types: an ORDERED, CONDITION-TRIGGERED fallback ('if the primary "
+    "has not resolved it when/by X, then Y controls') IS precedence — named. An UNORDERED, "
+    "OPTIONAL alternative ('however a consensus of credible reporting may suffice / may also be "
+    "used') states no order — NOT precedence; that is the Venezuela failure shape -> "
+    "uncommitted_placeholder.\n"
     "- uncommitted_placeholder: names a CATEGORY not an authority ('a consensus of credible "
     "reporting', 'official sources'), OR a MENU of two or more interchangeable general-news / wire "
     "outlets (ABC, Fox News, CNN, MSNBC, Reuters, AP, The Information, Puck, CoinDesk, etc.) with NO "
@@ -1226,12 +1232,28 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "ALSO read the rules text for sources named in prose (with or without a URL). Report every "
     "concrete source/authority the venue's own text names in prose_sources, each copied EXACTLY "
     "as it appears in the text (a verbatim substring — never paraphrase, never invent).\n\n"
+    "SEPARATELY, in authorities_in_list, report which entries of the venue's source LIST are "
+    "non-news institutional authorities (government/statistics agency, regulator, central bank, "
+    "exchange, court/register, official data provider, index calculator — NOT news, wire, or "
+    "sports outlets; when in doubt, exclude). Copy each name verbatim from the list. This is an "
+    "extraction, independent of your commitment judgment.\n\n"
+    "CALIBRATION EXAMPLES (mechanism boundary):\n"
+    "- 'Reuters and AP must agree; if they disagree, this market resolves NO' -> named, "
+    "mechanism=quorum (N-must-agree with a stated outcome on disagreement; outlet type "
+    "irrelevant — the mechanism is complete).\n"
+    "- 'resolves per official information from Venezuela; a credible consensus of credible "
+    "reporting will also be used' -> uncommitted_placeholder (two co-equal paths, no order — "
+    "this rule failed in reality).\n"
+    "- 'resolves once all listed outlets call the race for the same candidate; if they have "
+    "not, resolves based on official certification' -> named, mechanism=quorum (quorum plus "
+    "an ordered, condition-triggered fallback).\n\n"
     "Judge only from the sources and rules given; never invent a source. Return ONLY JSON:\n"
     "{\"commitment\": \"named|uncommitted_illustrative|uncommitted_placeholder|none\",\n"
-    " \"source_of_record\": \"<authority name>\" or null,\n"
+    " \"source_of_record\": \"<authority name, copied VERBATIM from the venue text or source list>\" or null,\n"
     " \"mechanism\": \"single_authority|precedence|quorum\" or null,\n"
     " \"primary_source_number\": <number of the listed source that controls, or 0>,\n"
     " \"prose_sources\": [\"<verbatim name>\", ...],\n"
+    " \"authorities_in_list\": [\"<verbatim name from the list>\", ...],\n"
     " \"why\": \"<=40 words\"}"
 )
 
@@ -1303,9 +1325,25 @@ def llm_source_commitment(market: dict) -> dict | None:
             purl = srcs[n - 1].get("url")   # pick-by-index among real candidates only
     except (TypeError, ValueError):
         pass
+    why = (d.get("why") or "")[:300]
+
+    # DETERMINISTIC reconciliation (the C-floor authority-in-menu rule, applied in code over the
+    # model's gated extraction — Step A/B split): if the venue's own source list carries a
+    # non-news institutional authority, the market is committed to THAT authority, whether or not
+    # the rules prose separately references it. The model extracts (verbatim-gated against the
+    # list); this rule decides. Protects the 63 authority-bearing series the v1 self-audit caught.
+    list_names = {(s.get("name") or "").strip().lower() for s in srcs}
+    auths = [a.strip() for a in (d.get("authorities_in_list") or [])
+             if isinstance(a, str) and a.strip() and a.strip().lower() in list_names]
+    if auths and c != "named":
+        c = "named"
+        sor = sor or auths[0]
+        mech = mech or "single_authority"
+        why = (why + " [reconciled: non-news authority present in venue source list]")[:300]
+
     return {"commitment": c, "source_of_record": sor, "mechanism": mech,
             "primary_url": purl, "prose_sources": prose,
-            "why": (d.get("why") or "")[:300], "rubric_version": SOURCE_RUBRIC_VERSION}
+            "why": why, "rubric_version": SOURCE_RUBRIC_VERSION}
 
 
 def enrich_with_llm(events: list, markets: list, enabled: bool = True):
