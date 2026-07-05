@@ -368,7 +368,12 @@ def _rcg_caps(r: dict) -> list[tuple[str, str]]:
 _LLM_FACTORS_SET = {"trigger_objectivity", "contested_reality", "source_conflict",
                     "temporal_precision", "source_mutability"}
 # Source-commitment cap ceilings — folded in from the retired patch_sources (subtype -> ceiling).
-_COMMITMENT_CAP = {"uncommitted_illustrative": "B", "uncommitted_placeholder": "C", "none": "C"}
+# committed_secondhand (ruled 2026-07-04, rubric v3.6): sole committed source is a concrete
+# non-authority (data aggregator / single outlet — Fiscal.ai class). A real commitment, capped C
+# because the source transcribes numbers whose authority lies elsewhere and no rule covers a
+# disagreement (ESPN precedent; CF Benchmarks-style published-methodology providers stay named).
+_COMMITMENT_CAP = {"committed_secondhand": "C", "uncommitted_illustrative": "B",
+                   "uncommitted_placeholder": "C", "none": "C"}
 
 
 def resolution_clarity_grade(ratings: dict, commitment_subtype: str | None = None) -> dict:
@@ -436,7 +441,9 @@ def rate_source_clarity(market: dict) -> str:
         if sub == "named":
             cite = market.get("source_citation")
             return "pass" if (cite and not _is_placeholder_citation(cite)) else "partial"
-        if sub == "uncommitted_illustrative":
+        if sub in ("committed_secondhand", "uncommitted_illustrative"):
+            # secondhand: the source IS named and checkable — the deficiency (authority
+            # quality, no disagreement rule) is carried by the C cap, not double-counted here
             return "partial"
         return "fail"   # uncommitted_placeholder / none
     # Pre-commitment fallback (build-time only — the grade is 'pending' until the per-event

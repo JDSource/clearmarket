@@ -1199,7 +1199,7 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
 # Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
 # grade change between vintages is always attributable to "rubric changed" or "venue text changed"
 # — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
-SOURCE_RUBRIC_VERSION = "v3.5-2026-07-03"
+SOURCE_RUBRIC_VERSION = "v3.6-2026-07-04"
 
 _SOURCE_COMMITMENT_SYSTEM = (
     "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
@@ -1207,9 +1207,10 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "concrete controlling source of record. It is NOT about whether the outcome is objective.\n\n"
     "Classes:\n"
     "- named: a single concrete institutional AUTHORITY is the source of record — a government or "
-    "statistics agency (any country), regulator, central bank, exchange, official data provider, "
-    "court/official register, a named authoritative index calculator, or (for questions about a "
-    "specific company) that issuer's own official filings/announcements. A defined MECHANISM over "
+    "statistics agency (any country), regulator, central bank, exchange, court/official register, "
+    "a benchmark administrator or index calculator with a published methodology (e.g. CF "
+    "Benchmarks), or (for questions about a specific company) that issuer's own official "
+    "filings/announcements. A defined MECHANISM over "
     "multiple sources is also named — REGARDLESS of whether the sources are general-news outlets "
     "(the mechanism, not the outlet type, is the commitment): mechanism=precedence ONLY when the "
     "rule states an ORDER — which source controls if they conflict, or a fallback used only when "
@@ -1220,6 +1221,15 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "OPTIONAL alternative ('however a consensus of credible reporting may suffice / may also be "
     "used') states no order — NOT precedence; that is the Venezuela failure shape -> "
     "uncommitted_placeholder.\n"
+    "- committed_secondhand: the venue commits to exactly ONE concrete, named source that is NOT "
+    "an institutional authority — a commercial data aggregator or subscription data platform "
+    "(e.g. Fiscal.ai, Google Finance) or a single news/wire/sports outlet as the sole controlling "
+    "source. This is a real commitment (one checkable source, unlike a placeholder or menu), but "
+    "a secondhand one: the source re-publishes numbers or results whose authority lies elsewhere "
+    "(the issuer's own filings, the league, the agency), and no rule says what controls if they "
+    "disagree. A data platform counts as an authority (-> named) ONLY when it is the designated "
+    "administrator/calculator of the quantity itself with a published methodology; a platform "
+    "re-publishing company metrics is committed_secondhand.\n"
     "- uncommitted_placeholder: names a CATEGORY not an authority ('a consensus of credible "
     "reporting', 'official sources'), OR a MENU of two or more interchangeable general-news / wire "
     "outlets (ABC, Fox News, CNN, MSNBC, Reuters, AP, The Information, Puck, CoinDesk, etc.) with NO "
@@ -1234,9 +1244,11 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "as it appears in the text (a verbatim substring — never paraphrase, never invent).\n\n"
     "SEPARATELY, in authorities_in_list, report which entries of the venue's source LIST are "
     "non-news institutional authorities (government/statistics agency, regulator, central bank, "
-    "exchange, court/register, official data provider, index calculator — NOT news, wire, or "
-    "sports outlets; when in doubt, exclude). Copy each name verbatim from the list. This is an "
-    "extraction, independent of your commitment judgment.\n\n"
+    "exchange, court/register, benchmark administrator/index calculator with a published "
+    "methodology — NOT news, wire, or sports outlets, and NOT commercial data aggregators or "
+    "subscription data platforms such as Fiscal.ai or Google Finance; when in doubt, exclude). "
+    "Copy each name verbatim from the list. This is an extraction, independent of your "
+    "commitment judgment.\n\n"
     "CALIBRATION EXAMPLES (mechanism boundary):\n"
     "- 'Reuters and AP must agree; if they disagree, this market resolves NO' -> named, "
     "mechanism=quorum (N-must-agree with a stated outcome on disagreement; outlet type "
@@ -1246,10 +1258,14 @@ _SOURCE_COMMITMENT_SYSTEM = (
     "this rule failed in reality).\n"
     "- 'resolves once all listed outlets call the race for the same candidate; if they have "
     "not, resolves based on official certification' -> named, mechanism=quorum (quorum plus "
-    "an ordered, condition-triggered fallback).\n\n"
+    "an ordered, condition-triggered fallback).\n"
+    "- Source list is exactly 'Fiscal.ai' for 'Will <company> report above N <metric>?' -> "
+    "committed_secondhand (one concrete checkable source, but a data aggregator re-publishing "
+    "the issuer's numbers — not the issuer's own filings, and no rule for a disagreement).\n\n"
     "Judge only from the sources and rules given; never invent a source. Return ONLY JSON:\n"
-    "{\"commitment\": \"named|uncommitted_illustrative|uncommitted_placeholder|none\",\n"
-    " \"source_of_record\": \"<authority name, copied VERBATIM from the venue text or source list>\" or null,\n"
+    "{\"commitment\": \"named|committed_secondhand|uncommitted_illustrative|uncommitted_placeholder|none\",\n"
+    " \"source_of_record\": \"<the committed source's name (the authority for named, the "
+    "secondhand source for committed_secondhand), copied VERBATIM from the venue text or source list>\" or null,\n"
     " \"mechanism\": \"single_authority|precedence|quorum\" or null,\n"
     " \"primary_source_number\": <number of the listed source that controls, or 0>,\n"
     " \"prose_sources\": [\"<verbatim name>\", ...],\n"
@@ -1301,7 +1317,8 @@ def llm_source_commitment(market: dict) -> dict | None:
     if d is None:
         return None
     c = (d.get("commitment") or "").strip().lower()
-    if c not in ("named", "uncommitted_illustrative", "uncommitted_placeholder", "none"):
+    if c not in ("named", "committed_secondhand", "uncommitted_illustrative",
+                 "uncommitted_placeholder", "none"):
         return None
 
     # --- verbatim gates: the LLM judges; it never mints an identifier ---
@@ -1351,11 +1368,15 @@ def llm_source_commitment(market: dict) -> dict | None:
     # A 'named' claim must survive its own evidence: if the gate nulled the source_of_record,
     # no mechanism (precedence/quorum) carries the commitment, and no listed authority backs it,
     # the named class rests on nothing traceable — fail closed rather than ship an uncapped
-    # grade on a hallucinated authority (swarm finding, 2026-07-03).
-    if c == "named" and sor is None and mech not in ("precedence", "quorum") and not auths:
+    # grade on a hallucinated authority (swarm finding, 2026-07-03). committed_secondhand gets
+    # the same treatment: its whole claim is "one concrete checkable source", so an untraceable
+    # source name leaves nothing behind the commitment.
+    if c in ("named", "committed_secondhand") and sor is None \
+            and mech not in ("precedence", "quorum") and not auths:
+        label = "named" if c == "named" else "secondhand"
         c = "uncommitted_placeholder"
         mech = None
-        why = (why + " [demoted: named claim had no gate-surviving evidence]")[:300]
+        why = (why + f" [demoted: {label} claim had no gate-surviving evidence]")[:300]
 
     return {"commitment": c, "source_of_record": sor, "mechanism": mech,
             "primary_url": purl, "prose_sources": prose,

@@ -133,6 +133,30 @@ def test_gate_word_boundary_blocks_minted_acronyms(monkeypatch):
     assert out["commitment"] == "uncommitted_placeholder"
 
 
+def test_gate_secondhand_claim_without_evidence_demoted(monkeypatch):
+    """committed_secondhand rests entirely on 'one concrete checkable source' — if the verbatim
+    gate nulls the source name, the claim fails closed to placeholder like a named claim would."""
+    _mock_llm(monkeypatch, {"commitment": "committed_secondhand", "source_of_record": "Fiscal.ai",
+                            "mechanism": None, "primary_source_number": 0,
+                            "prose_sources": [], "why": "x"})
+    out = E.llm_source_commitment(dict(MARKET_WITH_LIST))   # "Fiscal.ai" appears nowhere in venue text
+    assert out["source_of_record"] is None
+    assert out["commitment"] == "uncommitted_placeholder"
+
+
+def test_gate_secondhand_verbatim_source_survives(monkeypatch):
+    mkt = {"question_raw": "Will Tesla Inc. report Above 1.5 million total deliveries in 2026?",
+           "resolution_rules_raw": "If Tesla Inc. reports Above 1500000.0 total deliveries in 2026, then the market resolves to Yes.",
+           "resolution_source_list": None,
+           "resolution_source": "Fiscal.ai", "source_citation": "https://fiscal.ai"}
+    _mock_llm(monkeypatch, {"commitment": "committed_secondhand", "source_of_record": "Fiscal.ai",
+                            "mechanism": None, "primary_source_number": 1,
+                            "prose_sources": [], "authorities_in_list": [], "why": "x"})
+    out = E.llm_source_commitment(mkt)
+    assert out["commitment"] == "committed_secondhand"
+    assert out["source_of_record"] == "Fiscal.ai"
+
+
 def test_gate_invalid_class_returns_none(monkeypatch):
     _mock_llm(monkeypatch, {"commitment": "sort_of_named", "source_of_record": None,
                             "prose_sources": [], "why": "x"})
@@ -213,12 +237,16 @@ def test_fail_closed_on_exception(monkeypatch):
 
 @pytest.mark.parametrize("subtype,expected_status,expected_grade", [
     ("named", "platform_named", "A"),
+    # ruled 2026-07-04: a real commitment (status stays platform_named — the source table
+    # tells the truth) but capped C for authority quality (the Fiscal.ai class)
+    ("committed_secondhand", "platform_named", "C"),
     ("uncommitted_illustrative", "no_committed_source", "B"),
     ("uncommitted_placeholder", "no_committed_source", "C"),
     ("none", "no_source_stated", "C"),
 ])
 def test_status_is_pure_function_of_commitment(monkeypatch, subtype, expected_status, expected_grade):
-    sc = {"commitment": subtype, "source_of_record": "Somebody" if subtype == "named" else None,
+    committed = subtype in ("named", "committed_secondhand")
+    sc = {"commitment": subtype, "source_of_record": "Somebody" if committed else None,
           "mechanism": "single_authority" if subtype == "named" else None,
           "primary_url": None, "prose_sources": [], "why": "t",
           "rubric_version": E.SOURCE_RUBRIC_VERSION}
@@ -245,6 +273,7 @@ def test_prose_sources_join_list_with_editorial_provenance(monkeypatch):
     ({"source_commitment_subtype": "named", "source_citation": "https://bls.gov/cpi"}, "pass"),
     ({"source_commitment_subtype": "named", "source_citation": None}, "partial"),                  # prose authority, no link
     ({"source_commitment_subtype": "named", "source_citation": "https://kalshi.com"}, "partial"),  # venue homepage != citation
+    ({"source_commitment_subtype": "committed_secondhand", "source_citation": "https://fiscal.ai"}, "partial"),  # named+checkable; cap carries the defect
     ({"source_commitment_subtype": "uncommitted_illustrative", "source_citation": "https://x.gov/d"}, "partial"),
     ({"source_commitment_subtype": "uncommitted_placeholder", "resolution_source": "A consensus of credible reporting", "source_citation": "https://x.gov/d"}, "fail"),
     ({"source_commitment_subtype": "none"}, "fail"),

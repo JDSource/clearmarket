@@ -331,7 +331,10 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
               "why": "commitment judgment failed; capped fail-closed",
               "rubric_version": E.SOURCE_RUBRIC_VERSION, "_fail_closed": True}
         print(f"    source_commitment FAIL-CLOSED for {event['event_id']}", file=sys.stderr)
-    top = ("named" if sc["commitment"] == "named"
+    # committed_secondhand keeps top='named': the venue DID commit to one concrete source
+    # (ruled 2026-07-04) — the source table shows it truthfully; the C cap carries the
+    # authority-quality judgment. Splitting these axes is the point of the subtype.
+    top = ("named" if sc["commitment"] in ("named", "committed_secondhand")
            else "none" if sc["commitment"] == "none" else "uncommitted")
     # LLM-surfaced prose authorities (verbatim-gated in enhance) join the canonical source
     # list as editorial-tier entries — visible on every surface, not just baked into the grade.

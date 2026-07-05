@@ -171,6 +171,14 @@ export function rationaleFor(m: {
     return { grade, word: 'Elevated risk', flag: 'no source stated',
       text: `The venue names no resolution source at all.` };
   }
+  // secondhand BEFORE the generic commitment branch: its copy must not claim "committed to
+  // no controlling source" — the venue DID commit; the defect is authority quality (ruled 2026-07-04)
+  if (caps.includes('commitment_committed_secondhand')) {
+    return { grade, word: 'Elevated risk', flag: 'secondhand source',
+      text: src
+        ? `Settles per ${src} — a secondhand data source, not the underlying authority; no rule for when they disagree.`
+        : `Settles per a secondhand data source, not the underlying authority; no rule for when they disagree.` };
+  }
   if (caps.some((c) => c.startsWith('commitment_'))) {
     return { grade, word: 'Elevated risk', flag: 'no committed source',
       text: `The venue committed to no controlling source — placeholder or menu language decides at resolution.` };
