@@ -439,6 +439,32 @@
     ],
     "note": "Kalshi visit-series template (2026-07-05 eyeball finding): 17-entry any-of menu of news outlets + UNFILLED template tokens ('official representatives or offices of <person>'). Menu with no controlling authority -> placeholder (C-floor consistent). Template tokens must NOT reconcile it to named and must NOT ship as source_of_record. The any-of rule on a one-sided occurrence question is NOT a source CONFLICT (factor rubric, same date) — the C stands on commitment, with the honest tooltip. Whether any-of menus deserve a committed class is parked as an open editorial call (Decision 3)."
    }
+  },
+  {
+   "id": "poly_fed_url_only_list",
+   "market": {
+    "question_raw": "Will no Fed rate cuts happen in 2026?",
+    "resolution_rules_raw": "This market will resolve according to the exact amount of cuts of 25 basis points in 2026 by the Fed (including any cuts made during the December meeting).\n\nEmergency rate cuts outside of scheduled FOMC meetings will also count toward the total number of cuts in 2026. This market will remain open until December 31, 2026, 11:59 PM ET, to account for any such emergency actions.\n\nFor example, if the Fed cuts rates by 50 bps after a meeting, it would be considered 2 cuts (of 25 bps each).\n\nThis market will resolve early to \"No\" if the specified number of cuts becomes impossible — i.e., if more cuts have already occurred than the strike in question.\n\nNote that cuts between 1–24 bps (inclusive) will also be considered 1 rate cut.\n\nThe resolution source for this market will be FOMC statements after meetings scheduled in 2026 according to the official calendar: https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm. The level and change of the target federal funds rate is also published at the official website of the Federal Reserve at https://www.federalreserve.gov/monetarypolicy/openmarket.htm.",
+    "resolution_source_list": [
+     {
+      "name": "federalreserve.gov",
+      "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+     },
+     {
+      "name": "federalreserve.gov",
+      "url": "https://www.federalreserve.gov/monetarypolicy/openmarket.htm"
+     }
+    ],
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "source_of_record_contains": "federalreserve",
+    "note": "FOMC-ladder fix (2026-07-06, v3.6.2): rules commit to FOMC statements with two federalreserve.gov URLs; entries are host-named at build so the evidence gate can verify. Pre-fix this class (705 markets) was demoted to placeholder for lack of a verbatim name — the LLM judged named correctly and the gate had nothing to check."
+   }
   }
  ]
 }

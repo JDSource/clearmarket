@@ -52,18 +52,18 @@ const jsonld = {
         <h1>Do prediction markets resolve fairly?</h1>
         <p class="doc-subtitle">A 7,253-contract Polymarket backtest.</p>
         <p class="doc-lede">Most prediction-market contracts on Polymarket and Kalshi resolve cleanly. Some don't. They end in a dispute, or settle against what actually happened. That is the resolution risk traders and funds care about. ClearMarket grades it before a market resolves, from the resolution rules alone, as A, B, or C. This page tests the grade against the public record: do the contracts it flags as unclear actually get disputed?</p>
-        <blockquote class="keyfinding"><strong>Key finding.</strong> Across 7,253 Polymarket markets with public dispute records, contracts ClearMarket rated C — the lowest of its three Resolution Clarity Grades (RCG) — were formally disputed at <strong>19 times the rate</strong> of A- and B-rated contracts (1.50% vs 0.08%). 51 of the 54 disputes landed on C-rated contracts. The three challenges to A-rated contracts all failed: each market settled exactly as its rules specified. Reproducible at <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</blockquote>
+        <blockquote class="keyfinding"><strong>Key finding.</strong> Across 7,253 Polymarket markets with public dispute records, contracts ClearMarket rated C — the lowest of its three Resolution Clarity Grades (RCG) — were formally disputed at <strong>19 times the rate</strong> of A- and B-rated contracts (1.52% vs 0.08%). 51 of the 54 disputes landed on C-rated contracts. The three challenges to A-rated contracts all failed: each market settled exactly as its rules specified. Reproducible at <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</blockquote>
       </header>
 
       <section class="surface" id="finding">
         <h2 class="surface-tab">1 · THE FINDING</h2>
-        <p>Across <strong>7,253 Polymarket markets</strong> with public dispute records, 51 of the 54 markets that ended up in a resolution dispute had been rated <strong>C by ClearMarket</strong>, the lowest clarity tier. C-rated contracts dispute at <strong>1.50%</strong> — 19 times the 0.08% rate of A- and B-rated contracts combined.</p>
+        <p>Across <strong>7,253 Polymarket markets</strong> with public dispute records, 51 of the 54 markets that ended up in a resolution dispute had been rated <strong>C by ClearMarket</strong>, the lowest clarity tier. C-rated contracts dispute at <strong>1.52%</strong> — 19 times the 0.08% rate of A- and B-rated contracts combined.</p>
         <table class="m-table">
           <thead><tr><th scope="col">RCG</th><th scope="col" class="m-num">Resolution disputes</th><th scope="col" class="m-num">Markets</th><th scope="col" class="m-num">Dispute rate</th></tr></thead>
           <tbody>
-            <tr><td><span class="gr gr-a">A</span></td><td class="m-num">3</td><td class="m-num">2,549</td><td class="m-num">0.12%</td></tr>
-            <tr><td><span class="gr gr-b">B</span></td><td class="m-num">0</td><td class="m-num">1,296</td><td class="m-num">0.00%</td></tr>
-            <tr><td><span class="gr gr-c">C</span></td><td class="m-num">51</td><td class="m-num">3,408</td><td class="m-num">1.50%</td></tr>
+            <tr><td><span class="gr gr-a">A</span></td><td class="m-num">3</td><td class="m-num">2,590</td><td class="m-num">0.12%</td></tr>
+            <tr><td><span class="gr gr-b">B</span></td><td class="m-num">0</td><td class="m-num">1,299</td><td class="m-num">0.00%</td></tr>
+            <tr><td><span class="gr gr-c">C</span></td><td class="m-num">51</td><td class="m-num">3,364</td><td class="m-num">1.52%</td></tr>
           </tbody>
         </table>
         <p>Disputes concentrate in the bottom tier, the way loan defaults concentrate in the lowest credit rating. ClearMarket assigns the grade from rules text alone and never reads the dispute history, so the result is not circular. A dispute here means a formal on-chain challenge to a proposed outcome — including challenges that fail. All three challenges to A-rated contracts failed: two markets settling on the official CME silver print and one on Colombia's national electoral registry were each challenged, re-proposed, and settled exactly as their rules specified. That is the grade's claim in action — not that no one will ever contest a clear market, but that a clearly-worded market with a committed source gives a challenge nothing to stand on.</p>
@@ -71,16 +71,16 @@ const jsonld = {
 
       <section class="surface" id="control">
         <h2 class="surface-tab">2 · IT ISN'T JUST THE BUSY MARKETS</h2>
-        <p>The obvious objection: contentious markets draw both more money and vaguer wording, so maybe the grade is only a proxy for attention. It isn't. Splitting the universe into quartiles by trading volume, C's dispute rate climbs steadily with volume — <strong>0.39% in the lowest band to 3.75% in the highest</strong> — while A and B stay at or near zero in every band.</p>
+        <p>The obvious objection: contentious markets draw both more money and vaguer wording, so maybe the grade is only a proxy for attention. It isn't. Splitting the universe into quartiles by trading volume, C's dispute rate climbs steadily with volume — <strong>0.39% in the lowest band to 3.83% in the highest</strong> — while A and B stay at or near zero in every band.</p>
         <table class="m-table">
           <thead><tr><th scope="col">Volume band</th><th scope="col" class="m-num">RCG <span class="gh gh-a">A</span></th><th scope="col" class="m-num">RCG <span class="gh gh-b">B</span></th><th scope="col" class="m-num">RCG <span class="gh gh-c">C</span></th></tr></thead>
           <tbody>
-            <tr><td>Lowest quartile</td><td class="m-num">0 / 736</td><td class="m-num">0 / 309</td><td class="m-num">3 / 768 &middot; 0.39%</td></tr>
-            <tr><td>Highest quartile</td><td class="m-num">3 / 610 &middot; 0.49%</td><td class="m-num">0 / 191</td><td class="m-num">38 / 1,013 &middot; 3.75%</td></tr>
+            <tr><td>Lowest quartile</td><td class="m-num">0 / 738</td><td class="m-num">0 / 309</td><td class="m-num">3 / 766 &middot; 0.39%</td></tr>
+            <tr><td>Highest quartile</td><td class="m-num">3 / 630 &middot; 0.48%</td><td class="m-num">0 / 191</td><td class="m-num">38 / 993 &middot; 3.83%</td></tr>
           </tbody>
         </table>
         <p class="doc-note">(B is 0% across all four quartiles; A's only challenges are the three failed ones, all in the top band. The middle two quartiles are omitted here.)</p>
-        <p>A dispute needs two things: a vague rule <em>and</em> enough money to be worth fighting over. The money was there. The highest-volume quartile alone held <strong>801 A- and B-rated markets</strong>, the most contentious, highest-attention contracts on the platform. Three drew challenges; all three failed against the committed source. C-rated contracts in the same band disputed at 3.75% — ten times the A-and-B rate. Clear wording held at every volume.</p>
+        <p>A dispute needs two things: a vague rule <em>and</em> enough money to be worth fighting over. The money was there. The highest-volume quartile alone held <strong>821 A- and B-rated markets</strong>, the most contentious, highest-attention contracts on the platform. Three drew challenges; all three failed against the committed source. C-rated contracts in the same band disputed at 3.83% — ten times the A-and-B rate. Clear wording held at every volume.</p>
       </section>
 
       <section class="surface" id="cases">

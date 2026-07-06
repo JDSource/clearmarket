@@ -1205,7 +1205,30 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
 # Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
 # grade change between vintages is always attributable to "rubric changed" or "venue text changed"
 # — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
-SOURCE_RUBRIC_VERSION = "v3.6.1-2026-07-05"
+# (v3.6.2 bumps on an EXTRACTION repair, not rubric wording: url-only list entries are now
+# host-named, unlocking evidence the gate could never see — judgments change systematically.)
+SOURCE_RUBRIC_VERSION = "v3.6.2-2026-07-06"
+
+
+def url_host(u) -> str | None:
+    """Domain of a URL ('https://www.federalreserve.gov/x' -> 'federalreserve.gov').
+
+    Used to NAME url-only source-list entries at build time. Rationale (FOMC-ladder eyeball
+    finding, 2026-07-06): the anti-hallucination gate accepts a named claim only on
+    verbatim-traceable evidence — a name in the venue text or source list. Poly URL candidates
+    carried name=None, so the class was structurally locked out of 'named' even when the URL
+    was federalreserve.gov and the LLM judged correctly (705 markets gate-demoted). This is
+    deterministic and makes NO authority judgment — cnn.com gets named exactly like
+    federalreserve.gov; the LLM still decides what counts as an authority."""
+    if not u or not isinstance(u, str):
+        return None
+    try:
+        from urllib.parse import urlparse
+        host = (urlparse(u if "://" in u else "https://" + u).netloc or "").lower()
+        host = host.split("@")[-1].split(":")[0]
+        return (host[4:] if host.startswith("www.") else host) or None
+    except Exception:
+        return None
 
 _SOURCE_COMMITMENT_SYSTEM = (
     "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
@@ -1378,6 +1401,10 @@ def llm_source_commitment(market: dict) -> dict | None:
         sor = sor or auths[0]
         mech = mech or "single_authority"
         why = (why + " [reconciled: non-news authority present in venue source list]")[:300]
+    elif auths and c == "named" and sor is None:
+        # named judgment whose paraphrased source name failed the verbatim gate, but a listed
+        # authority backs it — display the verbatim list name rather than nothing (v3.6.2)
+        sor = auths[0]
 
     # A 'named' claim must survive its own evidence: if the gate nulled the source_of_record,
     # no mechanism (precedence/quorum) carries the commitment, and no listed authority backs it,

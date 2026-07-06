@@ -157,6 +157,34 @@ def test_gate_secondhand_verbatim_source_survives(monkeypatch):
     assert out["source_of_record"] == "Fiscal.ai"
 
 
+def test_url_host_naming():
+    assert E.url_host("https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm") == "federalreserve.gov"
+    assert E.url_host("http://cnn.com/live") == "cnn.com"
+    assert E.url_host("storymaps.arcgis.com/stories/x") == "storymaps.arcgis.com"
+    assert E.url_host(None) is None
+    assert E.url_host("") is None
+
+
+def test_gate_named_survives_via_host_named_list_entry(monkeypatch):
+    """The FOMC-ladder fix (v3.6.2): url-only entries are host-named at build, so a named
+    judgment backed by a listed authority domain survives the evidence gate instead of being
+    demoted to placeholder for lack of a verbatim name."""
+    mkt = {"question_raw": "How many Fed rate cuts in 2026?",
+           "resolution_rules_raw": "The resolution source for this market will be FOMC statements after meetings scheduled in 2026.",
+           "resolution_source_list": [
+               {"name": "federalreserve.gov", "url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm", "provenance": "platform_api"},
+               {"name": "federalreserve.gov", "url": "https://www.federalreserve.gov/monetarypolicy/openmarket.htm", "provenance": "platform_api"}]}
+    _mock_llm(monkeypatch, {"commitment": "named",
+                            "source_of_record": "FOMC statements and Federal Reserve publications",  # paraphrase — gate nulls it
+                            "mechanism": "single_authority", "primary_source_number": 1,
+                            "prose_sources": [],
+                            "authorities_in_list": ["federalreserve.gov"], "why": "fed"})
+    out = E.llm_source_commitment(mkt)
+    assert out["commitment"] == "named"                      # reconciliation holds it via the listed authority
+    assert out["source_of_record"] == "federalreserve.gov"   # falls back to the verbatim list name
+    assert out["primary_url"] == "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+
+
 def test_gate_template_token_never_promotes_or_displays(monkeypatch):
     """Kalshi series templates ship unfilled placeholder entries ('official representatives or
     offices of <person>'). They pass the verbatim gate (they ARE in the list) but must never

@@ -118,8 +118,10 @@ def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
     # force-capped "none". Entries: the venue's structured resolutionSource field (if any) + ALL
     # regex-extracted URL candidates. Prose-named authorities are appended at enrichment.
     rs_prose = (m.get("resolutionSource") or "").strip() or None
+    # URL candidates are host-NAMED (federalreserve.gov) so the commitment gate has verbatim
+    # evidence to verify against — a name:None entry can never satisfy it (v3.6.2 fix).
     src_list = ([{"name": rs_prose, "url": None, "provenance": "platform_api"}] if rs_prose else []) \
-             + [{"name": None, "url": u, "provenance": "platform_api"}
+             + [{"name": E.url_host(u), "url": u, "provenance": "platform_api"}
                 for u in (psrc.get("candidates") or [])]
     mk = {
         "market_id":             E.generate_market_id("polymarket:" + (m.get("conditionId") or m.get("id") or m.get("question") or "")),
