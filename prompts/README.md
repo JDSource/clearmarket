@@ -1,49 +1,34 @@
-# ClearMarket Signal — LLM judge prompt templates
+# ClearMarket Signal — editorial methodology
 
-Versioned text files holding the exact prompt content fed to the LLM judge for each
-wire-type detection path. Every wire item published by CM Signal carries a
-`prompt_template` field (e.g., `cross_venue_v1`) that resolves to one of the files
-in this directory.
+CM Signal wire items carry values produced by an LLM judge, labelled with the
+`cm:tier: editorial` provenance tier. This directory documents the **methodology**
+behind that editorial layer: what each wire-type detection path evaluates, the
+inputs it considers, and the decision rubric it applies.
 
-## Why these are public
+The exact prompt text and the model configuration behind the judge are
+**proprietary** and are not published. What we publish is the reasoning method —
+enough for a consumer to understand and trust what the `editorial` tier means,
+without exposing the implementation that produces it.
 
-The `cm:tier: editorial` provenance label on values produced by the LLM judge is
-only meaningful if downstream consumers can audit what the judge was asked to
-decide. Publishing the prompts here makes the editorial layer reproducible:
+## What the editorial tier means
 
-- Institutional data buyers (Datalinx, Bloomberg-shape distributors) can audit
-  exactly what reasoning rubric the judge applied
-- AI agents grounding answers from CM Signal can verify the editorial method
-  matches their trust threshold
-- External researchers can re-run a wire item through a different model with the
-  same prompt and compare outputs
+The `cm:tier: editorial` label marks a value as the output of CM's judge rather
+than a direct venue field (`cm:tier: direct`) or an arithmetic derivation
+(`cm:tier: derived`). Editorial values are governed by a documented rubric and are
+versioned: a material change to a detection method ships as a new version, and a
+wire item's provenance records the methodology version that produced it.
 
-## Versioning
+## Detection paths
 
-Prompts are immutable once published under a version. Material changes ship a new
-version (`cross_venue_v2`), never modify `cross_venue_v1`. The `prompt_template`
-field on a wire item is a stable reference; old wires keep pointing at the
-version that produced them.
+| Wire type | What the judge evaluates |
+|---|---|
+| `cross_venue_divergence` | Whether a price gap between venues on the same linked question reflects a real divergence vs. a stale or thin quote |
+| `benchmark_drift` | Whether a market's implied path has drifted from an external benchmark of record |
+| `news_cycle` | Whether fresh market movement is attributable to an identifiable news catalyst |
+| `volume_spike` | Whether a surge of trading volume reflects genuine fresh attention vs. structural churn |
 
-## Files
-
-| File | Wire type | Status |
-|---|---|---|
-| `cross_venue_v1.txt` | `cross_venue_divergence` detection | stub (real prompt populated when LLM generator ships, build item #12 in `now.md`) |
-| `benchmark_drift_v1.txt` | `benchmark_drift` detection | stub |
-| `news_cycle_v1.txt` | `news_cycle` detection | stub |
-| `volume_spike_v1.txt` | `volume_spike` detection | stub |
-
-## Raw access
-
-GitHub raw URLs follow the pattern:
-
-```
-https://raw.githubusercontent.com/JDSource/clearmarket/main/prompts/<name>.txt
-```
-
-Wire items link the `prompt_template` field to the corresponding raw URL so any
-consumer can fetch the prompt programmatically.
+Per-wire methodology detail and the field-level provenance model live in the
+published methodology reference at `/methodology`.
 
 ## License
 
