@@ -78,29 +78,29 @@ const jsonld = {
     <!-- PROOF — audit matrix -->
     <section class="rr-sec">
       <p class="rr-label">Validated against the public record</p>
-      <h2 class="rr-proof-head">100% of resolution disputes were rated C.</h2>
-      <p class="rr-proof-sub">Zero A-rated and zero B-rated markets were disputed, across 7,155 graded Polymarket markets. The grade is read from rules text alone and never sees the dispute history, so the result is not circular.</p>
+      <h2 class="rr-proof-head">C-rated markets dispute at 16x the rate of A and B.</h2>
+      <p class="rr-proof-sub">Across 5,916 graded Polymarket markets with public dispute records, 45 of 48 formal disputes landed on C-rated contracts. The three challenges to A-rated contracts all failed — each market settled exactly as its rules specified. The grade is read from rules text alone and never sees the dispute history, so the result is not circular.</p>
       <div class="rr-matrix">
         <div class="rr-mcol rr-m-a">
           <span class="rr-m-grade">Grade A</span>
-          <span class="rr-m-num">0</span>
+          <span class="rr-m-num">3</span>
           <span class="rr-m-unit">disputed</span>
-          <span class="rr-m-den">of 1,716 markets</span>
-          <span class="rr-m-rate">0.00% dispute rate</span>
+          <span class="rr-m-den">of 2,077 markets</span>
+          <span class="rr-m-rate">0.14% dispute rate</span>
         </div>
         <div class="rr-mcol rr-m-b">
           <span class="rr-m-grade">Grade B</span>
           <span class="rr-m-num">0</span>
           <span class="rr-m-unit">disputed</span>
-          <span class="rr-m-den">of 1,461 markets</span>
+          <span class="rr-m-den">of 998 markets</span>
           <span class="rr-m-rate">0.00% dispute rate</span>
         </div>
         <div class="rr-mcol rr-m-c">
           <span class="rr-m-grade">Grade C</span>
-          <span class="rr-m-num">26</span>
+          <span class="rr-m-num">45</span>
           <span class="rr-m-unit">disputed</span>
-          <span class="rr-m-den">of 3,978 markets</span>
-          <span class="rr-m-rate">0.65% dispute rate</span>
+          <span class="rr-m-den">of 2,841 markets</span>
+          <span class="rr-m-rate">1.58% dispute rate</span>
         </div>
       </div>
       <p class="rr-note"><a href="/research/resolution-clarity-index/" target="_blank" rel="noopener">Full backtest, method, and the volume-confound control &rarr;</a></p>
@@ -114,8 +114,8 @@ const jsonld = {
         <div class="rr-use">
           <p class="rr-use-tag">Underwrite resolution cover</p>
           <p>Resolution disputes are a classic tail: rare, concentrated, and until now unpriced. ClearMarket supplies the independent baseline that makes the cover underwritable.</p>
-          <p>The 7,155-contract backtest is the raw evidence an underwriter prices against. <strong>Grade A and B markets show a historical 0% dispute rate</strong>, so premiums scale against Grade C dispute risk alone.</p>
-          <p>Because ClearMarket links the same question across Polymarket and Kalshi, <strong>the exposure is hedgeable</strong>: a position on one venue offsets the other. The actuarial model stays yours; ClearMarket supplies the risk tier and the cross-venue book beneath it.</p>
+          <p>The 5,916-contract backtest is the raw evidence an underwriter prices against. <strong>A- and B-rated markets dispute at 0.10% historically, C-rated at 1.58%</strong> — a 16x spread between risk tiers, rising to 12x within the highest-volume quartile alone. That is a priceable base rate.</p>
+          <p>The actuarial model stays yours; ClearMarket supplies the independent risk tier, the dispute history behind it, and the cross-venue link where the same question trades on both venues.</p>
         </div>
         <div class="rr-use">
           <p class="rr-use-tag">Build or screen an index</p>
