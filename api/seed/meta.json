@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-12T17:36:15.149624+00:00",
+  "generated_at": "2026-07-06T00:30:45.836226+00:00",
   "schema": "v0.2.0-universe",
   "event_count": 2448,
-  "market_count": 16389,
+  "market_count": 20040,
   "demo_slugs": [
     "kxlayoffsyinfo-26",
     "fed-decision-in-june-825",
