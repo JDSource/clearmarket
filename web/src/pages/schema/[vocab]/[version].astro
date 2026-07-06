@@ -66,6 +66,17 @@ const VOCABS = {
       ['occurrence', 'Non-numeric: resolves on whether the event occurred.'],
     ],
   },
+  'source-commitment': {
+    field: 'source_commitment_subtype', title: 'Source commitment', schema: 'markets',
+    desc: 'Whether the venue committed to a concrete controlling source of record — judged from the rules text against a version-stamped rubric, independent of the venue\'s own quality label. Feeds a grade ceiling: illustrative caps at B; committed_secondhand, placeholder, and none cap at C. See /methodology.',
+    terms: [
+      ['named', 'A single concrete institutional authority is the source of record (government or statistics agency, regulator, central bank, exchange, court, or a benchmark administrator with a published methodology), or a defined mechanism over multiple sources: stated precedence, or a quorum.'],
+      ['committed_secondhand', 'The venue commits to exactly one concrete, checkable source that is not an authority for the quantity — a commercial data aggregator or a single news/sports outlet as sole controlling source. A real commitment, but secondhand: no published settlement methodology, and no rule for a disagreement with the underlying authority.'],
+      ['uncommitted_illustrative', 'A source gestured at with a hedge ("for example", "such as") — a candidate, not a commitment.'],
+      ['uncommitted_placeholder', 'A category, not an authority ("a consensus of credible reporting"), a menu of interchangeable outlets with no controlling rule, or a primary with an unordered optional fallback — the Venezuela shape.'],
+      ['none', 'No source language at all.'],
+    ],
+  },
   'field-provenance': {
     field: 'field_provenance', title: 'Field provenance', schema: 'markets',
     desc: 'The origin of each editable field on a record — how ClearMarket obtained that value. Any verifiable identifier traces to platform data; the LLM is confined to editorial glosses.',
@@ -96,7 +107,7 @@ const VOCABS = {
 
 export function getStaticPaths() {
   // mirror of VOCABS keys; one page per vocabulary at version v1
-  const SLUGS = ['arbitration-model','resolution-proposer','source-type','settlement-style','direction','field-provenance','category'];
+  const SLUGS = ['arbitration-model','resolution-proposer','source-type','settlement-style','direction','source-commitment','field-provenance','category'];
   return SLUGS.map((slug) => ({ params: { vocab: slug, version: 'v1' } }));
 }
 

@@ -290,6 +290,41 @@
         }
       }
     },
+    "source_commitment": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "named",
+        "uncommitted",
+        "none",
+        null
+      ],
+      "description": "Top-level commitment class, stamped at enrichment from the LLM commitment judgment (rubric version recorded in field_provenance). committed_secondhand markets carry 'named' here — the venue DID commit; the quality deficiency is expressed by the subtype and the grade cap."
+    },
+    "source_commitment_subtype": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "named",
+        "committed_secondhand",
+        "uncommitted_illustrative",
+        "uncommitted_placeholder",
+        "none",
+        null
+      ],
+      "description": "Full commitment taxonomy (vocabulary: /schema/source-commitment/v1). Feeds the grade ceiling: uncommitted_illustrative caps B; committed_secondhand, uncommitted_placeholder and none cap C."
+    },
+    "source_of_record": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The committed source's name, copied VERBATIM from the venue's text or source list (never minted by the model — the anti-hallucination gate discards untraceable names). The authority for named; the secondhand source for committed_secondhand; null when uncommitted."
+    },
     "source_status": {
       "type": [
         "string",

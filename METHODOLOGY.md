@@ -114,7 +114,7 @@ defects, so the grade scores those defects directly.
 | Contested reality | 22 | Whether the underlying fact is controlled or disputed by an interested party (Venezuela, Ukraine). Most saturation-resistant. |
 | Source clarity | 18 | Authoritative named source + usable link. Necessary but commoditizes fastest. |
 | Arbiter incentive | 12 | Dispute resolver's capture risk: regulated/automated vs. permissionless oracle (the UMA flip). |
-| Source-conflict rule | 8 | If 2+ **genuinely competing** sources (independent authorities that could give contradictory answers) are named, is there an explicit precedence/fallback rule? A named *primary with an informal fallback* is **not** a conflict (Venezuela). *Situational — the only one.* |
+| Source-conflict rule | 8 | If 2+ **genuinely competing** sources (independent authorities that could give contradictory answers) are named, is there an explicit precedence/fallback rule? A named *primary with an informal fallback* is **not** a conflict (Venezuela), and neither is an any-of rule ("at least one listed source reports X") on a one-sided occurrence question — the rule states which report controls. *Situational — the only one.* |
 | Temporal precision | 7 | Controlling timestamp vs. source-update lag (OPM shutdown). |
 | Source mutability | 5 | Editable/tamperable source without a snapshot rule (Ukraine map, Météo-France sensor). |
 
