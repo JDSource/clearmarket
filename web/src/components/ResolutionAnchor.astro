@@ -54,9 +54,27 @@ const ARBITER_FRAME: Record<string, { label: string; risk: string }> = {
 // --- the 7 RCG factors ---
 const rf = ((event as any).rcg_factors ?? {}) as Record<string, { rating: string; why: string }>;
 
-// derived factor 3 (source clarity) — deterministic from source fields
+// factor 3 (source clarity) — read the STAMPED grade factor when present (the market's rcg
+// audit object, computed at enrichment from the commitment judgment) so the page shows the
+// rating that actually scored the grade. The presence-based derivation below is the fallback
+// for pre-refactor bundles only.
 let sourceClarity: { rating: string; why: string };
-if (sourceUrl && sourceName) sourceClarity = { rating: 'pass', why: `Named authoritative source with usable link (${sourceName}).` };
+const stampedSC = ((primary as any)?.rcg?.factors?.source_clarity ?? null) as { rating: string } | null;
+const commitSub = (primary as any)?.source_commitment_subtype ?? null;
+if (stampedSC?.rating) {
+  const sor = (primary as any)?.source_of_record ?? null;
+  const mech = (primary as any)?.source_mechanism ?? null;
+  const why = commitSub === 'named'
+    ? `Committed source of record${sor ? ` (${sor})` : ''}${mech === 'quorum' ? ' — quorum rule over multiple sources' : mech === 'precedence' ? ' — stated precedence rule' : ''}.`
+    : commitSub === 'uncommitted_illustrative'
+    ? 'Source gestured at with a hedge ("for example …") — a candidate, not a commitment.'
+    : commitSub === 'none'
+    ? 'No source language in the rules at all.'
+    : commitSub
+    ? 'No committed source — placeholder or menu language only.'
+    : 'Derived from the stamped grade factors.';
+  sourceClarity = { rating: stampedSC.rating, why };
+} else if (sourceUrl && sourceName) sourceClarity = { rating: 'pass', why: `Named authoritative source with usable link (${sourceName}).` };
 else if (sourceUrl) sourceClarity = { rating: 'partial', why: `Source link present (${hostOf(sourceUrl)}) but no named publisher of record.` };
 else if (underlyingRef) sourceClarity = { rating: 'partial', why: `Editorial reference only (${underlyingRef.slice(0, 70)}); no platform-named source.` };
 else sourceClarity = { rating: 'fail', why: 'No named data source; resolves by consensus of reporting.' };

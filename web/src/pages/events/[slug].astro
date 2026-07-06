@@ -16,7 +16,7 @@ import MarketsTable from '../../components/MarketsTable.astro';
 import VerbatimRules from '../../components/VerbatimRules.astro';
 import WireItems from '../../components/WireItems.astro';
 import ProgrammaticAccess from '../../components/ProgrammaticAccess.astro';
-import { eventDisplayQuestion } from '../../lib/labels';
+import { eventDisplayQuestion, sourceStatusOf } from '../../lib/labels';
 import {
   getAllEvents, getEventBySlug, getMarketsForEvent, getMarkByMarketId, getResolutionLogForEvent,
   SPECIMEN_GENERATED_AT, SCHEMA_VERSION, type Event, type Market,
@@ -114,14 +114,12 @@ const marketCount = markets.length;
 const cumulativeVolumeUsd = Math.round(markets.reduce((s, m) => s + (Number(m.volume_total_usd) || 0), 0));
 // question_id + source_status — the two differentiators, made machine-readable for crawlers.
 // question_id: the canonical question; markets sharing it are the same question across venues + events.
-// source_status mirrors the API derivation (api/src/index.ts marketOut) EXACTLY so HTML == JSON == MCP.
+// source_status is the STAMPED enrichment judgment, read via the one shared helper
+// (labels.sourceStatusOf) so HTML == JSON == API == MCP — no per-surface re-derivation.
 const repQuestionId = (repMarket as any)?.question_id ?? null;
-const repHasNamedSource = repMarket?.resolution_source != null && String(repMarket.resolution_source).trim() !== '';
-const repSourceStatus = repHasNamedSource
-  ? 'platform_named'                                                          // venue committed to a concrete authority
-  : (repMarket as any)?.source_commitment === 'uncommitted' ? 'no_committed_source' // gestured at a source but hedged/placeholder
-  : (repMarket as any)?.source_commitment === 'none' ? 'no_source_stated'     // venue named no source at all
-  : 'unknown';
+const repSourceStatus = sourceStatusOf(repMarket as any);
+const repSources = ((repMarket as any)?.resolution_source_list ?? null) as
+  { name?: string | null; url?: string | null; provenance?: string | null }[] | null;
 const eventJsonLd: Record<string, unknown> = {
   '@context': ['https://schema.org', { cm: 'https://clearmarket.fyi/schema/v1#' }],
   '@type': 'Dataset',
@@ -157,6 +155,13 @@ const eventJsonLd: Record<string, unknown> = {
   'cm:arbitrationModel': repMarket?.arbitration_model ?? undefined,
   'cm:resolutionProposer': repMarket?.resolution_proposer ?? undefined,
   'cm:resolutionSource': repMarket?.resolution_source ?? undefined,
+  // full source set (venue-listed + prose-surfaced), machine-readable for grounded search —
+  // the menu-vs-committed-authority distinction, visible to crawlers, not just in the grade
+  ...(repSources?.length ? {
+    'cm:resolutionSources': repSources.map((s) => ({ name: s.name ?? undefined, url: s.url ?? undefined, provenance: s.provenance ?? undefined })),
+    'cm:sourceOfRecord': (repMarket as any)?.source_of_record ?? undefined,
+    'cm:sourceMechanism': (repMarket as any)?.source_mechanism ?? undefined,
+  } : {}),
   'cm:venuesCovered': event.venues_covered,
 };
 if (earliest && latest) eventJsonLd.temporalCoverage = earliest === latest ? earliest : `${earliest}/${latest}`;

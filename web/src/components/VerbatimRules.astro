@@ -35,8 +35,20 @@ const blocks = VENUES.map((v) => {
     commitment: (rep as any)?.source_commitment ?? null,
     hedge: (rep as any)?.source_hedge_text ?? null,
     provenance: (rep as any)?.resolution_source_provenance ?? null,
+    // full source set (source-layer refactor): every venue-listed source + prose-surfaced
+    // authorities, each tagged with its provenance tier. This is what makes the
+    // menu-vs-committed-authority distinction VISIBLE, not just baked into the grade.
+    sources: (((rep as any)?.resolution_source_list ?? null) as
+      { name?: string | null; url?: string | null; provenance?: string | null }[] | null),
+    sourceOfRecord: (rep as any)?.source_of_record ?? null,
+    mechanism: (rep as any)?.source_mechanism ?? null,
   };
 });
+const MECH_LABEL: Record<string, string> = {
+  single_authority: 'single authority',
+  precedence: 'stated precedence rule',
+  quorum: 'quorum — multiple sources must agree',
+};
 // The LITERAL platform field + raw value, no normalizing. Maps our provenance tag back to the
 // actual platform API field, and shows the verbatim value the platform returned (Kalshi's
 // settlement_sources name, or the URL literally present in Polymarket's description) — never our
@@ -114,6 +126,24 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
           }{vs.href && vs.val !== vs.href ? <> <a class="cm-res-link" href={vs.href} rel="noopener nofollow">↗</a></> : null}</code>
         </div>
       ); })()}
+      {b.sources && b.sources.length > 0 && (
+        <div class="vr-srcs">
+          <span class="vr-k">sources ({b.sources.length}){b.mechanism ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : ''}</span>
+          <ul class="vr-src-list">
+            {b.sources.map((s) => (
+              <li>
+                {s.url
+                  ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
+                  : <span class="vr-src-name">{s.name}</span>}
+                {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
+                <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
+                  {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   ))}
 
@@ -173,6 +203,17 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
     white-space: pre-wrap; padding-left: 12px; border-left: 2px solid var(--cm-border-rule);
   }
   .vr-empty { color: var(--cm-fg-faint); font-style: italic; }
+  /* full source set */
+  .vr-srcs { margin-top: 8px; }
+  .vr-src-list { list-style: none; margin: 4px 0 0; padding: 0; }
+  .vr-src-list li { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary); }
+  .vr-src-name { color: var(--cm-fg-primary); }
+  .vr-src-sor {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--cm-dot-positive, #36c08a); border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    padding: 0 5px; border-radius: 2px;
+  }
+  .vr-src-prov { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-fg-faint); }
   /* resolution history ledger */
   .rl-wrap { margin-top: 22px; }
   .rl-table .rl-mkt { font-family: var(--cm-font-sans); font-size: 11.5px; color: var(--cm-fg-secondary); }

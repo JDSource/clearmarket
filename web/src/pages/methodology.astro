@@ -3,7 +3,7 @@ import Site from '../layouts/Site.astro';
 
 // Canonical methodology doc. Mirrors src/pages/api.astro's doc layout (sticky gutter +
 // surface sections + --va-* tokens) so the two reference pages read as one system.
-const updated = '2026-06-11';
+const updated = '2026-07-03';
 ---
 <Site title="Methodology — ClearMarket" description="How ClearMarket selects, sources, and grades prediction-market data across Kalshi and Polymarket.">
   <div class="doc">
@@ -52,29 +52,29 @@ const updated = '2026-06-11';
         <p>Every market's resolution source is captured from <strong>platform-provided data</strong>, never invented by a model. The mechanism differs by venue.</p>
 
         <h3>Kalshi — structured (direct)</h3>
-        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Coverage across 734 unique series (2026-06-12 vintage):</p>
+        <p>The resolution source and URL live in a structured API field (<code>series.settlement_sources</code>). We read it directly; no extraction. Across 734 unique series (2026-06-12 vintage), Kalshi <em>self-tags</em> 98% "authoritative" — but we do not take the venue's word for it. Our independent commitment classification treats a multi-outlet "credible-reporting menu" (a list of general-news outlets — ABC, Fox News, MSNBC, WSJ — with no single controlling authority) as an <strong>uncommitted placeholder</strong>, exactly as the commitment axis below requires, even though Kalshi self-tags it authoritative. A menu is committed only when the list also names a real non-news authority (SEC, EIA, CoinGecko) — in which case that authority is the source of record.</p>
         <ul class="m-list">
-          <li><strong>98% authoritative</strong> — Federal Reserve, BLS, BEA, NWS, Library of Congress, ICE, CF Benchmarks.</li>
-          <li><strong>2% loose</strong> — a placeholder ("For example, Google Finance"), all in the equity-index family.</li>
+          <li><strong>~86% committed</strong> (series-level, independent) — a single named authority (Federal Reserve, BLS, BEA, NWS, ICE, CF Benchmarks), or a menu that also names a real non-news authority.</li>
+          <li><strong>~14% uncommitted</strong> — multi-outlet news menus Kalshi self-tags authoritative (88 series) plus loose placeholders ("For example, Google Finance", 18 series).</li>
           <li><strong>0% missing.</strong></li>
         </ul>
 
-        <h3>Polymarket — hybrid extraction with a verbatim gate</h3>
-        <p>The source and URL are embedded in the market description free-text. We extract them <strong>without ever letting a model mint a URL</strong>:</p>
+        <h3>Polymarket — deterministic capture, gated judgment</h3>
+        <p>The sources are embedded in the market description free-text. We capture them <strong>without ever letting a model mint an identifier</strong>:</p>
         <ol class="m-list">
-          <li><strong>Regex</strong> extracts the candidate URLs present in the description (the deterministic floor).</li>
-          <li><strong>By count:</strong> 0 URLs goes to subjective/none; exactly 1 is used directly (no LLM); 2+ has an LLM select the primary <em>by number among the candidates</em>.</li>
-          <li><strong>Verbatim gate:</strong> the selected URL must appear verbatim in the description, or it is rejected and flagged for review.</li>
+          <li><strong>Regex</strong> extracts every candidate URL in the description — including bare-domain citations ("as posted on tesla.com") — and ALL candidates are kept in the market's <code>resolution_source_list</code> (the deterministic floor; nothing is collapsed away).</li>
+          <li><strong>One per-event commitment judgment</strong> (an LLM read of the full source list plus the rules prose, against the versioned rubric below) surfaces authorities the venue names <em>in words</em> with no URL ("the official CME settlement price") and selects the controlling URL <em>by number among the extracted candidates</em>.</li>
+          <li><strong>Verbatim gate:</strong> every identifier the judgment emits — a prose-surfaced source name, the source of record — must appear in the venue's own text as a whole token (word-boundary match), or it is discarded. A "named" classification whose evidence does not survive the gate is demoted to uncommitted, never shipped uncapped.</li>
         </ol>
-        <p>Result: <strong>91% pure-deterministic</strong> (48% subjective-no-URL + 43% single-URL), <strong>8% gated-LLM</strong>, and <strong>zero hallucinated URLs</strong> (8 borderline cases fell back to first-candidate and were flagged). The LLM is constrained to selecting among URLs that provably exist in platform text; it cannot introduce or mistype one.</p>
+        <p><strong>Zero hallucinated URLs remains structural:</strong> URLs enter the dataset only via regex extraction, and the judgment can only pick among them by index. Prose-surfaced names are tagged <code>clearmarket_editorial</code> and rendered as such. Extraction-mix statistics will be republished with the first enrichment under this pipeline.</p>
 
         <h3>Provenance tiers</h3>
         <p>Every value carries its origin. <strong>direct</strong>: platform API, structured field, or verbatim-extracted URL. <strong>editorial</strong>: LLM-drafted interpretation, e.g. <code>underlying_reference</code>. <strong>subjective</strong>: resolution by consensus, no named data source. The LLM is confined to the <code>editorial</code> tier; any verifiable identifier (source name, URL) traces to platform data.</p>
 
         <h3>Source commitment</h3>
-        <p>Capturing a source is not the same as the venue <em>committing</em> to one. We classify every market's resolution source on a <strong>commitment axis</strong>, because a hedge or a placeholder is not a definitive source:</p>
+        <p>Capturing a source is not the same as the venue <em>committing</em> to one. Our editorial engine classifies every market's resolution source on a <strong>commitment axis</strong>, reading the venue's full source list and rules against a published, <strong>version-stamped rubric</strong> (every judgment records the rubric version that produced it, so a grade change between vintages is always attributable to a rubric change or a venue-text change) — <strong>independent of the venue's own quality label</strong> — because a hedge, a placeholder, or a menu of interchangeable outlets is not a definitive source:</p>
         <ul class="m-list">
-          <li><strong>named</strong> — a concrete, resolvable authority (Federal Reserve, BLS, the NYC Rent Guidelines Board, a deep-link .gov / official-electoral citation). No grade cap.</li>
+          <li><strong>named</strong> — a concrete, resolvable authority (Federal Reserve, BLS, the NYC Rent Guidelines Board, a deep-link .gov / official-electoral citation), <em>or a defined mechanism over multiple sources</em>: a stated order of precedence, or a quorum ("all three sources must call it") — recorded as <code>source_mechanism</code>. A primary source with only an optional alternative ("a consensus of credible reporting may also be used"), with no rule for which controls on conflict, is NOT a mechanism — that is the Venezuela failure shape, classified placeholder. No grade cap.</li>
           <li><strong>uncommitted</strong> — a source is <em>gestured at</em> but not committed to. Two sub-cases: <em>illustrative</em> ("For example, Google Finance" — a candidate, not a commitment) and <em>placeholder</em> ("a consensus of credible reporting" — names no concrete authority).</li>
           <li><strong>none</strong> — no source language at all.</li>
         </ul>
@@ -109,7 +109,7 @@ const updated = '2026-06-11';
           <li>The <strong>applicable-factor count is surfaced with the grade</strong> ("B — scored on 6 of 7 factors") for comparability across markets of different complexity.</li>
         </ul>
 
-        <p>Five LLM-judged factors — trigger objectivity, contested reality, source-conflict rule, temporal precision, source mutability — are scored in <strong>one per-event call</strong> (<code>enhance.llm_rcg_factors</code>). Source clarity is hybrid: it reads the section 2 verified-source layer (deterministic for Kalshi, gated-LLM for Polymarket). Only arbiter incentive is purely deterministic (it reads the venue's arbitration model). Adding factors adds tokens, not calls. The full weighted model, scoring rules, and caps are in <code>rcg-scoring-model.csv</code> (repo root) — the canonical spec for this section.</p>
+        <p>Five LLM-judged factors — trigger objectivity, contested reality, source-conflict rule, temporal precision, source mutability — are scored in <strong>one per-event call</strong> (<code>enhance.llm_rcg_factors</code>), which reads the full source list and count. Source commitment is a <strong>second per-event LLM judgment</strong> (section 2), and source clarity derives deterministically from its stamped result — one judgment, no second-guessing. Arbiter incentive is purely deterministic (it reads the venue's arbitration model). The final score and every cap are deterministic arithmetic over the stamped factor values, so any grade re-derives from its stored audit object. The full weighted model, scoring rules, and caps are in <code>rcg-scoring-model.csv</code> (repo root) — the canonical spec for this section.</p>
 
         <p>The source-conflict rule was deterministic (URL-count + regex) through 2026-05-26; it moved to the LLM on 2026-05-27 because URL counting mis-read one source across multiple pages as "multiple sources" (false C) and missed prose-named sources entirely (false <code>na</code>). It is now a reading-comprehension judgment.</p>
 
@@ -121,7 +121,7 @@ const updated = '2026-06-11';
           <li><strong>OPM shutdown — B.</strong> Resolved against the OPM website's status; funding was signed November 12 but the site did not update until November 13, so traders right on the event lost on the source's lag.</li>
           <li><strong>Ukraine map — C.</strong> Resolved against a particular online map, with no rule for what happens if it is edited — and it was allegedly modified mid-contract.</li>
         </ul>
-        <p>Beyond these four tail cases, the grade has been tested at scale against the public dispute record: across <strong>7,155 Polymarket markets</strong>, every market that ended in a resolution dispute had been rated C, with zero disputes among A- and B-rated markets. See the full <a href="/research/resolution-clarity-index/">resolution-clarity validation backtest</a>.</p>
+        <p>Beyond these four tail cases, the grade has been tested at scale against the public dispute record: across <strong>5,916 Polymarket markets</strong> with public dispute records, C-rated contracts were formally disputed at 16 times the rate of A- and B-rated contracts (1.58% vs 0.10%); the three challenges to A-rated contracts all failed against their committed sources. See the full <a href="/research/resolution-clarity-index/">resolution-clarity validation backtest</a>.</p>
         <p>Full-universe distribution is pending the per-event LLM rater's calibration run against a sample of <em>ordinary</em> markets — four tail failures are not a calibration set.</p>
 
         <p>The cross-venue resolution-governance contrast (objective, named-authority Kalshi markets vs. the subjective-consensus share on Polymarket) is the signal the venues themselves do not surface.</p>
@@ -129,7 +129,7 @@ const updated = '2026-06-11';
 
       <section class="surface" id="editorial">
         <div class="surface-tab">4 · EDITORIAL ENRICHMENT</div>
-        <p>On top of the verified-source layer, ClearMarket adds editorial fields (<code>editorial_notes</code>, <code>underlying_reference</code>, <code>tags</code>, canonical question) drafted by an LLM and tagged <code>editorial</code>. These <em>interpret and gloss</em> the verified data — e.g. naming the authoritative publisher (S&amp;P Dow Jones Indices) where a venue cites only a placeholder (Google Finance) — but never serve as the source of record. Enrichment is per-event (shared across a market's strike ladder), not per-strike.</p>
+        <p>On top of the verified-source layer, ClearMarket adds editorial fields (<code>editorial_notes</code>, <code>underlying_reference</code>, <code>tags</code>, canonical question) drafted by an LLM and tagged <code>editorial</code>. These <em>interpret and gloss</em> the verified data — e.g. naming the authoritative publisher (S&amp;P Dow Jones Indices) where a venue cites only a placeholder (Google Finance) — but never serve as the source of record. Enrichment follows an event&rarr;market inheritance model (the option-chain <code>class&rarr;series</code> pattern): the resolution rule and source are written <strong>once at the event</strong> as a generic, subject-free ontology (<code>resolution_reference</code>) and inherited by every child, while each child's <code>underlying_reference</code> is composed from that ontology plus its own subject (<code>group_item_title</code>). A multi-outcome bundle therefore names each candidate or company on its own market and never broadcasts one child's subject across its siblings.</p>
       </section>
 
       <section class="surface" id="crossvenue">

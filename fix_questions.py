@@ -41,9 +41,23 @@ def main():
     fixed = []
     for e in b["events"]:
         q = e.get("question", "") or ""
-        if not BAD.search(q):
-            continue
         ms = mbye.get(e["event_id"], [])
+        # Trigger 1: LLM garbage/placeholder. Trigger 2 (D fix): the enriched question fabricated
+        # a year present in NEITHER the event's raw questions NOR its settlement dates (e.g. 'this
+        # year' -> '2024', '2026 House' -> '2022 Midterms'). Adding the settlement year as a
+        # deadline is legitimate and NOT flagged. Both triggers fall back to the raw venue question.
+        src_years, settle_years = set(), set()
+        for m in ms:
+            src_years |= set(re.findall(r"\b(20\d{2})\b", m.get("question_raw") or ""))
+            settle_years |= set(re.findall(r"\b(20\d{2})\b", str(m.get("resolve_at") or "")))
+        q_years = set(re.findall(r"\b(20\d{2})\b", q))
+        bad_years = {int(y) for y in (q_years - src_years - settle_years)}
+        # gap >= 2 vs settlement = a clear mangle (Abbott '2024' settling 2027; '2022 Midterms'
+        # settling 2027). A 1-year gap is a legit subject/election year the LLM added, not a bug.
+        max_settle = max((int(y) for y in settle_years), default=None)
+        fabricated_year = bool(max_settle and any(y <= max_settle - 2 for y in bad_years))
+        if not BAD.search(q) and not fabricated_year:
+            continue
         # prefer the primary market's raw question, else the first market's
         raw = ""
         prim = next((m for m in ms if m.get("market_id") == e.get("primary_market_id")), None)

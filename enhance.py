@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -889,6 +890,54 @@ def llm_underlying_reference(market: dict) -> str:
     return llm_call(user, system=system, max_tokens=100)
 
 
+def llm_event_resolution_ontology(market: dict) -> str:
+    """Generic, SUBJECT-FREE resolution reference for a multi-outcome EVENT (parent).
+
+    OCC class->series: settlement is defined ONCE at the parent and inherited. This
+    replaces the old per-event broadcast that copied one representative child's ref
+    (naming that child's subject, e.g. 'SpaceX') onto every sibling. The subject is
+    supplied separately per child via compose_child_reference(), so no child's
+    identity ever leaks onto another. See event-child-resolution-fix-spec-2026-07-01.
+    """
+    system = (
+        "You are ClearMarket's editorial engine. Describe generically how ANY outcome in a "
+        "multi-outcome prediction market event resolves. Respond with ONE factual sentence, max 40 words. "
+        "CRITICAL: NEVER name a specific candidate, company, person, ticker, or subject drawn from the markets. "
+        "Naming one outcome's subject here corrupts every sibling market. Refer to the subject only generically "
+        "('the listed company', 'the named candidate', 'the referenced outcome'). "
+        "Name the data source, institution, or document that resolves the event, the mechanism, and the deadline. "
+        "Start directly with the data source or the generic subject noun. NEVER open with framing such as "
+        "'This market resolves', 'Market resolves', 'Resolution depends on', or 'The data source is'. "
+        "No em-dashes. No marketing language. "
+        + _EDITORIAL_PROSE_RULES
+    )
+    user = (
+        f"Platform: {market['platform']}\n"
+        f"Representative child question: {market.get('question_raw', '')}\n"
+        f"Description (trimmed): {(market.get('description_raw') or '')[:600]}\n"
+        f"Resolution mechanism: {market.get('arbitration_model')}\n"
+        f"Platform-named source: {market.get('resolution_source') or '(none)'}\n"
+        f"Source URL: {market.get('source_citation') or '(none)'}\n"
+        f"Event resolve_at (authoritative): {market.get('resolve_at')}\n\n"
+        f"Write the generic, subject-free event resolution reference. "
+        f"Take any date/year from resolve_at as authoritative; never infer a later year."
+    )
+    return llm_call(user, system=system, max_tokens=100)
+
+
+def compose_child_reference(subject: str | None, ontology: str) -> str:
+    """Build a child's underlying_reference deterministically from the generic event
+    ontology + the child's OWN subject. No LLM call, no cross-child contamination —
+    the structural fix for the SpaceX/Anthropic broadcast bug. Word-boundary match so
+    a short subject ('US') inside a larger token ('US Federal Reserve') still composes."""
+    subject = (subject or "").strip()
+    if not subject or not ontology:
+        return ontology
+    if re.search(r"\b" + re.escape(subject) + r"\b", ontology, re.I):
+        return ontology
+    return f"{subject}: {ontology}"
+
+
 def llm_editorial_notes(event: dict, event_markets: list) -> str:
     system = (
         "You are ClearMarket's editorial engine. Write institutional-grade notes about a "
@@ -1002,17 +1051,43 @@ def llm_tags(event: dict, event_markets: list) -> list:
     return None
 
 
-def llm_canonical_question(event: dict) -> str:
+def llm_canonical_question(event: dict, markets: list | None = None) -> str:
     # Only rewrite when the current question is still raw platform text
     src = event.get("field_provenance", {}).get("question", {}).get("source")
     if src != "platform_api":
         return event["question"]
+    raw = event.get("question", "") or ""
+
+    # settlement date is CONTEXT ONLY — never forced onto the question, because the subject
+    # year can legitimately differ from the settle year (e.g. '2026 deliveries' report in 2028).
+    anchor = None
+    for m in (markets or []):
+        if m.get("resolve_at"):
+            anchor = m["resolve_at"]; break
+
     system = (
         "Rewrite a prediction market question in clean grammatical English, "
         "preserving exact meaning, entities, and dates. Use 'Will X by DATE?' or equivalent. "
+        "CRITICAL DATE RULE: use ONLY years/dates already present in the source question. "
+        "NEVER introduce a specific year or date the source does not contain. If the source is "
+        "relative ('this year', 'last year', 'the next election'), keep it relative — do NOT "
+        "resolve it to a specific year. Do NOT change a source year to match the settlement date. "
         "Return ONLY the rewritten question. No preamble, no quotes."
     )
-    return llm_call(event["question"], system=system, max_tokens=80)
+    user = raw if not anchor else f"{raw}\n\n(Settlement date, context only, do not inject: {anchor})"
+    out = (llm_call(user, system=system, max_tokens=80) or "").strip()
+
+    # Deterministic guard: reject a rewrite that FABRICATED a year present in neither the
+    # source NOR the settlement date (the D bug: 'this year than last year' -> '2024 than 2023';
+    # '2026 House' -> '2022 Midterms'). Adding the settlement year as a deadline IS allowed.
+    src_years = set(re.findall(r"\b(20\d{2})\b", raw))
+    # scope the allowed settlement year to the ANCHOR child only — a union over all siblings would
+    # let a hallucinated year slip through whenever ANY rung happens to settle in that year.
+    settle_years = set(re.findall(r"\b(20\d{2})\b", str(anchor))) if anchor else set()
+    out_years = set(re.findall(r"\b(20\d{2})\b", out))
+    if not out or (out_years - src_years - settle_years):
+        return raw
+    return out
 
 
 # RCG factor rater — the FIVE LLM-judged factors, scored in ONE per-event call.
@@ -1045,7 +1120,13 @@ _RCG_SYSTEM = (
     "OR a named PRIMARY with an informal/corroborating fallback (e.g. 'official X, however a consensus of "
     "credible reporting may also be used' — the primary decides, the fallback merely corroborates), OR "
     "multiple pages/links of the SAME source. A subjective 'consensus of credible reporting' standard with "
-    "no named authority is NOT a source conflict — its weakness is trigger subjectivity; rate it there.\n"
+    "no named authority is NOT a source conflict — its weakness is trigger subjectivity; rate it there. "
+    "An ANY-OF decision rule over a source menu ('at least one listed source reports X', with an evidence "
+    "standard) on a ONE-SIDED occurrence question (did X happen by T) is ALSO NOT a conflict — the rule "
+    "states which report controls (the qualifying affirmative one); silence from other sources is not a "
+    "contradictory answer. Rate that menu's weakness on the commitment axis, not here. An any-of menu on a "
+    "TWO-SIDED question (who won, what a court ruled — where two outlets could satisfy the rule with "
+    "OPPOSITE outcomes) DOES fail.\n"
     "temporal_precision (rate for every market; na only if truly inapplicable): is the controlling "
     "timestamp/cutoff precise and aligned with when the source updates? pass = precise and aligned; "
     "partial = minor ambiguity; fail = ambiguous timing or source-update lag could flip the outcome.\n"
@@ -1070,11 +1151,21 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
     criteria = (rep.get("resolution_rules_raw") or rep.get("description_raw") or "").strip()
     if not criteria:
         return None
+    # Full source picture, not just the first name — source_conflict (the tie-break factor)
+    # judges precedence over MULTIPLE sources and was previously blind to the list/count.
+    srcs = rep.get("resolution_source_list") or []
+    if srcs:
+        names = "; ".join(filter(None, ((s.get("name") or s.get("url")) for s in srcs[:8])))
+        src_desc = f"{len(srcs)} listed — {names}" + (" …" if len(srcs) > 8 else "")
+    else:
+        src_desc = rep.get("resolution_source") or "none / subjective"
+    commitment = rep.get("source_commitment_subtype")
     user = (
         f"Question: {event.get('question')}\n"
         f"Category: {event.get('category')}\n"
-        f"Resolution source (named): {rep.get('resolution_source') or 'none / subjective'}\n"
-        f"Arbiter: {rep.get('arbitration_model')}\n\n"
+        f"Resolution source(s): {src_desc}\n"
+        + (f"Source commitment (pre-judged): {commitment}\n" if commitment else "")
+        + f"Arbiter: {rep.get('arbitration_model')}\n\n"
         f"Resolution criteria:\n{criteria[:1800]}"
     )
     # max_tokens 700: 420 truncated long-"why" responses on big ladder events, and the
@@ -1109,6 +1200,201 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
     if out["trigger_objectivity"]["rating"] == "na" or out["contested_reality"]["rating"] == "na":
         return None
     return out
+
+
+# Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
+# grade change between vintages is always attributable to "rubric changed" or "venue text changed"
+# — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
+SOURCE_RUBRIC_VERSION = "v3.6.1-2026-07-05"
+
+_SOURCE_COMMITMENT_SYSTEM = (
+    "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
+    "INDEPENDENT of any venue self-assessment. Commitment = whether the market commits to a "
+    "concrete controlling source of record. It is NOT about whether the outcome is objective.\n\n"
+    "Classes:\n"
+    "- named: a single concrete institutional AUTHORITY is the source of record — a government or "
+    "statistics agency (any country), regulator, central bank, exchange, court/official register, "
+    "a benchmark administrator or index calculator with a published methodology (e.g. CF "
+    "Benchmarks), or (for questions about a specific company) that issuer's own official "
+    "filings/announcements. A defined MECHANISM over "
+    "multiple sources is also named — REGARDLESS of whether the sources are general-news outlets "
+    "(the mechanism, not the outlet type, is the commitment): mechanism=precedence ONLY when the "
+    "rule states an ORDER — which source controls if they conflict, or a fallback used only when "
+    "the primary is unavailable; mechanism=quorum when N sources must agree (a stated fallback for "
+    "no-quorum is fine). If you output mechanism=precedence or quorum, the commitment MUST be "
+    "named. Distinguish fallback types: an ORDERED, CONDITION-TRIGGERED fallback ('if the primary "
+    "has not resolved it when/by X, then Y controls') IS precedence — named. An UNORDERED, "
+    "OPTIONAL alternative ('however a consensus of credible reporting may suffice / may also be "
+    "used') states no order — NOT precedence; that is the Venezuela failure shape -> "
+    "uncommitted_placeholder.\n"
+    "- committed_secondhand: the venue commits to exactly ONE concrete, named source that is NOT "
+    "an institutional authority — a commercial data aggregator or subscription data platform "
+    "(e.g. Fiscal.ai, Google Finance) or a single news/wire/sports outlet as the sole controlling "
+    "source. This is a real commitment (one checkable source, unlike a placeholder or menu), but "
+    "a secondhand one: the source re-publishes numbers or results whose authority lies elsewhere "
+    "(the issuer's own filings, the league, the agency), and no rule says what controls if they "
+    "disagree. A data platform counts as an authority (-> named) ONLY when it is the designated "
+    "administrator/calculator of the quantity itself with a published methodology; a platform "
+    "re-publishing company metrics is committed_secondhand.\n"
+    "- uncommitted_placeholder: names a CATEGORY not an authority ('a consensus of credible "
+    "reporting', 'official sources'), OR a MENU of two or more interchangeable general-news / wire "
+    "outlets (ABC, Fox News, CNN, MSNBC, Reuters, AP, The Information, Puck, CoinDesk, etc.) with NO "
+    "single controlling authority and NO tie-break rule. A general-news, wire, or sports outlet "
+    "(including ESPN) is NOT an institutional authority.\n"
+    "- uncommitted_illustrative: a source gestured at with a hedge ('for example', 'e.g.', 'such "
+    "as') — a candidate, not a commitment.\n"
+    "- none: no source language at all — neither a listed source nor any source language in the "
+    "rules text.\n\n"
+    "ALSO read the rules text for sources named in prose (with or without a URL). Report every "
+    "concrete source/authority the venue's own text names in prose_sources, each copied EXACTLY "
+    "as it appears in the text (a verbatim substring — never paraphrase, never invent).\n\n"
+    "SEPARATELY, in authorities_in_list, report which entries of the venue's source LIST are "
+    "non-news institutional authorities (government/statistics agency, regulator, central bank, "
+    "exchange, court/register, benchmark administrator/index calculator with a published "
+    "methodology — NOT news, wire, or sports outlets, and NOT commercial data aggregators or "
+    "subscription data platforms such as Fiscal.ai or Google Finance; when in doubt, exclude). "
+    "Copy each name verbatim from the list. This is an extraction, independent of your "
+    "commitment judgment.\n\n"
+    "CALIBRATION EXAMPLES (mechanism boundary):\n"
+    "- 'Reuters and AP must agree; if they disagree, this market resolves NO' -> named, "
+    "mechanism=quorum (N-must-agree with a stated outcome on disagreement; outlet type "
+    "irrelevant — the mechanism is complete).\n"
+    "- 'resolves per official information from Venezuela; a credible consensus of credible "
+    "reporting will also be used' -> uncommitted_placeholder (two co-equal paths, no order — "
+    "this rule failed in reality).\n"
+    "- 'resolves once all listed outlets call the race for the same candidate; if they have "
+    "not, resolves based on official certification' -> named, mechanism=quorum (quorum plus "
+    "an ordered, condition-triggered fallback).\n"
+    "- Source list is exactly 'Fiscal.ai' for 'Will <company> report above N <metric>?' -> "
+    "committed_secondhand (one concrete checkable source, but a data aggregator re-publishing "
+    "the issuer's numbers — not the issuer's own filings, and no rule for a disagreement).\n\n"
+    "Judge only from the sources and rules given; never invent a source. Return ONLY JSON:\n"
+    "{\"commitment\": \"named|committed_secondhand|uncommitted_illustrative|uncommitted_placeholder|none\",\n"
+    " \"source_of_record\": \"<the committed source's name (the authority for named, the "
+    "secondhand source for committed_secondhand), copied VERBATIM from the venue text or source list>\" or null,\n"
+    " \"mechanism\": \"single_authority|precedence|quorum\" or null,\n"
+    " \"primary_source_number\": <number of the listed source that controls, or 0>,\n"
+    " \"prose_sources\": [\"<verbatim name>\", ...],\n"
+    " \"authorities_in_list\": [\"<verbatim name from the list>\", ...],\n"
+    " \"why\": \"<=40 words\"}"
+)
+
+
+def llm_source_commitment(market: dict) -> dict | None:
+    """LLM source-commitment classification — ONE reading-comprehension judgment per event over
+    the full deterministically-extracted source list + the rules prose. Absorbs the retired
+    standalone select-primary call (primary_source_number picks BY INDEX among listed candidates,
+    so it can never mint a URL) and surfaces prose-named authorities (verbatim-gated below).
+    Returns {commitment, source_of_record, mechanism, primary_url, prose_sources, why,
+    rubric_version} or None on LLM failure (caller MUST fail closed — spec B1)."""
+    srcs = market.get("resolution_source_list") or (
+        [{"name": market.get("resolution_source"), "url": market.get("source_citation")}]
+        if market.get("resolution_source") else [])
+    rules = (market.get("resolution_rules_raw") or "").strip()
+    if not srcs and not rules:
+        # deterministic: literally nothing to read — no structured source AND no rules text.
+        # (A prose-only market is NOT short-circuited; the LLM reads its rules below.)
+        return {"commitment": "none", "source_of_record": None, "mechanism": None,
+                "primary_url": None, "prose_sources": [], "why": "no source and no rules text",
+                "rubric_version": SOURCE_RUBRIC_VERSION}
+    src_lines = "\n".join(
+        f"  {i}. {s.get('name') or '(unnamed)'}" + (f"  [{s.get('url')}]" if s.get('url') else "")
+        for i, s in enumerate(srcs, 1)) or "  (none listed)"
+    user = (
+        f"Question: {market.get('question_raw') or ''}\n"
+        f"Sources the venue lists ({len(srcs)}):\n{src_lines}\n\n"
+        f"Resolution rules:\n{rules[:2400] or '(none provided)'}\n\n"
+        f"Classify the source commitment."
+    )
+
+    def _parse(text: str):
+        t = text.strip()
+        if t.startswith("```"):
+            t = t.strip("`").lstrip("json").strip()
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(t)
+            return obj if isinstance(obj, dict) else None
+        except Exception:
+            return None
+
+    raw = llm_call(user, system=_SOURCE_COMMITMENT_SYSTEM, max_tokens=300,
+                   validate=lambda t: _parse(t) is not None)
+    d = _parse(raw)
+    if d is None:
+        return None
+    c = (d.get("commitment") or "").strip().lower()
+    if c not in ("named", "committed_secondhand", "uncommitted_illustrative",
+                 "uncommitted_placeholder", "none"):
+        return None
+
+    # --- verbatim gates: the LLM judges; it never mints an identifier ---
+    # Word-boundary match, NOT bare substring: 'SEC' must not pass via 'second'/'consecutive',
+    # 'Fed' via 'federal', 'AP' via 'capture' (swarm-confirmed gate bypass, 2026-07-03).
+    def _verbatim(needle: str, haystack: str) -> bool:
+        return bool(re.search(r"(?<![A-Za-z0-9])" + re.escape(needle) + r"(?![A-Za-z0-9])",
+                              haystack, re.IGNORECASE))
+    hay = rules + "\n" + src_lines
+    sor = d.get("source_of_record")
+    if isinstance(sor, str):
+        sor = sor.strip() or None
+        if sor and not _verbatim(sor, hay):
+            sor = None          # gated: not traceable to venue text/list
+        # Kalshi series templates ship UNFILLED placeholder tokens ('official representatives
+        # or offices of <person>') — verbatim-present in the list but not a real source name.
+        # Never display or commit to one (Trump-Wisconsin eyeball finding, 2026-07-05).
+        if sor and "<" in sor:
+            sor = None
+    else:
+        sor = None
+    mech = d.get("mechanism") if d.get("mechanism") in ("single_authority", "precedence", "quorum") else None
+    prose = []
+    for p in (d.get("prose_sources") or [])[:8]:
+        p = p.strip() if isinstance(p, str) else ""
+        # min length 3: a 1-2 char "source" is noise even when it appears verbatim
+        if len(p) >= 3 and _verbatim(p, rules):
+            prose.append(p)
+    purl = None
+    try:
+        n = int(d.get("primary_source_number") or 0)
+        if 1 <= n <= len(srcs):
+            purl = srcs[n - 1].get("url")   # pick-by-index among real candidates only
+    except (TypeError, ValueError):
+        pass
+    why = (d.get("why") or "")[:300]
+
+    # DETERMINISTIC reconciliation (the C-floor authority-in-menu rule, applied in code over the
+    # model's gated extraction — Step A/B split): if the venue's own source list carries a
+    # non-news institutional authority, the market is committed to THAT authority, whether or not
+    # the rules prose separately references it. The model extracts (verbatim-gated against the
+    # list); this rule decides. Protects the 63 authority-bearing series the v1 self-audit caught.
+    list_names = {(s.get("name") or "").strip().lower() for s in srcs}
+    # '<' excludes unfilled venue-template tokens ('official government sources of <area>') —
+    # a placeholder entry must never reconcile a menu up to 'named' (2026-07-05).
+    auths = [a.strip() for a in (d.get("authorities_in_list") or [])
+             if isinstance(a, str) and a.strip() and "<" not in a
+             and a.strip().lower() in list_names]
+    if auths and c != "named":
+        c = "named"
+        sor = sor or auths[0]
+        mech = mech or "single_authority"
+        why = (why + " [reconciled: non-news authority present in venue source list]")[:300]
+
+    # A 'named' claim must survive its own evidence: if the gate nulled the source_of_record,
+    # no mechanism (precedence/quorum) carries the commitment, and no listed authority backs it,
+    # the named class rests on nothing traceable — fail closed rather than ship an uncapped
+    # grade on a hallucinated authority (swarm finding, 2026-07-03). committed_secondhand gets
+    # the same treatment: its whole claim is "one concrete checkable source", so an untraceable
+    # source name leaves nothing behind the commitment.
+    if c in ("named", "committed_secondhand") and sor is None \
+            and mech not in ("precedence", "quorum") and not auths:
+        label = "named" if c == "named" else "secondhand"
+        c = "uncommitted_placeholder"
+        mech = None
+        why = (why + f" [demoted: {label} claim had no gate-surviving evidence]")[:300]
+
+    return {"commitment": c, "source_of_record": sor, "mechanism": mech,
+            "primary_url": purl, "prose_sources": prose,
+            "why": why, "rubric_version": SOURCE_RUBRIC_VERSION}
 
 
 def enrich_with_llm(events: list, markets: list, enabled: bool = True):
@@ -1151,7 +1437,7 @@ def enrich_with_llm(events: list, markets: list, enabled: bool = True):
         except Exception as e:
             print(f"\n    event {ev['event_id']} tags: {e}", file=sys.stderr)
         try:
-            new_q = llm_canonical_question(ev)
+            new_q = llm_canonical_question(ev, ev_markets)
             if new_q and new_q != ev["question"]:
                 ev["question"] = new_q
                 ev["field_provenance"]["question"] = {"source": "clearmarket_editorial", "ai_drafted": True}

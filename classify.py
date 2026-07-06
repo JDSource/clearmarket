@@ -28,6 +28,7 @@ Run `python3 classify.py` for the self-test against real specimen records.
 
 from __future__ import annotations
 
+import calendar
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -38,6 +39,117 @@ CATEGORIES_IN = (
     "economics", "financials", "crypto", "companies", "technology",
     "health", "politics", "geopolitics", "climate",
 )
+
+# -----------------------------------------------------------------
+# Bundle-type classifier (2026-07-01) — routes a multi-outcome event to its
+# resolution-inheritance shape so enrichment knows which fields are event-level
+# shared vs per-child native. Pure logic; unit-testable. See
+# outputs/clearmarket/event-child-resolution-fix-spec-2026-07-01.md.
+# -----------------------------------------------------------------
+_MONTH_RE = re.compile(
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\b|\bq[1-4]\b|\b20\d{2}\b", re.I
+)
+_THRESHOLD_RE = re.compile(r"[<>]=?|\$|\bbps\b|\b\d[\d,.]*\s*(k|m|b|bn|trillion|billion|million)?\b", re.I)
+
+
+def _looks_like_date(title: str) -> bool:
+    return bool(_MONTH_RE.search(title or ""))
+
+
+def _looks_like_threshold(title: str) -> bool:
+    t = (title or "").strip()
+    if _looks_like_date(t):          # a year is a date, not a strike
+        return False
+    return bool(_THRESHOLD_RE.search(t))
+
+
+def _ladder_kind(markets: list) -> str:
+    titles = [(m.get("groupItemTitle") or m.get("yes_sub_title") or "") for m in markets]
+    n = len(titles) or 1
+    date_like = sum(1 for t in titles if _looks_like_date(t))
+    num_like = sum(1 for t in titles if _looks_like_threshold(t))
+    if date_like / n >= 0.6:
+        return "date_ladder"
+    if num_like / n >= 0.6:
+        return "strike_ladder"
+    return "categorical"
+
+
+def classify_bundle_type(ev: dict, venue: str) -> str:
+    """categorical | date_ladder | strike_ladder | augmented_negrisk | singleton.
+
+    Determines resolution-field inheritance: for every non-singleton type the
+    resolution RULE/SOURCE is event-level (one, generic, inherited); dates are
+    per-child native for ladders, shared for categoricals; augmented_negrisk
+    additionally needs a per-child grade override on its placeholder ("Other") leg.
+    """
+    markets = ev.get("markets") or []
+    if len(markets) <= 1:
+        return "singleton"
+    if venue == "polymarket":
+        if ev.get("negRiskAugmented"):
+            return "augmented_negrisk"
+        if ev.get("negRisk") or ev.get("enableNegRisk"):
+            return "categorical"
+        return _ladder_kind(markets)      # cumulativeMarkets or plain multi
+    # kalshi
+    if ev.get("mutually_exclusive"):
+        return "categorical"
+    return _ladder_kind(markets)
+
+
+_MON = {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
+_MON.update({m.lower(): i for i, m in enumerate(calendar.month_name) if m})
+
+
+def parse_ladder_deadline(title, year_hint=None):
+    """Derive an ISO settlement date from a date-ladder rung's groupItemTitle when the
+    venue ships a degenerate shared endDate across the ladder (the fed-rate B1 case).
+    Handles 'June 2026', 'March 31, 2026', 'December 31', 'Q3 2026', bare '2027'.
+    Returns 'YYYY-MM-DDT00:00:00Z' or None (None -> keep native, stay flagged)."""
+    if not title:
+        return None
+    t = title.strip().lower()
+    # Reject strike/threshold titles ('$2000', 'above 2050', '1.65 million') — a price digit-string
+    # can look like a year (2000-2099) and must NEVER be parsed as a date. Callers also gate this to
+    # date_ladder only, but defend here too.
+    if "$" in t or _looks_like_threshold(t):
+        return None
+    # comparison words signal a strike/threshold rung ('above 2000', 'below 5%'), never a date
+    if re.search(r"\b(above|below|over|under|at least|at most|more than|fewer than|less than|greater)\b", t):
+        return None
+    yr_m = re.search(r"\b(20\d{2})\b", t)
+    year = int(yr_m.group(1)) if yr_m else year_hint
+    if not year:
+        return None
+    # strip the year token so it can't be mistaken for a day number later
+    t_noyear = re.sub(r"\b20\d{2}\b", " ", t)
+    # Quarter / Half
+    q = re.search(r"\bq([1-4])\b", t_noyear)
+    if q:
+        month = int(q.group(1)) * 3
+        day = calendar.monthrange(year, month)[1]
+        return f"{year:04d}-{month:02d}-{day:02d}T00:00:00Z"
+    h = re.search(r"\bh([12])\b", t_noyear)
+    if h:
+        month = 6 if h.group(1) == "1" else 12
+        day = calendar.monthrange(year, month)[1]
+        return f"{year:04d}-{month:02d}-{day:02d}T00:00:00Z"
+    # Month [day]
+    mon = None
+    for name, idx in _MON.items():
+        if re.search(r"\b" + re.escape(name) + r"\b", t_noyear):
+            mon = idx
+            break
+    if mon:
+        day_m = re.search(r"\b(\d{1,2})\b", t_noyear)   # year already stripped -> safe
+        day = int(day_m.group(1)) if day_m and 1 <= int(day_m.group(1)) <= 31 else calendar.monthrange(year, mon)[1]
+        day = min(day, calendar.monthrange(year, mon)[1])
+        return f"{year:04d}-{mon:02d}-{day:02d}T00:00:00Z"
+    # bare year -> Dec 31
+    if yr_m:
+        return f"{year:04d}-12-31T00:00:00Z"
+    return None
 CATEGORIES_OUT = ("sports", "entertainment", "mentions")
 ALL_CATEGORIES = CATEGORIES_IN + CATEGORIES_OUT
 
@@ -252,24 +364,46 @@ def _rcg_caps(r: dict) -> list[tuple[str, str]]:
     return caps
 
 
-def resolution_clarity_grade(ratings: dict) -> dict:
-    """v2 engine. `ratings` maps each RCG_WEIGHTS factor to pass|partial|fail|na.
-    Re-normalizes over applicable (non-na) factors, bands, then applies cap ceilings."""
+# Engine per factor — stamped into the audit trail so any grade is reverse-engineerable.
+_LLM_FACTORS_SET = {"trigger_objectivity", "contested_reality", "source_conflict",
+                    "temporal_precision", "source_mutability"}
+# Source-commitment cap ceilings — folded in from the retired patch_sources (subtype -> ceiling).
+# committed_secondhand (ruled 2026-07-04, rubric v3.6): sole committed source is a concrete
+# non-authority (data aggregator / single outlet — Fiscal.ai class). A real commitment, capped C
+# because the source transcribes numbers whose authority lies elsewhere and no rule covers a
+# disagreement (ESPN precedent; CF Benchmarks-style published-methodology providers stay named).
+_COMMITMENT_CAP = {"committed_secondhand": "C", "uncommitted_illustrative": "B",
+                   "uncommitted_placeholder": "C", "none": "C"}
+
+
+def resolution_clarity_grade(ratings: dict, commitment_subtype: str | None = None) -> dict:
+    """v2 engine. `ratings` maps each RCG_WEIGHTS factor to pass|partial|fail|na. Re-normalizes
+    over applicable (non-na) factors, bands, applies factor cap ceilings + the source-commitment
+    ceiling (from the LLM commitment classification). Returns the grade PLUS a per-factor audit
+    breakdown (rating / engine / weight / points) so any grade re-derives from stamped values."""
     earned = possible = 0.0
+    factors = {}
     for f, w in RCG_WEIGHTS.items():
         rating = ratings.get(f, "na")
-        if rating == "na":
-            continue
-        possible += w
-        earned += w * RCG_FRACTION.get(rating, 0.0)
+        entry = {"rating": rating, "engine": "llm" if f in _LLM_FACTORS_SET else "deterministic",
+                 "weight": w}
+        if rating != "na":
+            possible += w
+            earned += w * RCG_FRACTION.get(rating, 0.0)
+            entry["points"] = round(w * RCG_FRACTION.get(rating, 0.0), 1)
+        factors[f] = entry
     score = round(100 * earned / possible) if possible else 0
     band = _rcg_band(score)
     caps = _rcg_caps(ratings)
+    cc = _COMMITMENT_CAP.get(commitment_subtype)
+    if cc:
+        caps = caps + [(f"commitment_{commitment_subtype}", cc)]
     rank = max([_RCG_RANK[band]] + [_RCG_RANK[c[1]] for c in caps])
     applied = sum(1 for f in RCG_WEIGHTS if ratings.get(f, "na") != "na")
     return {"grade": _RANK_RCG[rank], "score": score, "band": band,
             "applied_factors": applied, "total_factors": len(RCG_WEIGHTS),
-            "caps": [c[0] for c in caps]}
+            "caps": [c[0] for c in caps], "factors": factors,
+            "commitment_subtype": commitment_subtype}
 
 
 # ---- deterministic factor raters (source_clarity, arbiter); the 5 LLM factors are supplied at enrichment ----
@@ -298,17 +432,30 @@ def _is_placeholder_source_name(name: str) -> bool:
     return bool(name) and len(name.split()) <= 1
 
 def rate_source_clarity(market: dict) -> str:
+    # ONE source judgment: when the LLM commitment classification is stamped (enrichment), this
+    # factor DERIVES from it instead of second-guessing with word-count heuristics — a factor
+    # scoring "pass" while the commitment cap says "placeholder" was a self-contradicting audit
+    # trail (the cl-hit oil misgrade class). Methodology: pass = named authority + usable link.
+    sub = market.get("source_commitment_subtype")
+    if sub:
+        if sub == "named":
+            cite = market.get("source_citation")
+            return "pass" if (cite and not _is_placeholder_citation(cite)) else "partial"
+        if sub in ("committed_secondhand", "uncommitted_illustrative"):
+            # secondhand: the source IS named and checkable — the deficiency (authority
+            # quality, no disagreement rule) is carried by the C cap, not double-counted here
+            return "partial"
+        return "fail"   # uncommitted_placeholder / none
+    # Pre-commitment fallback (build-time only — the grade is 'pending' until the per-event
+    # LLM ratings exist, so this path never reaches a shipped grade).
     if market.get("resolution_source_quality") == "loose":
         return "partial"
     cite = market.get("source_citation")
     name = market.get("resolution_source")
     real_cite = cite and not _is_placeholder_citation(cite)
     real_name = name and not _is_placeholder_source_name(name)
-    # Full credit only when there's a real deep-link citation AND a named authority.
     if real_cite and real_name:
         return "pass"
-    # Partial: has one of the two (a real link OR a properly-named source), but not a
-    # clean placeholder-free pair. A venue that only cites its own homepage lands here.
     if real_cite or real_name or name:
         return "partial"
     return "fail"
@@ -341,7 +488,9 @@ def grade_market(market: dict, description: str = "", llm_ratings: dict | None =
                 "total_factors": len(RCG_WEIGHTS), "caps": [],
                 "reason": "awaiting per-event LLM factor ratings"}
     ratings.update({f: llm_ratings.get(f, "na") for f in _RCG_LLM_FACTORS})
-    return resolution_clarity_grade(ratings)
+    # commitment cap comes from the LLM source-commitment classification (stored at enrich);
+    # replaces the retired patch_sources deterministic re-cap.
+    return resolution_clarity_grade(ratings, commitment_subtype=market.get("source_commitment_subtype"))
 
 
 # -----------------------------------------------------------------

@@ -5,18 +5,18 @@
  * Tailwind classes from the spec mapped to the project's cm-* tokens.
  */
 import type { Event, Market } from '../lib/universe';
-import { rationaleFor, sourceLabel } from '../lib/labels';
+import { rationaleFor, sourceLabel, sourceStatusOf } from '../lib/labels';
 const { markets } = Astro.props as { event?: Event; markets: Market[] };
 
-// Short settlement-mechanism word — names HOW it resolves. Respects the GRADE first: a
-// grade-A market resolves against a named/mechanical source regardless of which arbiter is
-// the dispute backstop. Only when there's no named source does the arbiter's judgment
-// character (oracle vs staff) become the mechanism.
+// Short settlement-mechanism word — names HOW it resolves. Reads the STAMPED source
+// judgment (sourceStatusOf), never raw field presence: an uncommitted hedge with a
+// non-empty verbatim source field is NOT a "named source". Only when there's no committed
+// source does the arbiter's judgment character (oracle vs staff) become the mechanism.
 function mechWord(m: Market | undefined): string {
-  const hasSource = !!(m?.resolution_source || m?.source_citation);
+  const committed = sourceStatusOf(m as any) === 'platform_named';
   const grade = (m?.resolution_clarity_grade ?? '').toUpperCase();
   if (grade === 'A') return 'NAMED SOURCE';
-  if (hasSource) return 'NAMED SOURCE';           // B with a source still resolves to one
+  if (committed) return 'NAMED SOURCE';           // B with a committed source still resolves to one
   const a = m?.arbitration_model;
   if (a === 'uma_oracle') return 'ORACLE JUDGMENT';
   if (a === 'platform_auto') return 'MECHANICAL';

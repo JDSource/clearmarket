@@ -38,19 +38,24 @@ it directly; no extraction. Coverage across 703 unique series:
 - **2% loose** — a placeholder ("For example, Google Finance"), all in the equity-index family
 - **0% missing**
 
-### Polymarket — hybrid extraction with a verbatim gate
-The source + URL are embedded in the market description free-text. We extract them **without ever
-letting a model mint a URL**:
-1. **Regex** extracts the candidate URLs present in the description (the deterministic floor).
-2. **By count:** 0 URLs → subjective/none; exactly 1 → used directly (no LLM); 2+ → an LLM selects
-   the primary *by number among the candidates*.
-3. **Verbatim gate:** the selected URL must appear verbatim in the description, or it is rejected
-   and flagged for review.
+### Polymarket — deterministic capture, gated judgment
+The sources are embedded in the market description free-text. We capture them **without ever
+letting a model mint an identifier**:
+1. **Regex** extracts every candidate URL in the description — including bare-domain citations
+   ("as posted on tesla.com") — and ALL candidates are kept in `resolution_source_list`
+   (the deterministic floor; nothing is collapsed away).
+2. **One per-event commitment judgment** (an LLM read of the full source list + rules prose,
+   against the versioned rubric) surfaces authorities the venue names *in words* with no URL
+   ("the official CME settlement price") and selects the controlling URL *by number among the
+   extracted candidates*.
+3. **Verbatim gate:** every identifier the judgment emits must appear in the venue's own text as
+   a whole token (word-boundary match), or it is discarded; a "named" classification whose
+   evidence does not survive the gate is demoted to uncommitted, never shipped uncapped.
 
-Result: **88% pure-deterministic** (49% subjective-no-URL + 39% single-URL), **12% gated-LLM**, and
-**zero hallucinated URLs** (6 borderline cases fell back to first-candidate and were flagged). The
-LLM is constrained to *selecting among URLs that provably exist in platform text* — it cannot
-introduce or mistype one.
+**Zero hallucinated URLs remains structural:** URLs enter the dataset only via regex extraction,
+and the judgment can only pick among them by index. Prose-surfaced names are tagged
+`clearmarket_editorial`. Extraction-mix statistics will be republished with the first enrichment
+under this pipeline.
 
 ### Provenance tiers
 Every value carries its origin: **`direct`** (platform API / structured field / verbatim-extracted
@@ -65,10 +70,21 @@ resolution source on a **commitment axis**, because a hedge or a placeholder is 
 source:
 
 - **named** — a concrete, resolvable authority (Federal Reserve, BLS, the NYC Rent Guidelines Board,
-  a deep-link `.gov` / official-electoral citation). No grade cap.
+  a deep-link `.gov` / official-electoral citation, a benchmark administrator with a published
+  methodology such as CF Benchmarks). No grade cap.
+- **committed_secondhand** — the venue commits to exactly **one** concrete, checkable source that is
+  *not* an authority for the quantity: a commercial data aggregator (Fiscal.ai, Google Finance) or a
+  single news/sports outlet as sole controlling source. A real commitment — but the source re-publishes
+  numbers whose authority lies elsewhere (the issuer's filings, the league), with no published
+  settlement methodology and no rule for what controls if the two disagree. Grade capped **C**.
+  The line: a data provider is an authority only when it is the designated administrator/calculator
+  of the quantity itself with a published methodology; a platform transcribing someone else's
+  numbers is not. (Ruled 2026-07-04; rubric v3.6.)
 - **uncommitted** — a source is *gestured at* but not committed to. Two sub-cases:
   *illustrative* ("For example, Google Finance" — a candidate, not a commitment) and
-  *placeholder* ("a consensus of credible reporting" — names no concrete authority).
+  *placeholder* ("a consensus of credible reporting" — names no concrete authority; also a
+  primary source plus an **unordered optional fallback** — "however, a consensus of credible
+  reporting may also be used" — the Venezuela shape: two co-equal paths, no which-controls rule).
 - **none** — no source language at all.
 
 The principle: **"for example" means the venue did not commit to a definitive source.** Source
@@ -107,8 +123,9 @@ defects, so the grade scores those defects directly.
   score every market. The **one situational** factor (source-conflict rule) scores only when 2+ distinct
   sources are named and is **excluded from the denominator** otherwise (score re-normalized over applicable factors).
 - Score = `100 × earned / applicable`, banded **A ≥ 80, B 55–79, C ≤ 54**.
-- **Hard caps (ceilings, applied after banding):** **source uncommitted-illustrative → B; uncommitted-placeholder
-  or none → C** (§2 — a hedge is not a committed source; the binding constraint on most unregulated markets);
+- **Hard caps (ceilings, applied after banding):** **source uncommitted-illustrative → B; committed-secondhand,
+  uncommitted-placeholder or none → C** (§2 — a hedge is not a committed source, and a secondhand
+  aggregator is not an authority; the binding constraint on most unregulated markets);
   2+ *genuinely competing* sources with no precedence rule → C; discretionary trigger with no named source → C;
   permissionless oracle + discretionary trigger → C; **adversarial ground truth (contested reality) → B**.
   Caps only ever *lower* a grade, never raise it.

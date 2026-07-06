@@ -30,12 +30,14 @@ Data-completeness TODOs (not cost-relevant, do in a later pass):
 from __future__ import annotations
 
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 import enhance as E  # reuse llm_call, prompts, cache, cost stats, helpers
-from classify import CATEGORIES_IN, grade_market
+from classify import (CATEGORIES_IN, grade_market, classify_bundle_type,
+                     parse_ladder_deadline)
 
 UNIVERSE_DIR = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
 OUT_DIR      = Path.home() / "jeremy-os/outputs/clearmarket/samples-universe"
@@ -71,20 +73,32 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
         "event_id":              event_id,
         "question_raw":          m.get("title"),
         "description_raw":       m.get("yes_sub_title") or m.get("subtitle"),
+        "group_item_title":      m.get("yes_sub_title") or m.get("subtitle"),   # per-child subject (compose)
         "contract_type":         "binary",
         "settlement_currency":   "USD",
         "underlying_reference":  E.EDITORIAL_STUB,   # filled per-event below (editorial gloss)
         "close_at":              m.get("close_time"),
         "resolve_at":            m.get("expected_expiration_time") or m.get("expiration_time"),
+        "_expiration_time":          m.get("expiration_time"),           # native per-rung (ladder reconcile)
+        "_expected_expiration_time": m.get("expected_expiration_time"),  # rollup estimate
         "status":                _kalshi_status(m.get("status")),
         "resolution_rules_raw":  rules or None,
         "arbitration_model":     "kalshi_staff",
         "resolution_proposer":   "platform_staff",
-        # DIRECT tier — from series settlement_sources (series-sources.json)
-        "resolution_source":     ksrc[0]["name"] if ksrc else None,
+        # DIRECT tier — from series settlement_sources (series-sources.json).
+        # DISPLAY stays the venue's verbatim field (first entry) per the "show the source in the
+        # venue's own words" methodology. PRESERVE the full list ONLY for independent grading, so
+        # a multi-outlet 'credible-reporting menu' can be classified as uncommitted without altering
+        # what the reader sees.
+        "resolution_source":     ksrc[0]["name"] if ksrc else None,   # verbatim venue field
         "source_citation":       ksrc[0]["url"] if ksrc else None,
+        # per-entry provenance (PRD taxonomy): a venue-listed source = platform_api; LLM-surfaced
+        # prose authorities are appended at enrichment as clearmarket_editorial (enrich_event)
+        "resolution_source_list":       [{"name": s.get("name"), "url": s.get("url"),
+                                          "provenance": "platform_api"} for s in ksrc] or None,
+        "resolution_source_count":      len(ksrc) or None,
         "resolution_source_provenance": "kalshi_series_settlement_sources" if ksrc else None,
-        "resolution_source_quality":    (src or {}).get("quality"),   # authoritative | loose
+        "resolution_source_quality":    (src or {}).get("quality"),   # venue self-tag — NOT trusted for grading
         "resolution_source_type": None,             # RENAMED from source_type; TODO: classify
         "last_price":            E._to_float(m.get("last_price_dollars")),
         "volume_24h_usd":        E._mult(m.get("volume_24h_fp"), E._to_float(m.get("last_price_dollars"))),
@@ -98,6 +112,15 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
 
 def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
     psrc = src or {}
+    # Canonical full source list (source-layer refactor 2026-07-03). Previously Poly collapsed to
+    # ONE extracted URL and resolution_source_list was never populated — the grading judge could
+    # not tell a committed authority from a menu, and 92% of Poly (empty resolutionSource) was
+    # force-capped "none". Entries: the venue's structured resolutionSource field (if any) + ALL
+    # regex-extracted URL candidates. Prose-named authorities are appended at enrichment.
+    rs_prose = (m.get("resolutionSource") or "").strip() or None
+    src_list = ([{"name": rs_prose, "url": None, "provenance": "platform_api"}] if rs_prose else []) \
+             + [{"name": None, "url": u, "provenance": "platform_api"}
+                for u in (psrc.get("candidates") or [])]
     mk = {
         "market_id":             E.generate_market_id("polymarket:" + (m.get("conditionId") or m.get("id") or m.get("question") or "")),
         "platform":              "polymarket",
@@ -105,18 +128,22 @@ def build_poly_market(m: dict, event_id: str, src: dict | None = None) -> dict:
         "event_id":              event_id,
         "question_raw":          m.get("question"),
         "description_raw":       (m.get("description") or "")[:600] or None,
+        "group_item_title":      m.get("groupItemTitle"),   # per-child subject (compose)
         "contract_type":         "binary",
         "settlement_currency":   "USDC",
         "underlying_reference":  E.EDITORIAL_STUB,   # filled per-event below (editorial gloss)
         "close_at":              m.get("endDate"),
-        "resolve_at":            m.get("endDate"),
+        # child's OWN native settlement date (prefer umaEndDate); never the event rollup — Family-B fix
+        "resolve_at":            m.get("umaEndDate") or m.get("endDate"),
         "status":                "open" if (m.get("active") and not m.get("closed")) else "closed",
         "resolution_rules_raw":  (m.get("description") or None),
         "arbitration_model":     "uma_oracle",
         "resolution_proposer":   "managed_whitelist",
-        # DIRECT (verified) tier — URL extracted verbatim from the market description (poly-sources.json)
-        "resolution_source":     m.get("resolutionSource") or None,
-        "source_citation":       psrc.get("source_url"),
+        # DIRECT (verified) tier — URLs extracted verbatim from the market description (poly-sources.json)
+        "resolution_source":     rs_prose,                    # verbatim venue field (display)
+        "source_citation":       psrc.get("source_url"),      # single-URL case; multi-URL selected by the commitment call
+        "resolution_source_list":       src_list or None,
+        "resolution_source_count":      len(src_list) or None,
         "resolution_source_provenance": psrc.get("source"),   # polymarket_description | subjective_or_none
         "resolution_source_verified":   psrc.get("verified"),
         "resolution_source_method":     psrc.get("method"),
@@ -161,31 +188,112 @@ def build_cm_event(ev: dict, venue: str) -> tuple[dict, list[dict]]:
         "category":          cm.get("category"),          # 9-enum
         "tags":              cm.get("mapped_tags") or [],
         "primary_market_id": primary_market_id,
+        "bundle_type":       classify_bundle_type(ev, venue),   # categorical|date_ladder|strike_ladder|augmented_negrisk|singleton
         "catalyst_dates":    [],
         "published":         True,
         "venue":             venue,
         "editorial_notes":   E.EDITORIAL_STUB,
+        "resolution_reference": E.EDITORIAL_STUB,   # generic subject-free event ontology (filled per-event below)
         "created_at":        RUN_AT,
         "updated_at":        RUN_AT,
         "field_provenance":  {"question": {"source": "platform_api"}},  # lets canonical-question rewrite fire
     }
+    _reconcile_ladder_dates(event, markets)   # Family-B: per-rung dates (runs even with LLM off)
     return event, markets
+
+
+def _reconcile_ladder_dates(event: dict, markets: list[dict]) -> None:
+    """Family-B fix. For date ladders, make each rung carry its OWN deadline instead of
+    the event rollup: (1) prefer Kalshi's native per-rung `expiration_time`; (2) if the
+    ladder's dates are still degenerate (all identical — the Poly fed-rate case where the
+    venue copies one endDate to every child), derive each rung's date from its title."""
+    if event.get("bundle_type") not in ("date_ladder", "strike_ladder") or len(markets) < 2:
+        return
+    # (1) Kalshi: rollup estimate was preferred in the builder; swap to native per-rung
+    for m in markets:
+        if m.get("_expiration_time"):
+            m["resolve_at"] = m["_expiration_time"]
+            m.setdefault("field_provenance", {})["resolve_at"] = {"source": "native:expiration_time"}
+    # (2) title-derive is DATE ladders ONLY — a strike rung title ('$2050', 'above 2000') looks
+    #     like a year and must never be parsed as a date. Also: ignore None when testing degeneracy
+    #     (a single null-date child must not mask a genuinely degenerate ladder).
+    if event.get("bundle_type") != "date_ladder":
+        return
+    nonnull = {d for d in (m.get("resolve_at") for m in markets) if d}
+    if len(nonnull) <= 1:
+        yr = None
+        for d in nonnull:
+            mm = re.search(r"(20\d{2})", str(d))
+            if mm:
+                yr = int(mm.group(1)); break
+        for m in markets:
+            derived = parse_ladder_deadline(m.get("group_item_title"), year_hint=yr)
+            if derived:
+                m["resolve_at"] = derived
+                m.setdefault("field_provenance", {})["resolve_at"] = {"source": "derived:group_item_title"}
 
 
 # -----------------------------------------------------------------
 # Per-event enrichment (the refactor: underlying_reference ONCE per event)
 # -----------------------------------------------------------------
+def _stamp_child_provenance(m: dict, source: str) -> None:
+    fp = m.setdefault("field_provenance", {})
+    fp["underlying_reference"] = {"source": source}
+
+
+def _subject_leaks(ontology: str, subjects: list[str]) -> list[str]:
+    """The event ontology must be SUBJECT-FREE, so ANY child subject appearing in it is a leak —
+    INCLUDING the representative child's own subject (the ontology is generated from the rep's
+    question, so its subject, e.g. 'SpaceX', is the single most likely thing to leak). Word-boundary
+    match so 'Ripple' does not false-match inside 'Ripple Labs'."""
+    onto_l = ontology or ""
+    out = []
+    for s in subjects:
+        s = (s or "").strip()
+        if not s or len(s) <= 3:
+            continue
+        if re.search(r"\b" + re.escape(s) + r"\b", onto_l, re.I):
+            out.append(s)
+    return out
+
+
 def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     if not enabled or not markets:
         return
     rep = next((m for m in markets if m["market_id"] == event.get("primary_market_id")), markets[0])
+    bundle_type = event.get("bundle_type", "singleton")
 
-    # 1 call — shared to all child markets (the ladder saving)
+    # Family-A fix: settlement defined ONCE at the event (OCC class->series), inherited.
     try:
-        ref = E.llm_underlying_reference(rep)
-        for m in markets:
-            m["underlying_reference"] = ref
-            m["field_provenance_underlying_ai"] = True
+        if bundle_type == "singleton" or len(markets) == 1:
+            # single outcome: the ref legitimately names its own (only) subject
+            ref = E.llm_underlying_reference(rep)
+            markets[0]["underlying_reference"] = ref
+            _stamp_child_provenance(markets[0], "clearmarket_editorial")
+        else:
+            # multi-outcome: 1 call for a GENERIC subject-free ontology (the ladder saving,
+            # kept), stored on the event; each child's ref composed from its OWN subject so
+            # no sibling's identity ever leaks (kills the SpaceX/Anthropic broadcast bug).
+            ontology = E.llm_event_resolution_ontology(rep)
+            subjects = [(m.get("group_item_title") or "").strip() for m in markets]
+
+            # Leak guard WITH ACTION: if the generic ontology contains ANY child subject (incl.
+            # the rep's own), do not ship it — fall back to neutral phrasing + flag for review.
+            leaked = _subject_leaks(ontology, subjects)
+            if leaked:
+                # keep the leaked draft inside provenance (not a new top-level field) for review
+                event.setdefault("field_provenance", {})["subject_leak"] = {
+                    "flag": True, "leaked": leaked, "raw_ontology": ontology}
+                ontology = "Resolution per the event's stated source and mechanism (subject supplied per market)."
+                print(f"    subject_leak in {event['event_id']}: {leaked!r} -> fell back to neutral ontology",
+                      file=sys.stderr)
+
+            event["resolution_reference"] = ontology
+            src = "clearmarket_editorial_fallback" if leaked else "clearmarket_editorial"
+            event.setdefault("field_provenance", {})["resolution_reference"] = {"source": src}
+            for m in markets:
+                m["underlying_reference"] = E.compose_child_reference(m.get("group_item_title"), ontology)
+                _stamp_child_provenance(m, "composed:event+child")
     except Exception as e:
         print(f"    underlying_reference failed for {event['event_id']}: {e}", file=sys.stderr)
 
@@ -200,14 +308,65 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
     except Exception as e:
         print(f"    tags failed for {event['event_id']}: {e}", file=sys.stderr)
     try:
-        q = E.llm_canonical_question(event)
+        q = E.llm_canonical_question(event, markets)
         if q:
             event["question"] = q
     except Exception as e:
         print(f"    question failed for {event['event_id']}: {e}", file=sys.stderr)
 
-    # RCG: one per-event Haiku rating of the four LLM factors → re-grade every market in
-    # the ladder (build-time grade was 'pending' without these). Failure leaves 'pending'.
+    # Source commitment: one per-event LLM classification (the reading-comprehension judgment that
+    # REPLACES the retired patch_sources deterministic regexes). MUST run before grading so the
+    # commitment cap is on the market. rep carries the series/event source; commitment is a
+    # property of the source, so it applies to every market in the event (per-event keying
+    # verified safe 2026-07-03: 790/795 multi-market Poly events have uniform child sources).
+    try:
+        sc = E.llm_source_commitment(rep)
+    except Exception as e:
+        print(f"    source_commitment errored for {event['event_id']}: {e}", file=sys.stderr)
+        sc = None
+    if sc is None:
+        # FAIL CLOSED (spec B1): never ship an uncapped grade on a failed judgment.
+        sc = {"commitment": "uncommitted_placeholder", "source_of_record": None, "mechanism": None,
+              "primary_url": None, "prose_sources": [],
+              "why": "commitment judgment failed; capped fail-closed",
+              "rubric_version": E.SOURCE_RUBRIC_VERSION, "_fail_closed": True}
+        print(f"    source_commitment FAIL-CLOSED for {event['event_id']}", file=sys.stderr)
+    # committed_secondhand keeps top='named': the venue DID commit to one concrete source
+    # (ruled 2026-07-04) — the source table shows it truthfully; the C cap carries the
+    # authority-quality judgment. Splitting these axes is the point of the subtype.
+    top = ("named" if sc["commitment"] in ("named", "committed_secondhand")
+           else "none" if sc["commitment"] == "none" else "uncommitted")
+    # LLM-surfaced prose authorities (verbatim-gated in enhance) join the canonical source
+    # list as editorial-tier entries — visible on every surface, not just baked into the grade.
+    prose_entries = [{"name": p, "url": None, "provenance": "clearmarket_editorial"}
+                     for p in sc.get("prose_sources") or []]
+    for m in markets:
+        if prose_entries:
+            existing = m.get("resolution_source_list") or []
+            have = {(e.get("name") or "").strip().lower() for e in existing}
+            add = [e for e in prose_entries if e["name"].strip().lower() not in have]
+            if add:
+                m["resolution_source_list"] = existing + add
+                m["resolution_source_count"] = len(m["resolution_source_list"])
+        # multi-URL Poly case: the commitment call selected the controlling URL by index
+        if not m.get("source_citation") and sc.get("primary_url"):
+            m["source_citation"] = sc["primary_url"]
+        m["source_commitment"] = top
+        m["source_commitment_subtype"] = sc["commitment"]
+        m["source_of_record"] = sc.get("source_of_record")   # the committed authority (also displayed in the source table)
+        m["source_mechanism"] = sc.get("mechanism")          # single_authority | precedence | quorum
+        # THE stamped judgment — every surface reads this; no consumer re-derives from raw
+        # field presence (kills the platform_named-on-a-hedge display bug at the root).
+        m["source_status"] = ("platform_named" if top == "named"
+                              else "no_source_stated" if top == "none"
+                              else "no_committed_source")
+        m.setdefault("field_provenance", {})["source_commitment"] = {
+            "source": "clearmarket_editorial", "ai_drafted": True, "why": sc.get("why"),
+            "rubric_version": sc.get("rubric_version"),
+            **({"fail_closed": True} if sc.get("_fail_closed") else {})}
+
+    # RCG: one per-event Haiku rating of the LLM factors → grade every market (the commitment cap
+    # from above folds into grade_market). Stores a self-contained audit object per market.
     try:
         factors = E.llm_rcg_factors(event, markets)
         if factors:
@@ -218,6 +377,19 @@ def enrich_event(event: dict, markets: list[dict], enabled: bool) -> None:
                 m["resolution_clarity_grade"] = rcg["grade"]
                 m["rcg_score"], m["rcg_caps"] = rcg["score"], rcg["caps"]
                 m["rcg_applied_factors"] = rcg.get("applied_factors")
+                # the full audit object — every value the grade derives from, incl. the
+                # commitment's written why and whether it was a fail-closed default (so a
+                # buyer-facing surface can distinguish "venue committed to nothing" from
+                # "our judgment failed and we capped conservatively")
+                commit_fp = (m.get("field_provenance") or {}).get("source_commitment", {})
+                m["rcg"] = {"grade": rcg["grade"], "score": rcg["score"], "caps": rcg["caps"],
+                            "factors": rcg.get("factors"),
+                            "commitment": {"class": m.get("source_commitment_subtype"),
+                                           "source_of_record": m.get("source_of_record"),
+                                           "mechanism": m.get("source_mechanism"),
+                                           "why": commit_fp.get("why"),
+                                           "fail_closed": bool(commit_fp.get("fail_closed")),
+                                           "rubric_version": E.SOURCE_RUBRIC_VERSION}}
     except Exception as e:
         print(f"    rcg_factors failed for {event['event_id']}: {e}", file=sys.stderr)
 
@@ -319,6 +491,19 @@ def main() -> None:
         print(f"dedup: dropped {len(all_events)-len(dedup_events)} duplicate events, "
               f"{len(all_markets)-len(dedup_markets)} duplicate markets", flush=True)
     all_events, all_markets = dedup_events, dedup_markets
+
+    # strip pipeline-internal transient keys (leading underscore) before serialization
+    for mk in all_markets:
+        for k in [k for k in mk if k.startswith("_")]:
+            mk.pop(k, None)
+
+    # surface the new guard counts (subject leaks + date incoherence) — never silent
+    n_leak = sum(1 for ev in all_events if ev.get("field_provenance", {}).get("subject_leak"))
+    n_derived = sum(1 for mk in all_markets
+                    if (mk.get("field_provenance", {}).get("resolve_at") or {}).get("source", "").startswith(("derived", "native:expiration")))
+    print(f"guards: {n_leak} events with subject_leak fallback, "
+          f"{n_derived} markets ladder-date reconciled "
+          f"(run report_date_review.py for the date-review queue)", flush=True)
 
     bundle = {"_meta": {"generated_at": RUN_AT, "schema": "v0.2.0-universe",
                         "event_count": len(all_events), "market_count": len(all_markets)},

@@ -1,0 +1,444 @@
+{
+ "_doc": "Source-commitment ground truth (source-layer refactor, 2026-07-03). Real venue records from the 2026-06-12 universe; expectations hand-labeled. Frozen regression set — run on every rubric/prompt change (rubric changes MUST be version-bumped).",
+ "cases": [
+  {
+   "id": "kalshi_news_menu",
+   "market": {
+    "question_raw": "Will Trump's birthright citizenship order come into effect?",
+    "resolution_rules_raw": "If Trump's Executive Order ending birthright citizenship comes into effect for any period after Issuance and before Aug 1, 2026, then the market resolves to Yes.\n\n\"Into effect\" means that there are no federal courts prohibiting the order from going into effect. If the Executive Order is withdrawn, then the market immediately resolves to No. If the Supreme Court rules that the order is not constitutional, then the market immediately resolves to No (and the reverse if they rule that the order is constitutional).",
+    "resolution_source_list": [
+     {
+      "name": "ABC",
+      "url": "https://abcnews.go.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Axios",
+      "url": "https://www.axios.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "CBS",
+      "url": "https://www.cbsnews.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "CNN",
+      "url": "https://www.cnn.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Fox News",
+      "url": "https://www.foxnews.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "MSNBC",
+      "url": "https://www.msnbc.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Politico",
+      "url": "https://www.politico.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Reuters",
+      "url": "https://www.reuters.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Semafor",
+      "url": "https://www.semafor.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "the Associated Press",
+      "url": "https://apnews.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The Information",
+      "url": "https://www.theinformation.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The New York Times",
+      "url": "https://www.nytimes.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The Wall Street Journal",
+      "url": "https://www.wsj.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The Washington Post",
+      "url": "https://www.washingtonpost.com/",
+      "provenance": "platform_api"
+     }
+    ],
+    "resolution_source": "ABC",
+    "source_citation": "https://abcnews.go.com/"
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "6 interchangeable news outlets, no tie-break, court-order question"
+   }
+  },
+  {
+   "id": "kalshi_authority_in_menu",
+   "market": {
+    "question_raw": "Will SpaceX announce acquisition of Cursor before Jan 1, 2027?",
+    "resolution_rules_raw": "If SpaceX announces an agreement to acquire Cursor before Jan 1, 2027, then the market resolves to Yes.\n\nThe announcement must involve a definitive, binding agreement accompanied by public announcement. Letters of intent, memoranda of understanding, or agreements in principle do not qualify. The deal does not need to close as long as an agreement has been announced. Regulatory blocking or later cancellation does not affect resolution. Cross-border transactions qualify if a definitive agreement is announced. Internal reorganizations, joint ventures, or minority investments do not qualify unless they involve controlling ownership transfer. The acquisition can be structured as asset purchases, stock purchases, tender offers, SPAC combinations, or takeover agreements. Transactions involving subsidiaries qualify, but those limited solely to assets or divisions must represent the majority of operations or equity control.",
+    "resolution_source_list": [
+     {
+      "name": "Securities and Exchange Commission",
+      "url": "https://www.sec.gov/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "ABC",
+      "url": "https://abcnews.go.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "CNBC",
+      "url": "https://www.cnbc.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The Guardian",
+      "url": "https://www.theguardian.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Bloomberg",
+      "url": "https://www.bloomberg.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "The Wall Street Journal",
+      "url": "https://www.wsj.com/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Financial Times",
+      "url": "https://www.ft.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Reuters",
+      "url": "https://www.reuters.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "the New York Times",
+      "url": "https://www.nytimes.com",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "BBC",
+      "url": "https://www.bbc.co.uk",
+      "provenance": "platform_api"
+     }
+    ],
+    "resolution_source": "Securities and Exchange Commission",
+    "source_citation": "https://www.sec.gov/"
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "source_of_record_contains": "Securities and Exchange",
+    "note": "SEC buried in a news menu -> committed to the SEC"
+   }
+  },
+  {
+   "id": "kalshi_loose_google_finance",
+   "market": {
+    "question_raw": "Will the S&P 500 be below 7225 on Jun 12, 2026 at 4pm EDT?",
+    "resolution_rules_raw": "If the end-of-day S&P 500 index value on June 12, 2026 is below 7225, then the market resolves to Yes.\n\nThe market will close on June 12, 2026. The market will expire at the sooner of the first release of the data, or one week after June 12, 2026.\n\nPursuant to the Kalshi Rulebook, the Exchange has modified the Source Agency and Underlying for indices markets. See the rules for more information.",
+    "resolution_source_list": [
+     {
+      "name": "For example, Google Finance",
+      "url": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en",
+      "provenance": "platform_api"
+     }
+    ],
+    "resolution_source": "For example, Google Finance",
+    "source_citation": "https://www.google.com/finance/quote/.INX:INDEXSP?hl=en"
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_illustrative"
+    ],
+    "note": "'For example, Google Finance' — methodology's own hedge example"
+   }
+  },
+  {
+   "id": "kalshi_two_authorities",
+   "market": {
+    "question_raw": "Will bill that mandates the creation and issuance of a $250 U.S. bill featuring Donald J. Trump's likeness becomes law before Jan 1, 2027?",
+    "resolution_rules_raw": "If bill that mandates the creation and issuance of a $250 U.S. bill featuring Donald J. Trump's likeness becomes law before Jan 1, 2027, then the market resolves to Yes.\n\n|| Additional Info ||",
+    "resolution_source_list": [
+     {
+      "name": "White House",
+      "url": "https://whitehouse.gov/",
+      "provenance": "platform_api"
+     },
+     {
+      "name": "Library of Congress",
+      "url": "https://congress.gov",
+      "provenance": "platform_api"
+     }
+    ],
+    "resolution_source": "White House",
+    "source_citation": "https://whitehouse.gov/"
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "note": "White House + Library of Congress; both authoritative for law enactment — judgment-call case, watch for flip-flop"
+   }
+  },
+  {
+   "id": "poly_quorum_california_gov",
+   "market": {
+    "question_raw": "Will Tom Steyer win the California Governor Election in 2026?",
+    "resolution_rules_raw": "This market will resolve to according to the candidate who wins the 2026 California gubernatorial election currently scheduled for November 3, 2026.\n\nIf the results of the election are not confirmed by July 31, 2027, this market will resolve to \"Other\".\n\nThe resolution source for this market is the Associated Press, Fox News, and NBC. This market will resolve once all three sources call the race for the same candidate. If all three sources haven’t called the race in this state for the same candidate, this market will resolve based on official certification.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "mechanism": [
+     "quorum"
+    ],
+    "note": "AP+Fox+NBC, all three must call — THE quorum fixture (was graded none->C pre-refactor)"
+   }
+  },
+  {
+   "id": "poly_cme_prose_silver",
+   "market": {
+    "question_raw": "Will Silver (SI) settle over $90 on the final trading day of June 2026?",
+    "resolution_rules_raw": "This market will resolve to \"Yes\" if the official CME settlement price for the Active Month of Silver futures on the final trading day of June 2026 is higher than the listed price. Otherwise, the market will resolve to \"No\".\n\nFor CME Silver (SI) futures contracts, the Active Month is the nearest of CME's designated delivery-cycle months (March, May, July, September, December) that is not the spot month. The Active Month becomes a non-active month effective on its First Position Date, at which point the next eligible contract month becomes the Active Month.\n\nOnly the Active Month's official settlement price published by CME Group will be considered. Intraday trades, highs, lows, bids, offers, midpoint values, or indicative prices do not count.\n\nNote that the settlement price may differ from the last traded price. CME's methodology to determine the settlement price can vary by commodity and contract.\n\nOnly days during June on which CME publishes an official settlement price for the Active Month will be included. Days without settlement prices (weekends, holidays, or market closures) are ignored.\n\nThis market will resolve based on the settlement price as it appears on the CME settlement page at the time it is first published for that trading day, regardless of any later corrections or updates.\n\nThe resolution source for this market is the CME Group website — specifically, the daily \"Settlement\" price for the Active Month of Silver (SI) futures.",
+    "resolution_source_list": null,
+    "resolution_source": "https://www.cmegroup.com/markets/metals/precious/silver.settlements.html",
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "source_of_record_contains": "CME",
+    "note": "CME settlement price named in prose, zero URLs — the cl-hit oil class"
+   }
+  },
+  {
+   "id": "poly_issuer_micron",
+   "market": {
+    "question_raw": "Will Micron Q3 NAND revenue be above $8.0B?",
+    "resolution_rules_raw": "This market will resolve to \"Yes\" if Micron's NAND revenue for the third fiscal quarter of 2026, as reported in its official company earnings materials and investor presentation, is above the listed amount. Otherwise, this market will resolve to \"No\".\n\nThe specified metric will be considered as reported in the company's official earnings materials. Subsequent revisions will not be considered.\n\nIf the specified company's official earnings materials for the specified quarter are released, and the specified metric is not included, this market will resolve to \"No\".\n\nIf the specified company does not release quarterly earnings materials for the specified quarter by July 31, 2026, 11:59 PM ET, this market will resolve to \"No\".\n\nIf the specified metric is reported as a range rather than a specific number, the midpoint of the range will be used for resolution of this market.\n\nThe resolution source for this market is Micron's official company earnings materials and investor presentation, including press releases, investor presentations, and regulatory filings. If the specified metric is not reported in these materials, recordings or transcripts of the company's earnings webcast may also be used.\n\nNote: This market will resolve based on the most numerically precise version of the specified metric reported in the company's official earnings materials. Only the specified metric will be considered; alternate versions that differ in definition or scope from the specified metric will not be considered.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "note": "issuer's official earnings materials"
+   }
+  },
+  {
+   "id": "poly_issuer_anthropic_ipo",
+   "market": {
+    "question_raw": "Will Anthropic IPO by September 30, 2026?",
+    "resolution_rules_raw": "This market will resolve to \"Yes\" if Anthropic shares are listed on a public securities exchange and open for trading by 11:59 PM ET on the listed date. Otherwise, this market will resolve to \"No.\"\n\nIf Anthropic is acquired by another company that is already public, this market will immediately resolve to \"No.\"\n\nThe primary resolution source for this market is official filings and announcements from Anthropic and the relevant securities exchange on which the shares are listed, including SEC filings (e.g., Form S-1, Form 8-A), exchange listing confirmations, and official press releases from Anthropic; however a consensus of credible reporting may also be used.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "RULED 2026-07-04 (Jeremy): strict. Issuer-filings primary + Polymarket's boilerplate 'however a consensus of credible reporting may also be used' IS the Venezuela shape — two co-equal paths, no which-controls rule -> placeholder, cap C. Consistent with the MSTR flagship C and the CFTC comment; knowingly demotes the FOMC 'consensus fallback' A demo family (flagged questionable 2026-06-28)."
+   }
+  },
+  {
+   "id": "poly_placeholder_moon",
+   "market": {
+    "question_raw": "Human moon landing in 2026?",
+    "resolution_rules_raw": "This market will resolve to \"Yes\" if any human-crewed mission lands on the moon between market creation and December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nA touchdown of the spacecraft with humans aboard will be sufficient to resolve this market to \"Yes\", regardless of technical complications.\n\nThe resolution source will be a consensus of credible reporting.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "'consensus of credible reporting' only"
+   }
+  },
+  {
+   "id": "poly_placeholder_iran",
+   "market": {
+    "question_raw": "Will the Iranian regime fall before 2027?",
+    "resolution_rules_raw": "This market will resolve to \"Yes\" if the Islamic Republic of Iran’s current ruling regime is overthrown, collapsed, or otherwise ceases to govern by December 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.\n\nThis requires a broad consensus of reporting indicating that core structures of the Islamic Republic (e.g. the office of the Supreme Leader, the Guardian Council, IRGC control under clerical authority) have been dissolved, incapacitated, or replaced by a fundamentally different governing system or otherwise lost de facto power over a majority of the population of Iran. This could occur via revolution, civil war, military coup, or voluntary abdication, but only qualifies if the Islamic Republic no longer exercises sovereign power.\n\nRoutine political events such as elections, reforms, or leadership succession do not qualify. Internal coups or power shifts that preserve the Islamic Republic’s core structures also do not qualify. Only a clear break in continuity—such as a new provisional government, revolutionary council, or constitution replacing the Islamic Republic will qualify.\n\nPartial loss of territory or challenges from rebel or exile groups will not qualify unless the Islamic Republic no longer administers the majority of the Iranian population within Iran. \n\nThe resolution source will be a consensus of credible reporting. ",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "'broad consensus of reporting'"
+   }
+  },
+  {
+   "id": "poly_venezuela_shape_ri_primary",
+   "market": {
+    "question_raw": "Will Jack Reed be the Democratic nominee for Senate in Rhode Island?",
+    "resolution_rules_raw": "This market will resolve according to the winner of the Democratic Primary for United States Senator from Rhode island.\n\nIf no 2026 Rhode Island Democratic Senate Primary takes place, this market will resolve to \"Other\".\n\nThe resolution source for this market will be the first announcement of the results from the Rhode Island Democratic party, however an overwhelming consensus of credible reporting may suffice.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "RELABELED 2026-07-03 after the model out-judged the original 'named' label: party announcement primary + 'overwhelming consensus may suffice' fallback with no which-controls rule = the Venezuela failure shape (CFTC comment Q2.b case 4)."
+   }
+  },
+  {
+   "id": "poly_map_menu_sumy",
+   "market": {
+    "question_raw": "Will Russia enter Druzkhivka by June 30?",
+    "resolution_rules_raw": "This market will resolve to “Yes” if, according to the ISW map, Russia captures any territory of Druzkhivka (https://maps.app.goo.gl/cH9ekgbf9qbxGPUk6) by June 30, 2026, at 11:59 PM ET.\n\nTerritory will be considered captured if any part of the city or settlement is shaded under a below specified layer on the ISW map (https://storymaps.arcgis.com/stories/36a7f6a6f5a9448496de641cf64bd375) by the resolution date. Otherwise, the market will resolve to “No”.\n\nFor any change on the ISW map to qualify for this market’s resolution, the relevant shading indicating Russian control must persist through the next full ISW daily update cycle. If ISW skips a day, shading must persist until the next finalized ISW update is published, regardless of the date. Any continuous shading which reflects either \"Assessed Russian Infiltration Areas in Ukraine\", “Assessed Russian Control”, “Assessed Russian Advance In Ukraine”, or “Assessed Russian Gains in the Past 24 Hours” will qualify. \n\nOnce a qualifying condition is met, any subsequent loss of control will not be considered towards the resolution of this market.\n\nIf Russia comes into control of the specified territory as a result of a negotiated settlement, this will qualify for a 'Yes' resolution, regardless of whether it is shaded red in the ISW map. However, an announcement of a negotiated settlement that gives Russia de jure control will not qualify. Actual control must be established.\n\nThe primary resolution source for this market will be the ISW Ukraine map. If the ISW map is rendered unavailable, information from DeepStateMap (https://deepstatemap.live/) may be used. If information from both the ISW and DeepStateMap are rendered permanently unavailable, a consensus of credible reporting may be used.\n\nNote: Any temporary glitches or errors in the map will not be considered.",
+    "resolution_source_list": null,
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "named"
+    ],
+    "source_of_record_contains": "ISW",
+    "note": "'according to the ISW map' — named but mutable source (Ukraine-map class; mutability is a separate factor)"
+   }
+  },
+  {
+   "id": "kalshi_fiscal_ai_ladder",
+   "market": {
+    "question_raw": "Will Tesla Inc. report Above 1.5 million total deliveries in 2026?",
+    "resolution_rules_raw": "If Tesla Inc. reports Above 1500000.0 total deliveries in 2026, then the market resolves to Yes.",
+    "resolution_source_list": null,
+    "resolution_source": "Fiscal.ai",
+    "source_citation": "https://fiscal.ai"
+   },
+   "expect": {
+    "commitment": [
+     "committed_secondhand"
+    ],
+    "source_of_record_contains": "Fiscal",
+    "note": "RULED 2026-07-04 (Jeremy): the Fiscal.ai class (Kalshi company-metric ladders, sole settlement source = a commercial data aggregator). A real commitment to ONE checkable source — but secondhand: it re-publishes the issuer's numbers with no published settlement methodology and no rule for a disagreement with the filing -> committed_secondhand, cap C. Contrast CF Benchmarks (published methodology -> named). Must NOT appear in authorities_in_list, or the deterministic reconciliation would re-promote it to named."
+   }
+  },
+  {
+   "id": "kalshi_anyof_visit_menu",
+   "market": {
+    "question_raw": "Will Donald Trump visit Wisconsin before Jan 1, 2027?",
+    "resolution_rules_raw": "If Donald Trump has physically travelled to and been present within the geographic boundaries of Wisconsin before Jan 1, 2027, then the market resolves to Yes.\n\nPhysical presence within the geographic boundaries is required - flying over without landing, airport layovers where the person remains in the airplane or airport, virtual appearances, presence in international waters, or presence solely within embassy/consulate grounds do NOT count as visits. For cities, official municipal boundaries apply. For states/provinces, official boundaries apply. For countries, internationally recognized borders apply. International airports are considered within their host jurisdiction. Evidence must be reported by at least one Source Agency and may include official announcements, news reports with specific location details, verified photographs/videos at identifiable locations, flight records showing arrival, completed official schedules, or social media posts from official accounts. Visits that began before market issuance do not count. For multiple locations with OR logic, visiting any single location satisfies the criterion. For AND logic, all locations must be visited.",
+    "resolution_source_list": [
+     {
+      "name": "The Guardian",
+      "url": "https://www.theguardian.com"
+     },
+     {
+      "name": "official representatives or offices of <person>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "Fox News",
+      "url": "https://www.foxnews.com/"
+     },
+     {
+      "name": "official social media accounts of <person> or their official representatives",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "Semafor",
+      "url": "https://www.semafor.com/"
+     },
+     {
+      "name": "The Information",
+      "url": "https://www.theinformation.com/"
+     },
+     {
+      "name": "CNBC",
+      "url": "https://www.cnbc.com"
+     },
+     {
+      "name": "the Associated Press",
+      "url": "https://apnews.com/"
+     },
+     {
+      "name": "The Wall Street Journal",
+      "url": "https://www.wsj.com/"
+     },
+     {
+      "name": "CNN",
+      "url": "https://www.cnn.com"
+     },
+     {
+      "name": "Politico",
+      "url": "https://www.politico.com"
+     },
+     {
+      "name": "MSNBC",
+      "url": "https://www.msnbc.com"
+     },
+     {
+      "name": "The Washington Post",
+      "url": "https://www.washingtonpost.com/"
+     },
+     {
+      "name": "Reuters",
+      "url": "https://www.reuters.com"
+     },
+     {
+      "name": "local news outlets with verifiable mastheads in <area>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "official government sources of <area>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "The New York Times",
+      "url": "https://www.nytimes.com"
+     }
+    ],
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "Kalshi visit-series template (2026-07-05 eyeball finding): 17-entry any-of menu of news outlets + UNFILLED template tokens ('official representatives or offices of <person>'). Menu with no controlling authority -> placeholder (C-floor consistent). Template tokens must NOT reconcile it to named and must NOT ship as source_of_record. The any-of rule on a one-sided occurrence question is NOT a source CONFLICT (factor rubric, same date) — the C stands on commitment, with the honest tooltip. Whether any-of menus deserve a committed class is parked as an open editorial call (Decision 3)."
+   }
+  }
+ ]
+}

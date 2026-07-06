@@ -33,6 +33,9 @@ Cap1,2+ distinct sources that could disagree with no conflict/fallback rule (sou
 Cap2,Discretionary trigger with no named adjudicating source,Cap at C,,,,,
 Cap3,Permissionless oracle arbiter AND discretionary trigger,Cap at C,,,,,
 Cap4,Trigger depends on a fact controlled or disputed by an interested party (adversarial ground truth),Cap at B,,,,,
+Cap5,Source commitment = uncommitted_illustrative (hedged source - 'for example ...'),Cap at B,,,,,
+Cap6,Source commitment = uncommitted_placeholder (category or interchangeable-outlet menu with no mechanism) - also the fail-closed default when the commitment judgment fails,Cap at C,,,,,
+Cap7,Source commitment = none (no source language at all),Cap at C,,,,,
 ,,,,,,,
 SANITY CHECK - four documented failures (matches classify.py self-test under v2 rules),,,,,,,
 Case,Trigger,Contested,SourceClarity,Arbiter,Conflict,Temporal,Mutability,Applied,Score,Cap,Final
