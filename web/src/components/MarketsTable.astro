@@ -12,7 +12,7 @@ import type { Market } from '../lib/universe';
 
 type Item = { m: Market; mark: any };
 type Group = { venue: string; items: Item[] };
-const { groups, sectionLabel } = Astro.props as { groups: Group[]; sectionLabel?: string };
+const { groups, sectionLabel, eventSlug } = Astro.props as { groups: Group[]; sectionLabel?: string; eventSlug?: string };
 
 const allItems = groups.flatMap((g) => g.items);
 const maxProb = Math.max(0.0001, ...allItems.map((it) => it.mark?.implied_probability ?? it.m.last_price ?? 0));
@@ -108,8 +108,8 @@ const ladderUnitful = allItems.some((it) => /[%$]/.test(`${it.m.question_raw ?? 
 // What the rows are distinguished by — drives the mobile legend's left label.
 const axisLabel = dateIsAxis ? 'Resolution Date' : ((anyThreshold && ladderUnitful) ? 'Target Strike' : 'Outcome');
 ---
-<section id="markets" class="cm-section">
-  <div class="cm-section-h">{label}</div>
+<section id="markets" class="cm-section" data-event-slug={eventSlug ?? null}>
+  <div class="cm-section-h">{label}{eventSlug && <span class="cm-marks-note" data-marks-note> · marks: daily snapshot</span>}</div>
   {groups.map((g) => {
     const grpAffix = commonAffix(g.items.map((it) => (it.m.question_raw ?? '').trim()));
     return (
@@ -161,7 +161,7 @@ const axisLabel = dateIsAxis ? 'Resolution Date' : ((anyThreshold && ladderUnitf
                 if (mid && mid.length >= 2) primary = mid;
               }
               return (
-                <tr data-original-index={rowIdx}>
+                <tr data-original-index={rowIdx} data-market-id={m.market_id} data-mkt-status={m.status ?? ''}>
                   <td class="cm-td-q" title={m.question_raw ?? ''}><span class="cm-td-label-text">{rl.context
                     ? <Fragment><span class="cm-lbl-primary">{primary}</span><span class="cm-lbl-context"> · {rl.context}</span></Fragment>
                     : primary}</span></td>
@@ -218,3 +218,59 @@ const axisLabel = dateIsAxis ? 'Resolution Date' : ((anyThreshold && ladderUnitf
     });
   });
 </script>
+<script is:inline>
+  // Live-marks hydration (2026-07-06): the static page is the record; the numbers are marks.
+  // One fetch of the event from the API (D1, refreshed hourly by the marks cron) on load,
+  // then update P(YES) + both volume cells in place for markets the API still calls open.
+  // Settled markets keep their frozen bundle values. Bars keep their build-time widths —
+  // they are relative visual guides recomputed on the daily rebuild; the numbers are the
+  // citable values. On any failure the page silently keeps the bundle snapshot.
+  (() => {
+    const sec = document.querySelector('section#markets[data-event-slug]');
+    const slug = sec && sec.getAttribute('data-event-slug');
+    if (!slug) return;
+    const fmtPct = (p) => (p === null || p === undefined) ? '—' : `${(p * 100).toFixed(1)}%`;
+    const fmtVol = (v) => {
+      if (v === null || v === undefined || v === 0) return '—';
+      if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+      if (v >= 1e6) return `$${(v / 1e6).toFixed(2)}M`;
+      if (v >= 1e4) return `$${(v / 1e3).toFixed(0)}K`;
+      if (v >= 1e3) return `$${(v / 1e3).toFixed(1)}K`;
+      return `$${v.toFixed(0)}`;
+    };
+    const setCell = (row, key, val, fmt) => {
+      const td = row.querySelector(`td[data-sort-key="${key}"]`);
+      if (!td) return;
+      td.setAttribute('data-sort-value', val ?? '');
+      const num = td.querySelector('.cm-num');
+      if (num) num.textContent = fmt(val);
+    };
+    fetch(`https://api.clearmarket.fyi/v1/events/${encodeURIComponent(slug)}`)
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then((d) => {
+        const e = d.event ?? d;
+        const ms = e.markets ?? d.markets ?? [];
+        const byId = new Map(ms.map((m) => [m.market_id, m]));
+        let touched = 0;
+        sec.querySelectorAll('tr[data-market-id]').forEach((row) => {
+          const m = byId.get(row.getAttribute('data-market-id'));
+          if (!m || m.status !== 'open') return;   // settled: keep the frozen record
+          setCell(row, 'p', m.last_price, fmtPct);
+          setCell(row, 'v24', m.volume_24h_usd, fmtVol);
+          setCell(row, 'vcum', m.volume_total_usd, fmtVol);
+          touched++;
+        });
+        const note = sec.querySelector('[data-marks-note]');
+        if (note && touched > 0) {
+          const t = new Date();
+          const hh = String(t.getUTCHours()).padStart(2, '0');
+          const mm = String(t.getUTCMinutes()).padStart(2, '0');
+          note.textContent = ` · marks: live via API · ${hh}:${mm} UTC`;
+        }
+      })
+      .catch(() => {});   // bundle snapshot stands
+  })();
+</script>
+<style>
+  .cm-marks-note { font-size: 0.72em; letter-spacing: 0.04em; opacity: 0.55; text-transform: none; font-weight: 400; }
+</style>

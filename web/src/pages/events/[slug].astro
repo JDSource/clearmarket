@@ -185,7 +185,7 @@ else if (earliest) eventJsonLd.temporalCoverage = earliest;
     <ResolutionStrip event={event} markets={markets} />
 
     {/* PRICE LEADS — the one shared markets-table template (per-venue blocks, resolves column) */}
-    <MarketsTable groups={marketGroups} sectionLabel={marketsLabel} />
+    <MarketsTable groups={marketGroups} sectionLabel={marketsLabel} eventSlug={event.slug} />
 
     {/* verbatim rules — the #resolution section */}
     <VerbatimRules event={event} markets={markets} resolutionLog={resolutionLog} />
