@@ -354,6 +354,91 @@
     "source_of_record_contains": "Fiscal",
     "note": "RULED 2026-07-04 (Jeremy): the Fiscal.ai class (Kalshi company-metric ladders, sole settlement source = a commercial data aggregator). A real commitment to ONE checkable source — but secondhand: it re-publishes the issuer's numbers with no published settlement methodology and no rule for a disagreement with the filing -> committed_secondhand, cap C. Contrast CF Benchmarks (published methodology -> named). Must NOT appear in authorities_in_list, or the deterministic reconciliation would re-promote it to named."
    }
+  },
+  {
+   "id": "kalshi_anyof_visit_menu",
+   "market": {
+    "question_raw": "Will Donald Trump visit Wisconsin before Jan 1, 2027?",
+    "resolution_rules_raw": "If Donald Trump has physically travelled to and been present within the geographic boundaries of Wisconsin before Jan 1, 2027, then the market resolves to Yes.\n\nPhysical presence within the geographic boundaries is required - flying over without landing, airport layovers where the person remains in the airplane or airport, virtual appearances, presence in international waters, or presence solely within embassy/consulate grounds do NOT count as visits. For cities, official municipal boundaries apply. For states/provinces, official boundaries apply. For countries, internationally recognized borders apply. International airports are considered within their host jurisdiction. Evidence must be reported by at least one Source Agency and may include official announcements, news reports with specific location details, verified photographs/videos at identifiable locations, flight records showing arrival, completed official schedules, or social media posts from official accounts. Visits that began before market issuance do not count. For multiple locations with OR logic, visiting any single location satisfies the criterion. For AND logic, all locations must be visited.",
+    "resolution_source_list": [
+     {
+      "name": "The Guardian",
+      "url": "https://www.theguardian.com"
+     },
+     {
+      "name": "official representatives or offices of <person>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "Fox News",
+      "url": "https://www.foxnews.com/"
+     },
+     {
+      "name": "official social media accounts of <person> or their official representatives",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "Semafor",
+      "url": "https://www.semafor.com/"
+     },
+     {
+      "name": "The Information",
+      "url": "https://www.theinformation.com/"
+     },
+     {
+      "name": "CNBC",
+      "url": "https://www.cnbc.com"
+     },
+     {
+      "name": "the Associated Press",
+      "url": "https://apnews.com/"
+     },
+     {
+      "name": "The Wall Street Journal",
+      "url": "https://www.wsj.com/"
+     },
+     {
+      "name": "CNN",
+      "url": "https://www.cnn.com"
+     },
+     {
+      "name": "Politico",
+      "url": "https://www.politico.com"
+     },
+     {
+      "name": "MSNBC",
+      "url": "https://www.msnbc.com"
+     },
+     {
+      "name": "The Washington Post",
+      "url": "https://www.washingtonpost.com/"
+     },
+     {
+      "name": "Reuters",
+      "url": "https://www.reuters.com"
+     },
+     {
+      "name": "local news outlets with verifiable mastheads in <area>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "official government sources of <area>",
+      "url": "https://kalshi.com/"
+     },
+     {
+      "name": "The New York Times",
+      "url": "https://www.nytimes.com"
+     }
+    ],
+    "resolution_source": null,
+    "source_citation": null
+   },
+   "expect": {
+    "commitment": [
+     "uncommitted_placeholder"
+    ],
+    "note": "Kalshi visit-series template (2026-07-05 eyeball finding): 17-entry any-of menu of news outlets + UNFILLED template tokens ('official representatives or offices of <person>'). Menu with no controlling authority -> placeholder (C-floor consistent). Template tokens must NOT reconcile it to named and must NOT ship as source_of_record. The any-of rule on a one-sided occurrence question is NOT a source CONFLICT (factor rubric, same date) — the C stands on commitment, with the honest tooltip. Whether any-of menus deserve a committed class is parked as an open editorial call (Decision 3)."
+   }
   }
  ]
 }

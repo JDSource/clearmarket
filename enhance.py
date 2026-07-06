@@ -1120,7 +1120,13 @@ _RCG_SYSTEM = (
     "OR a named PRIMARY with an informal/corroborating fallback (e.g. 'official X, however a consensus of "
     "credible reporting may also be used' — the primary decides, the fallback merely corroborates), OR "
     "multiple pages/links of the SAME source. A subjective 'consensus of credible reporting' standard with "
-    "no named authority is NOT a source conflict — its weakness is trigger subjectivity; rate it there.\n"
+    "no named authority is NOT a source conflict — its weakness is trigger subjectivity; rate it there. "
+    "An ANY-OF decision rule over a source menu ('at least one listed source reports X', with an evidence "
+    "standard) on a ONE-SIDED occurrence question (did X happen by T) is ALSO NOT a conflict — the rule "
+    "states which report controls (the qualifying affirmative one); silence from other sources is not a "
+    "contradictory answer. Rate that menu's weakness on the commitment axis, not here. An any-of menu on a "
+    "TWO-SIDED question (who won, what a court ruled — where two outlets could satisfy the rule with "
+    "OPPOSITE outcomes) DOES fail.\n"
     "temporal_precision (rate for every market; na only if truly inapplicable): is the controlling "
     "timestamp/cutoff precise and aligned with when the source updates? pass = precise and aligned; "
     "partial = minor ambiguity; fail = ambiguous timing or source-update lag could flip the outcome.\n"
@@ -1199,7 +1205,7 @@ def llm_rcg_factors(event: dict, event_markets: list) -> dict | None:
 # Versioned like a schema migration: bump on ANY wording change to the commitment rubric, so a
 # grade change between vintages is always attributable to "rubric changed" or "venue text changed"
 # — never model drift. Stamped into field_provenance + the rcg audit object on every judgment.
-SOURCE_RUBRIC_VERSION = "v3.6-2026-07-04"
+SOURCE_RUBRIC_VERSION = "v3.6.1-2026-07-05"
 
 _SOURCE_COMMITMENT_SYSTEM = (
     "You classify a prediction market's SOURCE COMMITMENT for a resolution-clarity grade, "
@@ -1333,6 +1339,11 @@ def llm_source_commitment(market: dict) -> dict | None:
         sor = sor.strip() or None
         if sor and not _verbatim(sor, hay):
             sor = None          # gated: not traceable to venue text/list
+        # Kalshi series templates ship UNFILLED placeholder tokens ('official representatives
+        # or offices of <person>') — verbatim-present in the list but not a real source name.
+        # Never display or commit to one (Trump-Wisconsin eyeball finding, 2026-07-05).
+        if sor and "<" in sor:
+            sor = None
     else:
         sor = None
     mech = d.get("mechanism") if d.get("mechanism") in ("single_authority", "precedence", "quorum") else None
@@ -1357,8 +1368,11 @@ def llm_source_commitment(market: dict) -> dict | None:
     # the rules prose separately references it. The model extracts (verbatim-gated against the
     # list); this rule decides. Protects the 63 authority-bearing series the v1 self-audit caught.
     list_names = {(s.get("name") or "").strip().lower() for s in srcs}
+    # '<' excludes unfilled venue-template tokens ('official government sources of <area>') —
+    # a placeholder entry must never reconcile a menu up to 'named' (2026-07-05).
     auths = [a.strip() for a in (d.get("authorities_in_list") or [])
-             if isinstance(a, str) and a.strip() and a.strip().lower() in list_names]
+             if isinstance(a, str) and a.strip() and "<" not in a
+             and a.strip().lower() in list_names]
     if auths and c != "named":
         c = "named"
         sor = sor or auths[0]

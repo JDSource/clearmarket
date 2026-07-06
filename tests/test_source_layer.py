@@ -157,6 +157,27 @@ def test_gate_secondhand_verbatim_source_survives(monkeypatch):
     assert out["source_of_record"] == "Fiscal.ai"
 
 
+def test_gate_template_token_never_promotes_or_displays(monkeypatch):
+    """Kalshi series templates ship unfilled placeholder entries ('official representatives or
+    offices of <person>'). They pass the verbatim gate (they ARE in the list) but must never
+    (a) reconcile a menu up to 'named' via authorities_in_list, nor (b) ship as source_of_record.
+    Trump-Wisconsin eyeball finding, 2026-07-05."""
+    mkt = {"question_raw": "Will Donald Trump visit Wisconsin before Jan 1, 2027?",
+           "resolution_rules_raw": "Evidence must be reported by at least one Source Agency.",
+           "resolution_source_list": [
+               {"name": "The Guardian", "url": None},
+               {"name": "official representatives or offices of <person>", "url": None},
+               {"name": "Fox News", "url": None}]}
+    _mock_llm(monkeypatch, {"commitment": "uncommitted_placeholder",
+                            "source_of_record": "official representatives or offices of <person>",
+                            "mechanism": None, "primary_source_number": 0, "prose_sources": [],
+                            "authorities_in_list": ["official representatives or offices of <person>"],
+                            "why": "menu"})
+    out = E.llm_source_commitment(mkt)
+    assert out["commitment"] == "uncommitted_placeholder"   # NOT reconciled to named
+    assert out["source_of_record"] is None                  # token never displayed
+
+
 def test_gate_invalid_class_returns_none(monkeypatch):
     _mock_llm(monkeypatch, {"commitment": "sort_of_named", "source_of_record": None,
                             "prose_sources": [], "why": "x"})
