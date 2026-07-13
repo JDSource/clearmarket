@@ -71,7 +71,11 @@ jobs:
           python3 gen_news_cycle.py --max 8 || echo "news_cycle skipped"
           python3 gen_volume_spike.py --max 8 || echo "volume_spike skipped"
           python3 gen_cross_venue_divergence.py --max 6 || echo "cross_venue_divergence skipped"
-          python3 gen_benchmark_drift.py --max 8 || echo "benchmark_drift skipped"
+          # benchmark_drift PAUSED 2026-07-13: spot-vs-forward defect (3rd occurrence — see worklog
+          # 2026-06-26 + 2026-07-01 + 2026-07-13). Re-enable only after the period-match logic gate
+          # ships: fire only when benchmark period == contract resolution period; otherwise reframe
+          # as "market expects X to move from [latest print] to [threshold] by [release date]".
+          # python3 gen_benchmark_drift.py --max 8 || echo "benchmark_drift skipped"
 
       - name: Commit new wires (source history; exit early if none)
         id: wires
