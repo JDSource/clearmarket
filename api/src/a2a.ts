@@ -5,54 +5,19 @@
  * legacy alias paths — all observed as 404s in zone logs before this shipped). The card
  * advertises exactly what exists: one JSON-RPC endpoint (POST /a2a) implementing
  * message/send, returning a completed Task synchronously. streaming/pushNotifications
- * are declared false; unimplemented methods return -32601 per the spec's minimal-
+ * are declared false; unimplemented methods return spec errors per the minimal-
  * conformance guidance. Query logic is the same dispatch the MCP tools use (callTool),
  * so A2A answers stay in lockstep with MCP/REST — no parallel data path.
+ *
+ * The card is single-sourced from the static Pages copy (esbuild bundles the JSON
+ * import), so the api.clearmarket.fyi and clearmarket.fyi copies cannot drift.
  */
 
 import { Env, logCall } from './index';
 import { callTool } from './mcp';
+import AGENT_CARD from '../../web/public/.well-known/agent-card.json';
 
-const A2A_URL = 'https://api.clearmarket.fyi/a2a';
-
-// The JSON shapes below (kind/task, lowercase status states, parts with kind:'text'|'data')
-// follow the A2A JSON-RPC binding as implemented by the 0.2/0.3-generation SDKs — which is
-// what A2A clients and card validators in the wild actually speak.
-export const AGENT_CARD = {
-  protocolVersion: '0.3.0',
-  name: 'ClearMarket',
-  description:
-    'Reference layer for prediction markets. Judges whether a Kalshi or Polymarket price can be trusted: every market carries a Resolution Clarity Grade (A/B/C), the committed resolution source is named with provenance where one exists (the absence is graded too — that gap is the point), and the same question across venues is linked by a venue-independent question_id with live cross-venue prices (also_on). Read-only reference data; not trading advice.',
-  url: A2A_URL,
-  preferredTransport: 'JSONRPC',
-  additionalInterfaces: [{ url: A2A_URL, transport: 'JSONRPC' }],
-  provider: { organization: 'ClearMarket', url: 'https://clearmarket.fyi' },
-  version: '1.0.0',
-  documentationUrl: 'https://clearmarket.fyi/for-data/',
-  capabilities: { streaming: false, pushNotifications: false, stateTransitionHistory: false },
-  securitySchemes: {},
-  security: [],
-  defaultInputModes: ['text/plain'],
-  defaultOutputModes: ['application/json', 'text/plain'],
-  skills: [
-    {
-      id: 'market_trust_lookup',
-      name: 'Market trust lookup',
-      description:
-        'Given a market id (CM-MKT-…), a Kalshi ticker, or a market URL: the Resolution Clarity Grade, the committed resolution source and its provenance, settlement status, latest price, and cross-venue twins.',
-      tags: ['prediction-markets', 'resolution', 'provenance', 'reference-data'],
-      examples: ['KXCPIYOY-26', 'What is the resolution source for CM-MKT-…?'],
-    },
-    {
-      id: 'event_search',
-      name: 'Graded event search',
-      description:
-        'Free-text search across ~2,400 graded prediction-market events on Kalshi and Polymarket. Returns per-event grade mix, venues, prices, and the canonical CM ids to cite.',
-      tags: ['prediction-markets', 'search', 'events'],
-      examples: ['fed rate decision', 'iran nuclear deal'],
-    },
-  ],
-};
+export { AGENT_CARD };
 
 // ---- JSON-RPC plumbing (A2A flavor) -------------------------------------
 const CORS = {
@@ -88,31 +53,40 @@ function searchTokens(text: string): string {
     .join(' ');
 }
 
-// Route a free-text question to the same dispatch MCP uses. Order: explicit CM/venue id or
-// URL (exact lookup) -> token search over events. Lookup misses fall through to search.
+// Route a free-text question to the same dispatch MCP uses. Order: id-shaped candidate
+// (CM id — uppercased, since D1 TEXT compares are BINARY-collated and canonical ids are
+// uppercase — Kalshi-ticker-shaped token, 0x conditionId, or URL) gets an exact lookup;
+// a miss falls through to stopword-stripped token search with the id tokens removed.
 async function answer(env: Env, text: string): Promise<any> {
   const t = text.trim();
 
-  const cmMkt = t.match(/\bCM-MKT-[A-Za-z0-9_-]+\b/i)?.[0];
-  const looksLikeTicker = /^[A-Z][A-Z0-9._-]{3,}$/.test(t);
+  const cmEvt = t.match(/\bCM-EVT-[A-Za-z0-9_-]+\b/i)?.[0]?.toUpperCase();
+  const cmMkt = t.match(/\bCM-MKT-[A-Za-z0-9_-]+\b/i)?.[0]?.toUpperCase();
+  const cond = t.match(/\b0x[0-9a-fA-F]{16,}\b/)?.[0];
+  // Ticker: the whole input if it's one id-shaped token, else the first mid-sentence
+  // token containing letters AND a digit/separator (screens out ordinary words).
+  const tick = (/^[A-Za-z][A-Za-z0-9._-]{3,}$/.test(t) && !/\s/.test(t) ? t
+    : t.match(/\b[A-Za-z]{2,}[0-9._-][A-Za-z0-9._-]{2,}\b/)?.[0])?.toUpperCase();
   const looksLikeUrl = /^https?:\/\//i.test(t);
-  if (cmMkt || looksLikeTicker || looksLikeUrl) {
-    const m = await callTool(env, 'get_market', { market_id: cmMkt ?? t });
+
+  const mktCandidate = cmMkt ?? cond ?? (looksLikeUrl ? t : tick);
+  if (mktCandidate) {
+    const m = await callTool(env, 'get_market', { market_id: mktCandidate });
     if (m && !m.error) return { result_type: 'market', market: m };
   }
-
-  const cmEvt = t.match(/\bCM-EVT-[A-Za-z0-9_-]+\b/i)?.[0];
   if (cmEvt) {
     const e = await callTool(env, 'get_event', { slug: cmEvt, detail: 'concise' });
     if (e && !e.error) return { result_type: 'event', event: e };
   }
 
-  const q = searchTokens(t);
+  // Id lookups missed (or none present) — search the remaining words, not the id tokens.
+  const residue = [cmEvt, cmMkt, cond, tick].reduce((s, c) => (c ? s.replace(new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ') : s), t);
+  const q = searchTokens(residue);
   if (!q) {
     return {
       result_type: 'usage',
       usage:
-        'Send a market id (CM-MKT-…), a Kalshi ticker, a market URL, or a topic to search (e.g. "fed rate decision"). Full API: https://api.clearmarket.fyi/health · MCP: https://api.clearmarket.fyi/mcp',
+        'Send a market id (CM-MKT-…), a Kalshi ticker, a Polymarket conditionId (0x…), a market URL, or a topic to search (e.g. "fed rate decision"). Full API: https://api.clearmarket.fyi/health · MCP: https://api.clearmarket.fyi/mcp',
     };
   }
   const list = await callTool(env, 'list_events', { q, limit: 5 });
@@ -128,20 +102,19 @@ async function answer(env: Env, text: string): Promise<any> {
 function extractText(params: any): string | null {
   const parts = params?.message?.parts;
   if (!Array.isArray(parts)) return null;
-  for (const p of parts) {
-    if (typeof p?.text === 'string' && p.text.trim()) return p.text; // covers {kind:'text',text} and bare {text}
-  }
-  return null;
+  // Multi-part messages compose one utterance — join every text part ({kind:'text',text} or bare {text}).
+  const text = parts.filter((p: any) => typeof p?.text === 'string' && p.text.trim()).map((p: any) => p.text).join(' ');
+  return text.trim() || null;
 }
 
 function completedTask(data: any): any {
   const summary =
     data.result_type === 'market'
-      ? `Market ${data.market?.market_id}: grade ${data.market?.resolution_clarity_grade ?? 'n/a'}, status ${data.market?.status ?? 'n/a'}.`
+      ? `Market ${data.market?.market_id}: grade ${data.market?.rcg?.grade ?? 'n/a'}, status ${data.market?.status ?? 'n/a'}.`
       : data.result_type === 'event'
         ? `Event ${data.event?.event_id}: ${data.event?.question ?? ''}`
         : data.result_type === 'search'
-          ? `${data.total ?? data.count ?? 0} graded event(s) matched "${data.query}".`
+          ? `${data.total ?? data.count ?? 0} graded event(s) matched "${data.query}". For an exact market, send a CM-MKT id, Kalshi ticker, or Polymarket conditionId.`
           : 'ClearMarket A2A usage.';
   return {
     id: crypto.randomUUID(),
@@ -170,6 +143,8 @@ export async function handleA2A(req: Request, env: Env, ctx: { waitUntil(p: Prom
 
   let msg: any;
   try { msg = await req.json(); } catch { return json(rpcError(null, -32700, 'Parse error')); }
+  // notifications (no id) — ack with 202, no body (JSON-RPC 2.0: MUST NOT reply)
+  if (msg && msg.id === undefined) return new Response(null, { status: 202, headers: CORS });
   const { id, method, params } = msg ?? {};
 
   try {
@@ -177,7 +152,13 @@ export async function handleA2A(req: Request, env: Env, ctx: { waitUntil(p: Prom
     // name some clients send verbatim. Accept both, same semantics.
     if (method === 'message/send' || method === 'SendMessage') {
       const text = extractText(params);
-      if (!text) return json(rpcError(id, -32602, 'params.message.parts must include a text part.'));
+      if (!text) {
+        // Structurally valid message with only file/data parts = modality mismatch (-32005,
+        // ContentTypeNotSupportedError); no parts array at all = invalid params (-32602).
+        return Array.isArray(params?.message?.parts)
+          ? json(rpcError(id, -32005, 'Only text parts are supported (defaultInputModes: text/plain).'))
+          : json(rpcError(id, -32602, 'params.message.parts must include a text part.'));
+      }
       logCall(env, ctx, req, 'a2a', 'message/send', text.slice(0, 200));
       return json(rpcResult(id, completedTask(await answer(env, text))));
     }

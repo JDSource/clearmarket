@@ -823,14 +823,13 @@ const A2A_CARD_PATHS = new Set([
 
 const X402_MANIFEST = {
   x402Version: 2,
-  lastUpdated: '2026-07-14',
   pricing: 'free',
   note: 'All ClearMarket endpoints are free (price 0) — this manifest exists for discovery, no payment is required or accepted yet. Attribution required: clearmarket.fyi.',
   resources: [
     { type: 'http', resource: 'https://api.clearmarket.fyi/v1/events', description: 'Graded prediction-market events (Kalshi + Polymarket): Resolution Clarity Grade, committed resolution source + provenance, cross-venue question_id. Filters: category, platform, grade, q.', mimeType: 'application/json', price: '0', accepts: [] },
     { type: 'http', resource: 'https://api.clearmarket.fyi/v1/markets/movers', description: 'Day-over-day volume movers.', mimeType: 'application/json', price: '0', accepts: [] },
     { type: 'http', resource: 'https://api.clearmarket.fyi/v1/signals', description: 'CM Signal wires (cross-venue divergence, benchmark drift, news cycle, volume spikes).', mimeType: 'application/json', price: '0', accepts: [] },
-    { type: 'mcp', resource: 'https://api.clearmarket.fyi/mcp', description: 'MCP server, 6 read-only reference tools.', mimeType: 'application/json', price: '0', accepts: [] },
+    { type: 'mcp', resource: 'https://api.clearmarket.fyi/mcp', description: 'MCP server: read-only reference tools (events, markets, catalysts, signals).', mimeType: 'application/json', price: '0', accepts: [] },
     { type: 'http', resource: 'https://api.clearmarket.fyi/a2a', description: 'A2A endpoint (JSON-RPC message/send); agent card at /.well-known/agent-card.json.', mimeType: 'application/json', price: '0', accepts: [] },
   ],
 };
@@ -958,7 +957,19 @@ export default {
       logCall(env, ctx, req, 'a2a', 'agent_card', path);
       return json(AGENT_CARD, 200, { 'cache-control': 'public, max-age=3600' });
     }
-    if (path === '/a2a') return handleA2A(req, env, ctx);
+    if (path === '/a2a') {
+      // message/send does up to 3 D1 queries and skips authenticate() (like /mcp) — meter it
+      // with the same anon per-IP daily cap /v1 uses, under its own namespace so it doesn't
+      // double-count REST usage. Card GETs stay unmetered.
+      if (req.method === 'POST') {
+        // Fail open: the cap is defense-in-depth — a throttle-storage error must not 500 a
+        // discovery endpoint that otherwise works.
+        let count = 0;
+        try { count = await bumpUsage(env, `a2a:${req.headers.get('CF-Connecting-IP') ?? 'unknown'}`, new Date().toISOString().slice(0, 10)); } catch { /* fail open */ }
+        if (count > ANON_DAILY_LIMIT) return err(429, `Rate limit exceeded (${ANON_DAILY_LIMIT}/day per IP).`, 'Use the REST API with a free key for higher limits: POST /v1/keys { "email": "you@firm.com" }');
+      }
+      return handleA2A(req, env, ctx);
+    }
 
     // x402 discovery stub — there is no official well-known format (Bazaar listing is
     // facilitator-based), but x402/agent directories probe this path daily. Everything

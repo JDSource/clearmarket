@@ -66,7 +66,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        slug: { type: 'string', description: 'Event slug, e.g. "kxgdpyear-26".' },
+        slug: { type: 'string', description: 'Event slug (e.g. "kxgdpyear-26") or CM event id (CM-EVT-…).' },
         detail: { type: 'string', enum: ['concise', 'full'], default: 'full', description: 'concise = essentials only (grade, price, source, also_on per market); full = the complete record. Default full.' },
       },
       required: ['slug'],
@@ -142,7 +142,9 @@ const TOOLS = [
 
 // ---- data builders (open; full universe; no auth) ----------------------
 async function buildEvent(env: Env, slug: string, detail: string = 'full'): Promise<any | null> {
-  const e = await env.DB.prepare('SELECT * FROM events WHERE slug = ? AND published = 1').bind(slug).first<any>();
+  // Resolve by slug OR CM event id — agents cite the event_id list_events returns, then look
+  // it up here; slug-only made that round-trip dead-end (REST got this fix in PR #27).
+  const e = await env.DB.prepare('SELECT * FROM events WHERE (slug = ? OR event_id = ?) AND published = 1').bind(slug, slug).first<any>();
   if (!e) return null;
   const { results: mkts } = await env.DB.prepare('SELECT * FROM markets WHERE event_id = ?').bind(e.event_id).all<any>();
   const venues = [...new Set(mkts.map((m) => m.platform))].sort();

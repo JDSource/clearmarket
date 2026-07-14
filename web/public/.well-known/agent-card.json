@@ -17,14 +17,14 @@
     {
       "id": "market_trust_lookup",
       "name": "Market trust lookup",
-      "description": "Given a market id (CM-MKT-…), a Kalshi ticker, or a market URL: the Resolution Clarity Grade, the committed resolution source and its provenance, settlement status, latest price, and cross-venue twins.",
+      "description": "Given a market id (CM-MKT-…), a Kalshi ticker, or a market URL (Kalshi URLs resolve; for Polymarket pass the conditionId): the Resolution Clarity Grade, the committed resolution source and its provenance, settlement status, latest price, and cross-venue twins.",
       "tags": ["prediction-markets", "resolution", "provenance", "reference-data"],
-      "examples": ["KXCPIYOY-26", "What is the resolution source for CM-MKT-…?"]
+      "examples": ["KXFED-27APR-T3.50", "What is the resolution source for CM-MKT-DWQBW1ZTC5?"]
     },
     {
       "id": "event_search",
       "name": "Graded event search",
-      "description": "Free-text search across ~2,400 graded prediction-market events on Kalshi and Polymarket. Returns per-event grade mix, venues, prices, and the canonical CM ids to cite.",
+      "description": "Free-text search across graded prediction-market events on Kalshi and Polymarket. Returns per-event grade mix, venues, prices, and the canonical CM ids to cite.",
       "tags": ["prediction-markets", "search", "events"],
       "examples": ["fed rate decision", "iran nuclear deal"]
     }
