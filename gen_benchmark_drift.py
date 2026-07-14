@@ -125,6 +125,28 @@ def is_divergence(q, cur_str, price):
     satisfied = (up and bench >= thr) or (down and bench <= thr)
     return price >= DRIFT_HI if not satisfied else price <= DRIFT_LO
 
+# ---------- period-match gate (the spot-vs-forward fix, 2026-07-14) ----------
+# A benchmark can only "diverge" from a market that resolves on the SAME print. If the market
+# resolves on a print that does not exist yet (May CPI is the latest observation, but the contract
+# resolves on the June release), the trailing value cannot contradict the forward forecast — that
+# wire misreads a period mismatch as a mispricing (shipped 3x: 2026-06-26 / 07-01 / 07-13, worklog).
+# For periodic series the resolving print is "current" only while the market closes within one
+# release cycle of the latest observation's period. Daily/spot series are always current.
+_PRINT_WINDOW_DAYS = {"monthly": 45, "quarterly": 130}
+
+def resolves_on_current_print(close_iso, obs_date, periodicity):
+    if periodicity == "daily":
+        return True
+    window = _PRINT_WINDOW_DAYS.get(periodicity)
+    if not window or not close_iso or not obs_date:
+        return False  # cannot prove the periods match -> never claim divergence
+    from datetime import date
+    try:
+        c = date.fromisoformat(close_iso[:10]); o = date.fromisoformat(obs_date[:10])
+    except ValueError:
+        return False
+    return (c - o).days <= window
+
 # The macro benchmarks below are all US series (FRED). A market about a foreign metric/central bank must
 # NOT be scored against them (e.g. "BoJ hikes 25bps" or "India inflation" vs US Fed/CPI is a false compare).
 _FOREIGN_RX = re.compile(
@@ -141,7 +163,7 @@ def benchmark_for(q, entity):
     def has(*ws): return any(re.search(r"(?<![a-z])" + w + r"(?![a-z])", s) for w in ws)
     if has("federal funds", "fed funds", "fomc", "interest rate", "rate decision", "rate hike", "rate cut", "fed rate"):
         v = fred_value("DFEDTARU")
-        if v: return ("Fed funds target rate, upper bound (FRED)", f"{v['value']:.2f}%", "https://fred.stlouisfed.org/series/DFEDTARU")
+        if v: return ("Fed funds target rate, upper bound (FRED)", f"{v['value']:.2f}%", "https://fred.stlouisfed.org/series/DFEDTARU", "daily", v["date"])
     if has("cpi", "inflation", "consumer price"):
         thr = _num(q)
         if thr is not None and thr < 1.5:
@@ -151,16 +173,16 @@ def benchmark_for(q, entity):
         # 4.2% figure) — do NOT hand-divide index levels (that path read 4.5% off a one-month gap).
         v = fred_value("CPIAUCNS", units="pc1")
         if v:
-            return (f"CPI inflation, year-over-year (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/CPIAUCNS")
+            return (f"CPI inflation, year-over-year (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/CPIAUCNS", "monthly", v["date"])
     if has("unemployment", "jobless", "jobs report", "nonfarm", "payroll"):
         v = fred_value("UNRATE")
-        if v: return ("Unemployment rate (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/UNRATE")
+        if v: return ("Unemployment rate (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/UNRATE", "monthly", v["date"])
     if has("10-year", "10 year", "treasury yield", "10yr", "10-yr"):
         v = fred_value("DGS10")
-        if v: return ("10-year Treasury yield (FRED)", f"{v['value']:.2f}%", "https://fred.stlouisfed.org/series/DGS10")
+        if v: return ("10-year Treasury yield (FRED)", f"{v['value']:.2f}%", "https://fred.stlouisfed.org/series/DGS10", "daily", v["date"])
     if has("real gdp", "gdp growth", "recession"):
         v = fred_value("A191RL1Q225SBEA")
-        if v: return ("Real GDP growth, annualized (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/A191RL1Q225SBEA")
+        if v: return ("Real GDP growth, annualized (FRED)", f"{v['value']:.1f}%", "https://fred.stlouisfed.org/series/A191RL1Q225SBEA", "quarterly", v["date"])
     # MACRO-ONLY. Crypto/equity-index spot is the UNDERLYING, not an independent benchmark — "BTC hits
     # $150k vs $66k spot" is distance-from-spot, not a drift vs an external forward estimate. Those return
     # post-launch via proper forward benchmarks (futures / FedWatch-style), Perplexity-sourced.
@@ -187,6 +209,8 @@ def find_candidates():
         bench = benchmark_for(q, m.get("underlying_reference") or "")
         if not bench:
             continue
+        if not resolves_on_current_print(m.get("close_at") or m.get("resolve_at") or "", bench[4], bench[3]):
+            continue  # resolves on a FUTURE print — a trailing benchmark cannot contradict it (period-match gate)
         if not is_divergence(q, bench[1], m.get("last_price")):
             continue  # market either agrees with the benchmark or is undecided — no drift story
         cands.append({"m": m, "ev": ev, "q": q, "bench": bench})
