@@ -378,7 +378,10 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
 
 async function getEvent(env: Env, slug: string, auth: Auth, detail: string = 'full'): Promise<Response> {
   const concise = detail === 'concise';
-  const e = await env.DB.prepare('SELECT * FROM events WHERE slug = ? AND published = 1').bind(slug).first<any>();
+  // Accept the CM event_id as well as the slug: every list/wire surface advertises event_id,
+  // so a client that follows it must not dead-end (both columns are unique-indexed lookups).
+  const e = await env.DB.prepare('SELECT * FROM events WHERE (slug = ? OR event_id = ?) AND published = 1')
+    .bind(slug, slug).first<any>();
   if (!e) return err(404, 'Event not found');
   const { results: mkts } = await env.DB.prepare('SELECT * FROM markets WHERE event_id = ?').bind(e.event_id).all<any>();
   const venues = [...new Set(mkts.map((m) => m.platform))].sort();

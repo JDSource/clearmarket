@@ -71,11 +71,20 @@ jobs:
           python3 gen_news_cycle.py --max 8 || echo "news_cycle skipped"
           python3 gen_volume_spike.py --max 8 || echo "volume_spike skipped"
           python3 gen_cross_venue_divergence.py --max 6 || echo "cross_venue_divergence skipped"
-          # benchmark_drift PAUSED 2026-07-13: spot-vs-forward defect (3rd occurrence — see worklog
-          # 2026-06-26 + 2026-07-01 + 2026-07-13). Re-enable only after the period-match logic gate
-          # ships: fire only when benchmark period == contract resolution period; otherwise reframe
-          # as "market expects X to move from [latest print] to [threshold] by [release date]".
-          # python3 gen_benchmark_drift.py --max 8 || echo "benchmark_drift skipped"
+          # benchmark_drift re-enabled 2026-07-14: the period-match gate refuses any candidate
+          # resolving on a future print (tests/test_benchmark_period_gate.py holds the frozen
+          # 2026-07-13 CPI regression case — run below before anything publishes).
+          python3 gen_benchmark_drift.py --max 8 || echo "benchmark_drift skipped"
+
+      - name: Gate regression + voice lint (quarantine violators before they publish)
+        run: |
+          python3 tests/test_benchmark_period_gate.py
+          # deterministic register lint on today's NEW wires; violators are deleted from the
+          # working tree (never committed) and listed in the log — the rest of the run ships
+          git add web/src/content/signals/*.md
+          git diff --cached --name-only --diff-filter=AM -- 'web/src/content/signals/*.md' \
+            | xargs -r python3 lint_wire_voice.py --quarantine
+          git reset -q
 
       - name: Commit new wires (source history; exit early if none)
         id: wires

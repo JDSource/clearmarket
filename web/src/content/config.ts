@@ -181,10 +181,14 @@ const signals = defineCollection({
     // one source — provenance is the defensible layer, so a sourceless wire is not
     // publishable. For pure-mechanical wires (cross_venue_divergence, volume_spike) the
     // source is the venue market URL(s); for news/benchmark wires it is the underlying
-    // article / benchmark deep link. Deep-link enforcement (non-root URL) is a follow-up refine.
+    // article / benchmark deep link. Deep-link enforced 2026-07-14 (was a follow-up refine):
+    // a domain root is provenance theater — an agent following it cannot verify the claim.
     sources: z.array(z.object({
       label: z.string(),
-      url: z.string().url(),
+      url: z.string().url().refine((u) => {
+        try { const p = new URL(u); return (p.pathname !== '' && p.pathname !== '/') || p.search.length > 0; }
+        catch { return false; }
+      }, 'source url must be a deep link (path or query), not a domain root'),
       // Article's own publish date (e.g. Exa `publishedDate`). Distinct from retrieved_at:
       // published_at = when the source was published; retrieved_at = when CM fetched it.
       // Added 2026-05-25 — enabled by retrieval-first stack returning per-result publish dates.
