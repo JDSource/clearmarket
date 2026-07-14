@@ -1,0 +1,19 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://api.clearmarket.fyi/",
+      "service-desc": [
+        { "href": "https://clearmarket.fyi/schema.json", "type": "application/json", "title": "ClearMarket 4-table schema (events/markets/marks/resolution_log)" }
+      ],
+      "service-doc": [
+        { "href": "https://clearmarket.fyi/for-data/", "type": "text/html", "title": "ClearMarket for data buyers" },
+        { "href": "https://clearmarket.fyi/llms.txt", "type": "text/plain", "title": "LLM-readable index" }
+      ],
+      "service-meta": [
+        { "href": "https://api.clearmarket.fyi/.well-known/agent-card.json", "type": "application/json", "title": "A2A agent card" },
+        { "href": "https://api.clearmarket.fyi/.well-known/x402", "type": "application/json", "title": "x402 pricing manifest (free)" },
+        { "href": "https://api.clearmarket.fyi/health", "type": "application/json", "title": "Live status + filter vocabulary" }
+      ]
+    }
+  ]
+}

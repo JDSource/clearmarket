@@ -1,0 +1,12 @@
+{
+  "x402Version": 2,
+  "pricing": "free",
+  "note": "All ClearMarket endpoints are free (price 0) — this manifest exists for discovery, no payment is required or accepted yet. Attribution required: clearmarket.fyi.",
+  "resources": [
+    { "type": "http", "resource": "https://api.clearmarket.fyi/v1/events", "description": "Graded prediction-market events (Kalshi + Polymarket): Resolution Clarity Grade, committed resolution source + provenance, cross-venue question_id. Filters: category, platform, grade, q.", "mimeType": "application/json", "price": "0", "accepts": [] },
+    { "type": "http", "resource": "https://api.clearmarket.fyi/v1/markets/movers", "description": "Day-over-day volume movers.", "mimeType": "application/json", "price": "0", "accepts": [] },
+    { "type": "http", "resource": "https://api.clearmarket.fyi/v1/signals", "description": "CM Signal wires (cross-venue divergence, benchmark drift, news cycle, volume spikes).", "mimeType": "application/json", "price": "0", "accepts": [] },
+    { "type": "mcp", "resource": "https://api.clearmarket.fyi/mcp", "description": "MCP server: read-only reference tools (events, markets, catalysts, signals).", "mimeType": "application/json", "price": "0", "accepts": [] },
+    { "type": "http", "resource": "https://api.clearmarket.fyi/a2a", "description": "A2A endpoint (JSON-RPC message/send); agent card at /.well-known/agent-card.json.", "mimeType": "application/json", "price": "0", "accepts": [] }
+  ]
+}

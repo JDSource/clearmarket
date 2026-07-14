@@ -1,0 +1,32 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "ClearMarket",
+  "description": "Reference layer for prediction markets. Judges whether a Kalshi or Polymarket price can be trusted: every market carries a Resolution Clarity Grade (A/B/C), the committed resolution source is named with provenance where one exists (the absence is graded too — that gap is the point), and the same question across venues is linked by a venue-independent question_id with live cross-venue prices (also_on). Read-only reference data; not trading advice.",
+  "url": "https://api.clearmarket.fyi/a2a",
+  "preferredTransport": "JSONRPC",
+  "additionalInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "transport": "JSONRPC" }],
+  "provider": { "organization": "ClearMarket", "url": "https://clearmarket.fyi" },
+  "version": "1.0.0",
+  "documentationUrl": "https://clearmarket.fyi/for-data/",
+  "capabilities": { "streaming": false, "pushNotifications": false, "stateTransitionHistory": false },
+  "securitySchemes": {},
+  "security": [],
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["application/json", "text/plain"],
+  "skills": [
+    {
+      "id": "market_trust_lookup",
+      "name": "Market trust lookup",
+      "description": "Given a market id (CM-MKT-…), a Kalshi ticker, or a market URL (Kalshi URLs resolve; for Polymarket pass the conditionId): the Resolution Clarity Grade, the committed resolution source and its provenance, settlement status, latest price, and cross-venue twins.",
+      "tags": ["prediction-markets", "resolution", "provenance", "reference-data"],
+      "examples": ["KXFED-27APR-T3.50", "What is the resolution source for CM-MKT-DWQBW1ZTC5?"]
+    },
+    {
+      "id": "event_search",
+      "name": "Graded event search",
+      "description": "Free-text search across graded prediction-market events on Kalshi and Polymarket. Returns per-event grade mix, venues, prices, and the canonical CM ids to cite.",
+      "tags": ["prediction-markets", "search", "events"],
+      "examples": ["fed rate decision", "iran nuclear deal"]
+    }
+  ]
+}
