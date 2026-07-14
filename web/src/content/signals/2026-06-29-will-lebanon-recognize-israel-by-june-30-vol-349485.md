@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260629VS01"
 signal_slug: "will-lebanon-recognize-israel-by-june-30-vol-349485"
-headline: "Lebanon recognizes Israel: 18% on $349K inflow"
-semantic_title: "Heavy flows fade Lebanon-Israel recognition by June 30"
+headline: "Lebanon-Israel recognition holds at 18% as $349K trades day before deadline"
+semantic_title: "Heavy flows lean against Lebanon-Israel recognition by June 30"
 telemetry: "18% · $349K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

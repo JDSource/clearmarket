@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260712VS02"
 signal_slug: "will-donald-trump-attend-ufc-329-vol-87060"
-headline: "Trump at UFC 329: 1% on $87K calendar flush"
-semantic_title: "Traders fade Trump's UFC 329 appearance as near-zero risk"
+headline: "Trump UFC 329 attendance priced at 1% into fight night"
+semantic_title: "Traders discount Trump's UFC 329 appearance as near-zero risk"
 telemetry: "1% · $87K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

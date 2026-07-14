@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260702VS03"
 signal_slug: "will-s-bastien-lecornu-be-the-next-leade-vol-1140815"
-headline: "Lecornu next out: 0% on $1.1M Polymarket flow"
-semantic_title: "Market fades Lecornu as the next European leader out before 2027"
+headline: "Lecornu priced at zero as next leader out on $1.1M single-day flow"
+semantic_title: "Market discounts Lecornu as the next European leader out before 2027"
 telemetry: "0% · $1.1M 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

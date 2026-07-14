@@ -1,7 +1,7 @@
 ---
 signal_id: "CMSIG20260708VS04"
 signal_slug: "will-jordan-bardella-be-on-the-ballot-fo-vol-11088"
-headline: "Bardella 2027 ballot: 8% on $11K near-lifetime flow"
+headline: "Bardella 2027 ballot odds at 8% as volume hits 77% of lifetime"
 semantic_title: "Bardella ballot access fades to 8% on heavy volume"
 telemetry: "8% · $11K 24h"
 category_tag: "VOLUME_SPIKE"

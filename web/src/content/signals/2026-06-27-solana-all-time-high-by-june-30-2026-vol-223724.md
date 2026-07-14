@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260627VS02"
 signal_slug: "solana-all-time-high-by-june-30-2026-vol-223724"
-headline: "Solana ATH by June 30: 0% on $224K flow"
-semantic_title: "Market fades Solana all-time high before June 30"
+headline: "Solana all-time high by June 30 priced at zero into expiry"
+semantic_title: "Market discounts Solana all-time high before June 30"
 telemetry: "0% · $224K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

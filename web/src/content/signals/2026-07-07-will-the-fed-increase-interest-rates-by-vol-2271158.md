@@ -1,7 +1,7 @@
 ---
 signal_id: "CMSIG20260707VS02"
 signal_slug: "will-the-fed-increase-interest-rates-by-vol-2271158"
-headline: "Fed 50+ bps July hike: 0% on $2.3M volume"
+headline: "Fed 50+ bps July hike priced at zero on $2.3M volume"
 semantic_title: "Fed 50+ bps July hike fades to zero as traders absorb guidance"
 telemetry: "0% · $2.3M 24h"
 category_tag: "VOLUME_SPIKE"
