@@ -15,6 +15,7 @@
  */
 
 import { handleMcp } from './mcp';
+import { AGENT_CARD, handleA2A } from './a2a';
 
 export interface Env {
   DB: D1Database;
@@ -62,7 +63,7 @@ export function logCall(
   env: Env,
   ctx: { waitUntil(p: Promise<any>): void },
   req: Request,
-  surface: 'rest' | 'mcp',
+  surface: 'rest' | 'mcp' | 'a2a',
   action: string,
   target?: unknown,
 ): void {
@@ -810,6 +811,52 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
   console.log(`reconcile: ${unseen.length} unseen / ${results.length} open -> resolved ${counts.resolved}, closed ${counts.closed}, left-open ${counts.left}`);
 }
 
+// ---- agent-economy discovery documents ----------------------------------
+// Canonical card path is /.well-known/agent-card.json; the rest are aliases directories
+// actually probe (observed 404s: /a2a/agent.json, /agents/.well-known/agent-card, …).
+const A2A_CARD_PATHS = new Set([
+  '/.well-known/agent-card.json', '/.well-known/agent.json',
+  '/a2a/agent.json', '/a2a/agent-card.json', '/a2a/.well-known/agent.json', '/a2a/.well-known/agent-card.json',
+  '/agent.json', '/agent-card.json', '/v1/agent.json',
+  '/agents/agent.json', '/agents/agent-card.json', '/agents/.well-known/agent-card', '/agents/.well-known/agent-card.json',
+]);
+
+const X402_MANIFEST = {
+  x402Version: 2,
+  lastUpdated: '2026-07-14',
+  pricing: 'free',
+  note: 'All ClearMarket endpoints are free (price 0) — this manifest exists for discovery, no payment is required or accepted yet. Attribution required: clearmarket.fyi.',
+  resources: [
+    { type: 'http', resource: 'https://api.clearmarket.fyi/v1/events', description: 'Graded prediction-market events (Kalshi + Polymarket): Resolution Clarity Grade, committed resolution source + provenance, cross-venue question_id. Filters: category, platform, grade, q.', mimeType: 'application/json', price: '0', accepts: [] },
+    { type: 'http', resource: 'https://api.clearmarket.fyi/v1/markets/movers', description: 'Day-over-day volume movers.', mimeType: 'application/json', price: '0', accepts: [] },
+    { type: 'http', resource: 'https://api.clearmarket.fyi/v1/signals', description: 'CM Signal wires (cross-venue divergence, benchmark drift, news cycle, volume spikes).', mimeType: 'application/json', price: '0', accepts: [] },
+    { type: 'mcp', resource: 'https://api.clearmarket.fyi/mcp', description: 'MCP server, 6 read-only reference tools.', mimeType: 'application/json', price: '0', accepts: [] },
+    { type: 'http', resource: 'https://api.clearmarket.fyi/a2a', description: 'A2A endpoint (JSON-RPC message/send); agent card at /.well-known/agent-card.json.', mimeType: 'application/json', price: '0', accepts: [] },
+  ],
+};
+
+// RFC 9727 linkset. Link relations per RFC 8631: service-desc = machine-readable
+// description, service-doc = human docs, service-meta = metadata about the service.
+const API_CATALOG = {
+  linkset: [
+    {
+      anchor: 'https://api.clearmarket.fyi/',
+      'service-desc': [
+        { href: 'https://clearmarket.fyi/schema.json', type: 'application/json', title: 'ClearMarket 4-table schema (events/markets/marks/resolution_log)' },
+      ],
+      'service-doc': [
+        { href: 'https://clearmarket.fyi/for-data/', type: 'text/html', title: 'ClearMarket for data buyers' },
+        { href: 'https://clearmarket.fyi/llms.txt', type: 'text/plain', title: 'LLM-readable index' },
+      ],
+      'service-meta': [
+        { href: 'https://api.clearmarket.fyi/.well-known/agent-card.json', type: 'application/json', title: 'A2A agent card' },
+        { href: 'https://api.clearmarket.fyi/.well-known/x402', type: 'application/json', title: 'x402 pricing manifest (free)' },
+        { href: 'https://api.clearmarket.fyi/health', type: 'application/json', title: 'Live status + filter vocabulary' },
+      ],
+    },
+  ],
+};
+
 // ---- router ------------------------------------------------------------
 export default {
   async fetch(req: Request, env: Env, ctx: any): Promise<Response> {
@@ -903,6 +950,32 @@ export default {
     }
 
     if (path === '/mcp') return handleMcp(req, env, ctx);
+
+    // ---- agent-economy discovery surfaces (2026-07-14) -------------------
+    // The alias set below is the union of card paths agent directories were observed
+    // probing (as 404s) in zone logs the week before this shipped — serve them all.
+    if (A2A_CARD_PATHS.has(path)) {
+      logCall(env, ctx, req, 'a2a', 'agent_card', path);
+      return json(AGENT_CARD, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+    if (path === '/a2a') return handleA2A(req, env, ctx);
+
+    // x402 discovery stub — there is no official well-known format (Bazaar listing is
+    // facilitator-based), but x402/agent directories probe this path daily. Everything
+    // is free (empty `accepts`, price 0): this exists for discovery, not revenue.
+    if (path === '/.well-known/x402') {
+      logCall(env, ctx, req, 'rest', 'x402_manifest');
+      return json(X402_MANIFEST, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
+    // RFC 9727 API catalog (linkset) — one machine-readable index of every surface.
+    if (path === '/.well-known/api-catalog') {
+      logCall(env, ctx, req, 'rest', 'api_catalog');
+      return new Response(JSON.stringify(API_CATALOG, null, 2), {
+        status: 200,
+        headers: { 'Content-Type': 'application/linkset+json', 'cache-control': 'public, max-age=3600', ...CORS },
+      });
+    }
 
     if (path === '/v1/keys' && req.method === 'POST') return createKey(env, req);
 

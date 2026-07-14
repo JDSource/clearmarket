@@ -236,7 +236,7 @@ async function buildSignal(env: Env, slug: string): Promise<any | null> {
 }
 
 // ---- tool dispatch -----------------------------------------------------
-async function callTool(env: Env, name: string, a: Record<string, any>): Promise<any> {
+export async function callTool(env: Env, name: string, a: Record<string, any>): Promise<any> {
   switch (name) {
     case 'get_event': {
       const r = await buildEvent(env, String(a.slug ?? ''), a.detail === 'concise' ? 'concise' : 'full');
