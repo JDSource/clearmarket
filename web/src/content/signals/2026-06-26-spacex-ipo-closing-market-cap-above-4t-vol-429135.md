@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260626VS06"
 signal_slug: "spacex-ipo-closing-market-cap-above-4t-vol-429135"
-headline: "SpaceX IPO above $4T: 0% on $429K inflow"
-semantic_title: "Market fades a $4T SpaceX IPO as implausible"
+headline: "SpaceX $4T IPO market cap priced out at zero on $429K volume"
+semantic_title: "Market discounts a $4T SpaceX IPO as implausible"
 telemetry: "0% · $429K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

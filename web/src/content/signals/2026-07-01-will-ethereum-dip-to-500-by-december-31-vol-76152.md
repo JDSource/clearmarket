@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260701VS05"
 signal_slug: "will-ethereum-dip-to-500-by-december-31-vol-76152"
-headline: "ETH dips to $500 by Dec 31: 9% on $76K"
-semantic_title: "Traders fade ETH crashing to $500 by year-end"
+headline: "ETH-to-$500 tail risk draws record one-day volume at 9%"
+semantic_title: "Traders discount ETH crashing to $500 by year-end"
 telemetry: "9% · $76K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

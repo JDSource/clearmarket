@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260627VS03"
 signal_slug: "will-the-u-s-invade-colombia-in-2026-vol-35142"
-headline: "U.S. invades Colombia 2026: 5% on $35K inflow"
-semantic_title: "Heavy flows fade a U.S. invasion of Colombia in 2026"
+headline: "Heavy volume leaves U.S.-Colombia invasion odds pinned at 5%"
+semantic_title: "Heavy flows lean against a U.S. invasion of Colombia in 2026"
 telemetry: "5% · $35K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

@@ -1,7 +1,7 @@
 ---
 signal_id: "CMSIG20260604BD10"
 signal_slug: "will-the-upper-bound-of-the-target-federal-vs-bench"
-headline: "Fed Funds ≥4.5% End-2026: 3%; rate at 3.75%"
+headline: "Fed Funds ≥4.5% End-2026: 3%; market prices no path back to hikes"
 semantic_title: "Fed funds at 4.5 percent end-2026 lags far below FRED rate"
 telemetry: "3% · Fed funds target rate, upper bound (FRED) 3.75%"
 category_tag: "VS_BENCHMARK_DRIFT"
@@ -21,7 +21,7 @@ primary_market:
 bullets:
   - "Polymarket prices only 3% chance upper bound ends 2026 at or above 4.5%."
   - "FRED benchmark: Fed funds upper bound currently at 3.75%."
-  - "Market implies near-zero probability of any hike from current level, despite rate sitting just 75 bps below threshold."
+  - "Market implies near-zero probability of any hike from current level, with the rate 75 bps below threshold."
   - "Resolves end-2026 against FRED Fed funds upper bound."
 atomic_claims:
   - type: "benchmark_divergence"
@@ -45,4 +45,4 @@ field_provenance:
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-With the upper bound already at 3.75%, only a 75 bps hike separates the current rate from the 4.5% threshold, yet Polymarket assigns just 3% probability, implying the market sees hikes as almost impossible despite proximity to the trigger level.
+With the upper bound already at 3.75%, only a 75 bps hike separates the current rate from the 4.5% threshold, yet Polymarket assigns just 3% probability, implying the market sees hikes as almost impossible with the rate near the trigger level.

@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG20260709VS05"
 signal_slug: "will-the-federal-reserve-hike-rates-by-vol-13649"
-headline: "Fed hike >25bps at July meeting: 1% on $13K"
-semantic_title: "Market fades any >25bps Fed move at July 2026 meeting"
+headline: "Kalshi prices >25bps July Fed hike at 1% into FOMC"
+semantic_title: "Market discounts any >25bps Fed move at July 2026 meeting"
 telemetry: "1% · $14K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
