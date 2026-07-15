@@ -28,6 +28,10 @@ Base: https://api.clearmarket.fyi
 - POST /v1/keys {"email":"..."} : optional free key, lifts the limit to 10,000/day
 
 Open by default: full universe, no key, 1,000 requests/day per IP. CORS open.
+Anonymous access is permanent. A free key (email only) additionally gets you advance
+notice before any schema change or deprecation — recommended if this API is in a
+pipeline. REST responses carry the same offer in an additive \`_notice\` field.
+Broken or missing something? hello@clearmarket.fyi reaches a human.
 
 ## MCP server (agent-first)
 

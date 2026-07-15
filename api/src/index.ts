@@ -94,6 +94,24 @@ export const provenance = (ref: string) => ({
   terms: 'Attribution required. clearmarket.fyi',
 });
 
+// ---- free-key conversion notice -----------------------------------------
+// One stable object on every REST data response. The `policy` line is a public
+// promise: never rename, restructure, or rotate this field — a diff-watching cron
+// should see it change exactly once (when it first ships). The offer is insurance,
+// not a gate: anonymous access stays; keyed users get emailed (manually, from
+// hello@clearmarket.fyi) before schema changes. MCP deliberately excluded — agents
+// re-reading the same notice every tool call is context pollution; MCP carries the
+// equivalent once in its initialize instructions.
+const NOTICE = {
+  type: 'free_key_offer',
+  message: 'Free and anonymous access is staying. If this endpoint is in your pipeline, a free key adds advance notice before any schema change or deprecation. POST /v1/keys {"email": "you@firm.com"} — nothing else required. Something broken or missing? hello@clearmarket.fyi reaches a human.',
+  docs: 'https://clearmarket.fyi/for-data/',
+  policy: 'This field is additive and its shape will not change.',
+};
+// Movers has had one anonymous consumer pulling daily since 2026-06-05 — the
+// recognition line is what makes the offer land with whoever reads that cron's log.
+const MOVERS_NOTICE = { ...NOTICE, message: 'This endpoint has served a daily pull since 2026-06-05 — thanks for relying on it. ' + NOTICE.message };
+
 export function marketOut(m: any) {
   // source_status is STAMPED at enrichment as a pure function of the LLM commitment judgment
   // (enrich_universe.enrich_event) — the serve layer reads it, never re-derives from raw field
@@ -352,7 +370,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const sql = `SELECT *, (${liveExpr}) AS is_live FROM events e WHERE ${where.join(' AND ')} ORDER BY is_live DESC, e.updated_at DESC LIMIT ? OFFSET ?`;
   const { results: evs } = await env.DB.prepare(sql).bind(...args, limit, offset).all<any>();
 
-  if (!evs.length) return json({ count: 0, total, limit, offset, keyed: auth.keyed, ...notices, events: [] });
+  if (!evs.length) return json({ count: 0, total, limit, offset, keyed: auth.keyed, ...notices, _notice: NOTICE, events: [] });
 
   // pull markets for this page in one query
   const ids = evs.map((e) => e.event_id);
@@ -372,7 +390,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
     offset,
     keyed: auth.keyed,
     ...notices,
-    ...(auth.keyed ? {} : { notice: `Anonymous access (full universe, ${ANON_DAILY_LIMIT}/day per IP). Free key for ${KEY_DAILY_LIMIT}/day: POST /v1/keys.` }),
+    _notice: NOTICE,
     events: out,
   });
 }
@@ -417,6 +435,7 @@ async function getEvent(env: Env, slug: string, auth: Auth, detail: string = 'fu
   } catch { resolutionLog = []; }
 
   return json({
+    _notice: NOTICE,
     event_id: e.event_id,
     slug: e.slug,
     question: e.question,
@@ -461,7 +480,7 @@ export async function findMarketRow(env: Env, raw: string): Promise<any | null> 
 async function getMarket(env: Env, id: string, _auth: Auth): Promise<Response> {
   const m = await findMarketRow(env, id);
   if (!m) return err(404, 'Market not found');
-  return json({ ...marketOut(m), _provenance: provenance(m.market_id) });
+  return json({ ...marketOut(m), _provenance: provenance(m.market_id), _notice: NOTICE });
 }
 
 // Volume movers: day-over-day 24h-volume change from the two most recent marks_daily snapshots.
@@ -504,7 +523,7 @@ async function listMovers(env: Env, url: URL): Promise<Response> {
     volume_delta_pct: Math.round(((r.vol_now - r.vol_prev) / r.vol_prev) * 1000) / 10,
   }));
   return json({ metric: 'volume_24h', day: dayNow, prior_day: dayPrev, min_mult: minMult,
-    count: movers.length, movers });
+    count: movers.length, _notice: MOVERS_NOTICE, movers });
 }
 
 // Cross-event view: every scheduled catalyst in the next N days, across the whole calendar.
@@ -521,7 +540,7 @@ async function upcomingCatalysts(env: Env, url: URL): Promise<Response> {
     }
   }
   items.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  return json({ window_days: days, from: today, to: until, count: items.length, catalysts: items });
+  return json({ window_days: days, from: today, to: until, count: items.length, _notice: NOTICE, catalysts: items });
 }
 
 async function createKey(env: Env, req: Request): Promise<Response> {
@@ -930,7 +949,7 @@ export default {
         if (ven) items = items.filter((s) => (s.venues ?? []).includes(ven));
         if (eid) items = items.filter((s) => s.target_event_id === eid || (s.linked_event_ids ?? []).includes(eid));
         const lim = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 100) || 100, 1), 200);
-        return json({ count: items.length, signals: items.slice(0, lim) }, 200, { 'cache-control': 'public, max-age=300' });
+        return json({ count: items.length, _notice: NOTICE, signals: items.slice(0, lim) }, 200, { 'cache-control': 'public, max-age=300' });
       }
       return new Response(await upstream.text(), {
         status: 200,
