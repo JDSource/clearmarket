@@ -14,6 +14,7 @@ Run AFTER fetching the live bundle from R2, BEFORE build_resolution_log.py + the
 (see .github/workflows/freshness-daily.yml). Exits 0 always; prints the swept count.
 """
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,6 +24,16 @@ import settle_status_sweep as S  # noqa: E402  (reuses _get/sweep_kalshi/sweep_p
 
 bundle = json.loads(S.BUNDLE.read_text())
 now = datetime.now(timezone.utc)
+
+# Markets referenced by published signal wires. Wires serve a build-time status field, and an
+# EARLY-resolved market (settled before its resolve_at — SCOTUS/SpaceX class) never trips the
+# past-due filter, so its wires would read 'live' until the deadline. Venue-check every open
+# wire-referenced market regardless of deadline. Regex over frontmatter (CI has no YAML dep);
+# catches primary + related ids — the extra GETs are bounded by the wire universe.
+SIGNALS_DIR = Path(__file__).resolve().parent.parent / "web" / "src" / "content" / "signals"
+wire_ids: set[str] = set()
+for f in SIGNALS_DIR.glob("*.md"):
+    wire_ids.update(re.findall(r'platform_market_id:\s*"?([^\s"]+)"?', f.read_text()))
 
 
 def past_due(m):
@@ -40,13 +51,18 @@ def past_due(m):
         return str(t)[:10] < now.date().isoformat()
 
 
-target = [m for m in bundle["markets"] if past_due(m)]
+def wire_referenced(m):
+    return m.get("status") == "open" and m.get("platform_market_id") in wire_ids
+
+
+target = [m for m in bundle["markets"] if past_due(m) or wire_referenced(m)]
 kal = [m for m in target if m.get("platform") == "kalshi"]
 pol = [m for m in target if m.get("platform") == "polymarket"]
-print(f"past-due open markets: {len(target)} (kalshi {len(kal)} / polymarket {len(pol)})", flush=True)
+n_wire = sum(1 for m in target if not past_due(m))
+print(f"sweep targets: {len(target)} (kalshi {len(kal)} / polymarket {len(pol)}; wire-referenced pre-deadline {n_wire})", flush=True)
 
 if not target:
-    print("nothing past due — bundle untouched")
+    print("nothing to sweep — bundle untouched")
     sys.exit(0)
 
 stats = {"resolved": 0, "closed": 0, "still_active": 0,
