@@ -52,7 +52,9 @@ def past_due(m):
 
 
 def wire_referenced(m):
-    return m.get("status") == "open" and m.get("platform_market_id") in wire_ids
+    # 'closed' included: closed = trading stopped, settlement unconfirmed — without a
+    # re-check a wire market that closes then settles would stick at 'closed' forever.
+    return m.get("status") in ("open", "closed") and m.get("platform_market_id") in wire_ids
 
 
 target = [m for m in bundle["markets"] if past_due(m) or wire_referenced(m)]

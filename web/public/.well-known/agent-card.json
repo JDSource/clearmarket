@@ -1,11 +1,11 @@
 {
-  "protocolVersion": "1.0",
+  "protocolVersion": "0.3.0",
   "name": "ClearMarket",
   "description": "Reference layer for prediction markets. Judges whether a Kalshi or Polymarket price can be trusted: every market carries a Resolution Clarity Grade (A/B/C), the committed resolution source is named with provenance where one exists (the absence is graded too — that gap is the point), and the same question across venues is linked by a venue-independent question_id with live cross-venue prices (also_on). Read-only reference data; not trading advice.",
   "url": "https://api.clearmarket.fyi/a2a",
   "preferredTransport": "JSONRPC",
   "additionalInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "transport": "JSONRPC" }],
-  "supportedInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "1.0" }],
+  "supportedInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "0.3" }],
   "provider": { "organization": "ClearMarket", "url": "https://clearmarket.fyi" },
   "version": "1.0.0",
   "documentationUrl": "https://clearmarket.fyi/for-data/",

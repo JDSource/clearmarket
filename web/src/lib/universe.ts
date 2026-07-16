@@ -273,6 +273,7 @@ export type SignalWireStatus = {
   state: 'live' | 'resolved' | 'closed' | 'past_due' | 'unknown';
   as_of: string;
   outcome: 'YES' | 'NO' | null;
+  outcome_basis: 'resolution_log' | 'price_inferred' | null;
   final_price: number | null;
   resolved_at: string | null;
 };
@@ -285,24 +286,46 @@ export function getMarketByPlatformId(pid: string): Market | undefined {
   return marketByPlatformId.get(pid);
 }
 
+// Log rows keyed by market_id directly — the event-keyed index can miss when the bundle
+// re-maps a market to a different event than the wire's frozen frontmatter event_id
+// (145/818 wires at last count).
+const resolutionLogByMarket = new Map<string, ResolutionLogEntry[]>();
+for (const r of resolutionLog) {
+  if (!r.market_id) continue;
+  const list = resolutionLogByMarket.get(r.market_id);
+  if (list) list.push(r);
+  else resolutionLogByMarket.set(r.market_id, [r]);
+}
+
 export function resolveSignalStatus(
   eventId: string,
   platformMarketId: string | null | undefined,
   resolvesAt?: string | null,
 ): SignalWireStatus {
-  const s: SignalWireStatus = { state: 'unknown', as_of: TODAY_ISO, outcome: null, final_price: null, resolved_at: null };
+  const s: SignalWireStatus = { state: 'unknown', as_of: TODAY_ISO, outcome: null, outcome_basis: null, final_price: null, resolved_at: null };
   const m = platformMarketId ? marketByPlatformId.get(platformMarketId) : undefined;
   const deadline = (m?.resolve_at ?? m?.close_at ?? resolvesAt ?? '').slice(0, 10);
 
-  if (m?.status === 'resolved' || m?.status === 'closed') {
-    s.state = m.status as 'resolved' | 'closed';
+  if (m?.status === 'resolved') {
+    s.state = 'resolved';
     s.final_price = m.last_price;
-    const log = getResolutionLogForEvent(eventId).find((r) => r.market_id === m.market_id);
-    if (log && (log.to_value === 'YES' || log.to_value === 'NO')) {
-      s.outcome = log.to_value;
-      s.resolved_at = log.occurred_at ?? null;
-    } else if (m.last_price !== null && m.last_price >= 0.99) s.outcome = 'YES';
-    else if (m.last_price !== null && m.last_price <= 0.01) s.outcome = 'NO';
+    const log = (resolutionLogByMarket.get(m.market_id) ?? []).find((r) => r.to_value === 'YES' || r.to_value === 'NO');
+    if (log) {
+      s.outcome = log.to_value as 'YES' | 'NO';
+      s.outcome_basis = 'resolution_log';
+      // occurred_at is the venue's SCHEDULED deadline (build_resolution_log.py) — an
+      // early-resolved market carries a future date there. Never surface a future
+      // "settled on" date; the first-observation date is the honest fallback.
+      const occ = (log.occurred_at ?? '').slice(0, 10);
+      s.resolved_at = occ && occ <= TODAY_ISO ? occ : ((log.recorded_at ?? '').slice(0, 10) || null);
+    } else if (m.last_price !== null && m.last_price >= 0.95) { s.outcome = 'YES'; s.outcome_basis = 'price_inferred'; }
+    else if (m.last_price !== null && m.last_price <= 0.05) { s.outcome = 'NO'; s.outcome_basis = 'price_inferred'; }
+    return s;
+  }
+  if (m?.status === 'closed') {
+    // Closed = trading stopped, settlement NOT confirmed (the log writes final_price null
+    // for these) — never infer an outcome or stamp a final price.
+    s.state = 'closed';
     return s;
   }
   if (m?.status === 'open') {
