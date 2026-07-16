@@ -8,6 +8,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { displayTitle, composeTelemetry } from '../../../lib/signal-display';
+import { resolveSignalStatus } from '../../../lib/universe';
 
 function refersTo(data: any, id: string): boolean {
   return data.event_id === id || (data.linked_event_ids ?? []).includes(id);
@@ -34,6 +35,10 @@ export const GET: APIRoute = async ({ params }) => {
       record_id: d.signal_id,
       record_slug: d.signal_slug,
       published_at: d.published_at,
+      // Settlement state of the primary market at build time (full detail in the per-wire json).
+      status: (({ state, outcome }) => ({ state, outcome }))(
+        resolveSignalStatus(d.event_id, d.primary_market?.platform_market_id, d.primary_market?.resolves_at),
+      ),
       semantic_title: displayTitle(d),
       telemetry: composeTelemetry(d),
       headline: d.headline,

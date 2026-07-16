@@ -16,6 +16,7 @@
 import { getCollection } from 'astro:content';
 import Site from '../../layouts/Site.astro';
 import { displayTitle, composeTelemetry } from '../../lib/signal-display';
+import { resolveSignalStatus } from '../../lib/universe';
 import '../../styles/tokens.css';
 import { createHash } from 'node:crypto';
 
@@ -112,6 +113,27 @@ function fmtPp(left: number | null | undefined, right: number | null | undefined
 // ----- title split: durable semantic anchor (indexed) + as-of telemetry (muted) -----
 const titleText = displayTitle(data);
 const telemetryText = composeTelemetry(data);
+
+// ----- settlement state of the primary market, resolved at build time -----
+// Wires are static snapshots; without this a settled market's wire reads as live forever.
+const wireStatus = resolveSignalStatus(data.event_id, data.primary_market?.platform_market_id, data.primary_market?.resolves_at);
+const publishedDate = data.published_at.slice(0, 10);
+// Log-confirmed outcomes are asserted ("settled YES on …"); price-inferred ones state the
+// price and let the reader draw the conclusion — never present inference as record.
+const settledPhrase =
+  wireStatus.outcome && wireStatus.outcome_basis === 'resolution_log'
+    ? `settled ${wireStatus.outcome}${wireStatus.resolved_at ? ` on ${wireStatus.resolved_at.slice(0, 10)}` : ''}`
+    : wireStatus.final_price !== null
+      ? `settled — final price ${wireStatus.final_price}`
+      : 'settled';
+const statusBanner =
+  wireStatus.state === 'resolved'
+    ? `${settledPhrase} — this wire is a dated snapshot; figures below are as of ${publishedDate}`
+    : wireStatus.state === 'closed'
+      ? `closed — this market is no longer trading, settlement not yet confirmed; figures below are as of ${publishedDate}`
+      : wireStatus.state === 'past_due'
+        ? `resolution pending — the market's deadline has passed, settlement not yet confirmed; figures below are as of ${publishedDate}`
+        : null;
 
 // ----- derived spread (for Bucket A) -----
 const primary = data.primary_market;
@@ -366,6 +388,10 @@ const signature = 'sha256-' + createHash('sha256').update(canonicalRecord).diges
 // resolve tier vocabulary. Canonical URL also exposed for the full DefinedTermSet.
 (datasetJsonLd as any)['cm:provenanceRegistry'] = tierDefs;
 (datasetJsonLd as any)['cm:provenanceCanonical'] = 'https://clearmarket.fyi/schema/provenance/v1';
+// Live settlement state — added AFTER the signature on purpose: the hash proves the
+// published record is unmodified; status is build-time metadata that changes as the
+// market settles, so it must never enter the hashed canonical record.
+(datasetJsonLd as any)['cm:settlementStatus'] = wireStatus;
 
 function colorizeJson(obj: unknown): string {
   return JSON.stringify(obj, null, 2)
@@ -423,6 +449,12 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
         <span class="cm-horizon-value" data-cm-field="published_at">{data.published_at.slice(0, 10)}</span>
       </span>
     </div>
+
+    {statusBanner && (
+      <div class={`cm-status-banner cm-status-${wireStatus.state}`} data-cm-field="status" data-cm-status={wireStatus.state}>
+        <span class="cm-status-mark">&#9679;</span> {statusBanner}
+      </div>
+    )}
 
     {/* ===== WIRE BODY — the 5-bullet prose summary (canonical PRD §4 + §6.5.5) =====
          Narrative layer. LinkedIn-shareable. Sits above the typed atomic claims so
@@ -945,6 +977,26 @@ const categoryDisplay = data.category_tag.toLowerCase().replace(/_/g, '-');
       padding: 0;
       margin-bottom: 32px;
     }
+
+    /* Settlement-state banner — build-time injected; same mono-chrome register as the
+       horizon strip. Color carries the state: negative = settled (archive), divergence =
+       past-due/closed (attention). */
+    .cm-status-banner {
+      font-family: var(--cm-font-mono);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--cm-fg-secondary);
+      border: 1px solid var(--cm-border-hairline);
+      border-left-width: 3px;
+      padding: 8px 12px;
+      margin: 0 0 24px;
+    }
+    .cm-status-resolved { border-left-color: var(--cm-negative); }
+    .cm-status-resolved .cm-status-mark { color: var(--cm-negative); }
+    .cm-status-closed { border-left-color: var(--cm-divergence); }
+    .cm-status-closed .cm-status-mark { color: var(--cm-divergence); }
+    .cm-status-past_due { border-left-color: var(--cm-divergence); }
+    .cm-status-past_due .cm-status-mark { color: var(--cm-divergence); }
     .cm-callout-label {
       font-family: var(--cm-font-mono);
       font-size: 10px;

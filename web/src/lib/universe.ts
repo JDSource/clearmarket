@@ -264,5 +264,80 @@ export function getActiveEvents(): Event[] {
   return allEvents.filter(isEventLive);
 }
 
+// ---- Signal-wire status (build-time injection) ---------------------------
+// Wires are static snapshots no sweep touches; without this, a settled market's wire
+// reads as live forever. Resolved per-wire at build from the same bundle + resolution
+// log the event pages use — no network. `as_of` is the build date: the status is only
+// as fresh as the last daily build (freshness-daily heals the bundle before each one).
+export type SignalWireStatus = {
+  state: 'live' | 'resolved' | 'closed' | 'past_due' | 'unknown';
+  as_of: string;
+  outcome: 'YES' | 'NO' | null;
+  outcome_basis: 'resolution_log' | 'price_inferred' | null;
+  final_price: number | null;
+  resolved_at: string | null;
+};
+
+const marketByPlatformId = new Map<string, Market>();
+for (const m of allMarkets) {
+  if (m.platform_market_id) marketByPlatformId.set(m.platform_market_id, m);
+}
+export function getMarketByPlatformId(pid: string): Market | undefined {
+  return marketByPlatformId.get(pid);
+}
+
+// Log rows keyed by market_id directly — the event-keyed index can miss when the bundle
+// re-maps a market to a different event than the wire's frozen frontmatter event_id
+// (145/818 wires at last count).
+const resolutionLogByMarket = new Map<string, ResolutionLogEntry[]>();
+for (const r of resolutionLog) {
+  if (!r.market_id) continue;
+  const list = resolutionLogByMarket.get(r.market_id);
+  if (list) list.push(r);
+  else resolutionLogByMarket.set(r.market_id, [r]);
+}
+
+export function resolveSignalStatus(
+  eventId: string,
+  platformMarketId: string | null | undefined,
+  resolvesAt?: string | null,
+): SignalWireStatus {
+  const s: SignalWireStatus = { state: 'unknown', as_of: TODAY_ISO, outcome: null, outcome_basis: null, final_price: null, resolved_at: null };
+  const m = platformMarketId ? marketByPlatformId.get(platformMarketId) : undefined;
+  const deadline = (m?.resolve_at ?? m?.close_at ?? resolvesAt ?? '').slice(0, 10);
+
+  if (m?.status === 'resolved') {
+    s.state = 'resolved';
+    s.final_price = m.last_price;
+    const log = (resolutionLogByMarket.get(m.market_id) ?? []).find((r) => r.to_value === 'YES' || r.to_value === 'NO');
+    if (log) {
+      s.outcome = log.to_value as 'YES' | 'NO';
+      s.outcome_basis = 'resolution_log';
+      // occurred_at is the venue's SCHEDULED deadline (build_resolution_log.py) — an
+      // early-resolved market carries a future date there. Never surface a future
+      // "settled on" date; the first-observation date is the honest fallback.
+      const occ = (log.occurred_at ?? '').slice(0, 10);
+      s.resolved_at = occ && occ <= TODAY_ISO ? occ : ((log.recorded_at ?? '').slice(0, 10) || null);
+    } else if (m.last_price !== null && m.last_price >= 0.95) { s.outcome = 'YES'; s.outcome_basis = 'price_inferred'; }
+    else if (m.last_price !== null && m.last_price <= 0.05) { s.outcome = 'NO'; s.outcome_basis = 'price_inferred'; }
+    return s;
+  }
+  if (m?.status === 'closed') {
+    // Closed = trading stopped, settlement NOT confirmed (the log writes final_price null
+    // for these) — never infer an outcome or stamp a final price.
+    s.state = 'closed';
+    return s;
+  }
+  if (m?.status === 'open') {
+    // Past-due-open = deadline passed but settlement unconfirmed (dispute, venue lag, or a
+    // reconcile miss) — flag it rather than claim either live or resolved.
+    s.state = deadline && deadline < TODAY_ISO ? 'past_due' : 'live';
+    return s;
+  }
+  // Market absent from the bundle — date arithmetic on the wire's own resolves_at is all we have.
+  if (deadline) s.state = deadline < TODAY_ISO ? 'past_due' : 'live';
+  return s;
+}
+
 export const SPECIMEN_GENERATED_AT = generatedAt;
 export const SCHEMA_VERSION = (bundle._meta?.schema as string) ?? 'v0.2.0';

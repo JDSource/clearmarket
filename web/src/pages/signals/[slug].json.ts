@@ -11,6 +11,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { displayTitle, composeTelemetry } from '../../lib/signal-display';
+import { resolveSignalStatus } from '../../lib/universe';
 
 // Short-form definitions of the 4 provenance tiers. Embedded in every wire
 // record so the JSON payload is a self-contained unit of proof — consumers
@@ -53,6 +54,10 @@ export const GET: APIRoute = ({ props }) => {
     secondary_tags: data.secondary_tags ?? [],
     detection_path: data.detection_path,
     pre_news_classification: data.pre_news_classification,
+    // Current settlement state of the primary market, injected at build (wires are static
+    // snapshots; prices/copy below remain as-of published_at). state: live | resolved |
+    // closed | past_due | unknown; as_of = build date.
+    status: resolveSignalStatus(data.event_id, data.primary_market?.platform_market_id, data.primary_market?.resolves_at),
     target_event_id: data.event_id,
     target_event_slug: data.event_slug,
     event_question: data.event_question,

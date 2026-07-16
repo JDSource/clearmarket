@@ -8,6 +8,7 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
 import { displayTitle, composeTelemetry, dedupeActiveWires } from '../lib/signal-display';
+import { resolveSignalStatus } from '../lib/universe';
 
 export const GET: APIRoute = async () => {
   const signals = dedupeActiveWires(await getCollection('signals'));
@@ -18,10 +19,13 @@ export const GET: APIRoute = async () => {
       const venues = Array.from(
         new Set([d.primary_market?.platform, ...(d.related_markets ?? []).map((m: any) => m.platform)].filter(Boolean)),
       );
+      const status = resolveSignalStatus(d.event_id, d.primary_market?.platform_market_id, d.primary_market?.resolves_at);
       return {
         record_id: d.signal_id,
         record_slug: d.signal_slug,
         published_at: d.published_at,
+        // Settlement state of the primary market at build time (full detail in the per-wire json).
+        status: { state: status.state, outcome: status.outcome },
         semantic_title: displayTitle(d),
         telemetry: composeTelemetry(d),
         headline: d.headline,

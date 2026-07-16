@@ -41,6 +41,7 @@ const STOPWORDS = new Set([
   'this', 'that', 'and', 'or', 'do', 'does', 'did', 'can', 'could', 'will', 'would', 'should', 'i', 'you', 'we',
   'what', 'which', 'who', 'how', 'when', 'with', 'about', 'me', 'my', 'your', 'please', 'tell', 'show', 'find',
   'market', 'markets', 'price', 'prices', 'odds', 'trust', 'trusted', 'resolution', 'source', 'grade', 'graded',
+  'upcoming', 'next', 'latest', 'calendar', 'scheduled',
 ]);
 
 function searchTokens(text: string): string {
@@ -79,6 +80,16 @@ async function answer(env: Env, text: string): Promise<any> {
     if (e && !e.error) return { result_type: 'event', event: e };
   }
 
+  // Catalyst-calendar intent (backs the upcoming_catalysts card skill) — checked after id
+  // lookups so a ticker containing "catalyst" text still resolves as a market first.
+  // Deliberately narrow: "upcoming"/"calendar" alone must NOT hijack event searches like
+  // "upcoming fed rate decision" — only the explicit word routes here.
+  if (/\bcatalysts?\b/i.test(t)) {
+    const days = Math.min(90, Math.max(1, Number(t.match(/(\d{1,3})\s*days?/i)?.[1] ?? 30)));
+    const c = await callTool(env, 'list_upcoming_catalysts', { days });
+    if (c && !c.error) return { result_type: 'catalysts', ...c };
+  }
+
   // Id lookups missed (or none present) — search the remaining words, not the id tokens.
   const residue = [cmEvt, cmMkt, cond, tick].reduce((s, c) => (c ? s.replace(new RegExp(c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), ' ') : s), t);
   const q = searchTokens(residue);
@@ -107,15 +118,31 @@ function extractText(params: any): string | null {
   return text.trim() || null;
 }
 
+function marketSummary(m: any): string {
+  const price = typeof m?.last_price === 'number' ? `, last price ${m.last_price}` : '';
+  // Commitment gates before field presence (marketOut invariant): an uncommitted market can
+  // carry a hedged venue menu in resolution.source ("Fox News, NYT…") — never assert that as
+  // THE source; and a committed market can have source null with the authority in sources[].
+  const st = String(m?.resolution?.source_status ?? '');
+  const committed = /named|committed/.test(st) && !st.startsWith('no_');
+  const srcName = m?.resolution?.source ?? m?.resolution?.sources?.[0]?.name ?? null;
+  const src = committed
+    ? srcName ? `, resolution source: ${srcName}` : ', committed resolution source on record'
+    : ', no committed resolution source';
+  return `Market ${m?.market_id}: grade ${m?.rcg?.grade ?? 'n/a'}, status ${m?.status ?? 'n/a'}${price}${src}.`;
+}
+
 function completedTask(data: any): any {
   const summary =
     data.result_type === 'market'
-      ? `Market ${data.market?.market_id}: grade ${data.market?.rcg?.grade ?? 'n/a'}, status ${data.market?.status ?? 'n/a'}.`
+      ? marketSummary(data.market)
       : data.result_type === 'event'
         ? `Event ${data.event?.event_id}: ${data.event?.question ?? ''}`
         : data.result_type === 'search'
           ? `${data.total ?? data.count ?? 0} graded event(s) matched "${data.query}". For an exact market, send a CM-MKT id, Kalshi ticker, or Polymarket conditionId.`
-          : 'ClearMarket A2A usage.';
+          : data.result_type === 'catalysts'
+            ? `${data.count ?? data.catalysts?.length ?? 0} scheduled catalyst(s) in the next ${data.window_days ?? ''} days.`
+            : 'ClearMarket A2A usage.';
   return {
     id: crypto.randomUUID(),
     contextId: crypto.randomUUID(),
@@ -162,8 +189,8 @@ export async function handleA2A(req: Request, env: Env, ctx: { waitUntil(p: Prom
       logCall(env, ctx, req, 'a2a', 'message/send', text.slice(0, 200));
       return json(rpcResult(id, completedTask(await answer(env, text))));
     }
-    if (method === 'message/stream') return json(rpcError(id, -32004, 'Streaming is not supported (capabilities.streaming=false). Use message/send.'));
-    if (method === 'tasks/get' || method === 'tasks/cancel') return json(rpcError(id, -32001, 'Tasks complete synchronously and are not persisted.'));
+    if (method === 'message/stream' || method === 'SendStreamingMessage') return json(rpcError(id, -32004, 'Streaming is not supported (capabilities.streaming=false). Use message/send.'));
+    if (method === 'tasks/get' || method === 'tasks/cancel' || method === 'GetTask' || method === 'CancelTask') return json(rpcError(id, -32001, 'Tasks complete synchronously and are not persisted.'));
     return json(rpcError(id, -32601, `Method not found: ${method}`));
   } catch (e: any) {
     return json(rpcError(id, -32603, `Internal error: ${e?.message ?? e}`));

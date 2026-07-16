@@ -5,6 +5,7 @@
   "url": "https://api.clearmarket.fyi/a2a",
   "preferredTransport": "JSONRPC",
   "additionalInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "transport": "JSONRPC" }],
+  "supportedInterfaces": [{ "url": "https://api.clearmarket.fyi/a2a", "protocolBinding": "JSONRPC", "protocolVersion": "0.3" }],
   "provider": { "organization": "ClearMarket", "url": "https://clearmarket.fyi" },
   "version": "1.0.0",
   "documentationUrl": "https://clearmarket.fyi/for-data/",
@@ -27,6 +28,13 @@
       "description": "Free-text search across graded prediction-market events on Kalshi and Polymarket. Returns per-event grade mix, venues, prices, and the canonical CM ids to cite.",
       "tags": ["prediction-markets", "search", "events"],
       "examples": ["fed rate decision", "iran nuclear deal"]
+    },
+    {
+      "id": "upcoming_catalysts",
+      "name": "Upcoming catalysts",
+      "description": "Dated calendar of scheduled events (Fed decisions, CPI and jobs releases, earnings) that graded prediction markets resolve against, over the next N days. Each entry carries the date, type, and source URL.",
+      "tags": ["prediction-markets", "catalysts", "calendar", "macro"],
+      "examples": ["upcoming catalysts", "what catalysts are scheduled in the next 30 days"]
     }
   ]
 }
