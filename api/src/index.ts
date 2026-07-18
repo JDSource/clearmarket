@@ -63,7 +63,7 @@ export function logCall(
   env: Env,
   ctx: { waitUntil(p: Promise<any>): void },
   req: Request,
-  surface: 'rest' | 'mcp' | 'a2a',
+  surface: 'rest' | 'mcp' | 'a2a' | 'miss',
   action: string,
   target?: unknown,
 ): void {
@@ -80,6 +80,12 @@ export function logCall(
     );
   } catch { /* logging must never break a request */ }
 }
+
+// Vulnerability-scanner and boilerplate-crawler paths excluded from the miss
+// log: exploit probes (.php/.env/wp-*/…), dotfiles other than .well-known,
+// and standard crawler fetches (robots/favicon/sitemap) that mean nothing.
+const SCANNER_NOISE =
+  /\.(php\d?|aspx?|jsp|env|git|sql|bak|cgi|ini)\b|wp-|wordpress|phpmyadmin|cgi-bin|\/\.(?!well-known)|^\/(favicon\.ico|robots\.txt|sitemap[^/]*)$/i;
 
 // ---- provenance / attribution watermark --------------------------------
 // Stamped on every event + market in API and MCP responses. Triple duty:
@@ -1027,6 +1033,12 @@ export default {
     const mkMatch = path.match(/^\/v1\/markets\/([^/]+)$/);
     if (mkMatch) { const id = decodeURIComponent(mkMatch[1]); logCall(env, ctx, req, 'rest', 'get_market', id); return getMarket(env, id, auth); }
 
+    // Miss log — unknown paths are a demand signal, not noise: agents and
+    // assistants request endpoints their priors say should exist here
+    // (hallucinated URLs, probed capabilities). The date this log stops being
+    // empty of real asks is a market-timing signal. Scanner spam is filtered
+    // so the table stays demand data, not a security log.
+    if (!SCANNER_NOISE.test(path)) logCall(env, ctx, req, 'miss', 'not_found', path + url.search);
     return err(404, 'Not found', 'Try /health or /v1/events');
   },
 
