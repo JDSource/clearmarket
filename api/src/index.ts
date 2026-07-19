@@ -14,7 +14,7 @@
  * free key (Authorization: Bearer <key>, or ?key=). 1,000 calls/day per key.
  */
 
-import { handleMcp } from './mcp';
+import { handleMcp, TOOLS, SERVER_INFO, PROTOCOL_VERSION } from './mcp';
 import { AGENT_CARD, handleA2A } from './a2a';
 
 export interface Env {
@@ -846,6 +846,39 @@ const A2A_CARD_PATHS = new Set([
   '/agents/agent.json', '/agents/agent-card.json', '/agents/.well-known/agent-card', '/agents/.well-known/agent-card.json',
 ]);
 
+// MCP server card — the .well-known discovery convention MCP registries probe.
+// Observed demand in the miss log (2026-07-18/19): AgenstryBot, AgentRegistryFloor-
+// Validation, and AgentSEO all requested /.well-known/mcp.json within 36h of the
+// miss log shipping; aliases below are the exact probed variants. Single-sourced
+// from mcp.ts exports (built lazily per request to sidestep the index↔mcp module
+// cycle at init time). Static payload otherwise — no upkeep beyond mcp.ts itself.
+const MCP_MANIFEST_PATHS = new Set([
+  '/.well-known/mcp.json', '/.well-known/mcp', '/.well-known/mcp/server-card.json',
+  '/mcp/.well-known/mcp', '/mcp.json',
+]);
+const mcpManifest = () => ({
+  name: SERVER_INFO.name,
+  title: 'ClearMarket — prediction-market reference layer',
+  description:
+    'Read-only MCP server for graded prediction-market reference data (Kalshi + Polymarket): ' +
+    'Resolution Clarity Grades (A/B/C), committed resolution sources with provenance, ' +
+    'cross-venue question linking, live prices, and CM Signal wires. Open, no key, no payment.',
+  version: SERVER_INFO.version,
+  protocol_version: PROTOCOL_VERSION,
+  endpoint: 'https://api.clearmarket.fyi/mcp',
+  transport: { type: 'streamable-http', note: 'Stateless JSON-RPC 2.0 over POST; no session required.' },
+  authentication: { type: 'none' },
+  tools: TOOLS.map((t: any) => ({ name: t.name, description: t.description })),
+  docs: 'https://clearmarket.fyi/for-data/',
+  terms: 'Attribution required. clearmarket.fyi',
+  related: {
+    agent_card: 'https://api.clearmarket.fyi/.well-known/agent-card.json',
+    x402: 'https://api.clearmarket.fyi/.well-known/x402',
+    api_catalog: 'https://api.clearmarket.fyi/.well-known/api-catalog',
+    llms_txt: 'https://clearmarket.fyi/llms.txt',
+  },
+});
+
 const X402_MANIFEST = {
   x402Version: 2,
   pricing: 'free',
@@ -874,6 +907,7 @@ const API_CATALOG = {
       ],
       'service-meta': [
         { href: 'https://api.clearmarket.fyi/.well-known/agent-card.json', type: 'application/json', title: 'A2A agent card' },
+        { href: 'https://api.clearmarket.fyi/.well-known/mcp.json', type: 'application/json', title: 'MCP server card' },
         { href: 'https://api.clearmarket.fyi/.well-known/x402', type: 'application/json', title: 'x402 pricing manifest (free)' },
         { href: 'https://api.clearmarket.fyi/health', type: 'application/json', title: 'Live status + filter vocabulary' },
       ],
@@ -1002,6 +1036,11 @@ export default {
     if (path === '/.well-known/x402') {
       logCall(env, ctx, req, 'rest', 'x402_manifest');
       return json(X402_MANIFEST, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
+    if (MCP_MANIFEST_PATHS.has(path)) {
+      logCall(env, ctx, req, 'rest', 'mcp_manifest', path);
+      return json(mcpManifest(), 200, { 'cache-control': 'public, max-age=3600' });
     }
 
     // RFC 9727 API catalog (linkset) — one machine-readable index of every surface.
