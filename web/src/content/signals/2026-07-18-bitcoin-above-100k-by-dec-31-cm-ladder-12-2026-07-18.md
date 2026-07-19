@@ -1,8 +1,8 @@
 ---
 signal_id: "CMSIG2026071807"
 signal_slug: "bitcoin-above-100k-by-dec-31-cm-ladder-12-2026-07-18"
-headline: "Bitcoin above $100K by Dec 31: CM ladder 12%"
-semantic_title: "Bitcoin above dollar 100K by year-end wavers at thin 12 percent"
+headline: "Bitcoin above $100K by Dec 31: Kalshi ladder 12%"
+semantic_title: "Bitcoin above $100K by year-end wavers in thin pricing"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -21,7 +21,7 @@ primary_market:
   resolution_source: "CF Benchmarks"
   resolves_at: "2027-01-31T04:59:00Z"
 bullets:
-  - "The ClearMarket ladder prices Bitcoin above $100K by December 31 at only 12%, with probability collapsing further at higher strikes."
+  - "The Kalshi ladder prices Bitcoin above $100K by December 31 at only 12%, with probability collapsing further at higher strikes."
   - "A rebound to $64K after the AI-driven selloff leaves Bitcoin well below the $100K threshold, consistent with the market's skeptical distribution."
   - "The ladder shows near-zero probability above $110K (7%), implying the market sees $100K as a hard ceiling for the year-end scenario."
   - "Resolves at December 31, 2026 close via the specified Bitcoin price source in the contract."

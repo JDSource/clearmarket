@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026070208"
 signal_slug: "sol-price-jan-1-2027-seen-at-100-150-kalshi-ladder-2026-07-02"
 headline: "SOL price Jan 1, 2027 seen at $100-$150: Kalshi ladder"
-semantic_title: "Solana end-2026 price consensus anchors in the 100 to 150 dollar range"
+semantic_title: "Solana end-2026 price consensus anchors in the $100-150 range"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"

@@ -35,6 +35,16 @@ BANNED = [
     # manufactured tension near a threshold comparison (confirmed live 2026-07-14)
     (r"\bdespite\b[^.\n]{0,50}\b(below|above|proximity to)\b",
                                       "despite-tension pattern near threshold (2026-07-14)"),
+    # attribution: ClearMarket is the reference layer, never the venue that prices anything.
+    # Shipped live 2026-07-18 ("The ClearMarket ladder prices Bitcoin…", headline "CM ladder 12%").
+    (r"\b(CM|ClearMarket)\s+(ladder|price[sd]?|odds|probabilit\w*)\b",
+                                      "attribution: ClearMarket is not a venue (2026-07-18)"),
+    # '$' spelled out as the word 'dollar' next to a number — prompt ambiguity ("NO math
+    # symbols" + "spell them out") shipped "dollar 100K" (07-18) and "100 to 150 dollar
+    # range" (07-02). Digit-adjacent only: "dollar flow", "cents on the dollar", "digital
+    # dollar", "firm dollar" are legitimate and must NOT match.
+    (r"\bdollar\s+\d|\b\d[\d,.]*\s+dollar\b",
+                                      "spelled-out '$' — write $100K (2026-07-18)"),
 ]
 # NOT banned: "collapse" — audit 2026-07-14: ~15 false positives, ZERO true positives.
 # Legitimate uses: the contract's literal subject (regime/ceasefire collapse) and
