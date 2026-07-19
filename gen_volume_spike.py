@@ -68,7 +68,7 @@ SYS = (
     "NOT a lookup): traders pile into, write off, defend, target, heavy flows test, hedge, stack, fade. MAX 62 "
     "characters (hard limit — count them; keep the stance tail to 2-3 words). NO probability, NO raw volume "
     "number, NO venue names, NO math symbols; claim-defining figures (the "
-    "level/date in the question) may be spelled out ('$150K', 'by June 30'). NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only. Do NOT invent a "
+    "level/date in the question) may be spelled out ('$150K', 'by June 30'). NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'; the '$' sign itself is REQUIRED notation, not a banned math symbol — write '$100K', never the word 'dollar' ('dollar 100K' / '100 dollar range' are wrong). Snapshot only. Do NOT invent a "
     "date/horizon absent from the question. VARIATION (whole batch in one call): alternate Subject-first and "
     "Market-first; do NOT reuse an opening verb/noun across items. GOOD: 'Traders write off a near-term "
     "MicroStrategy Bitcoin sale'; 'A $150K Bitcoin by June sits deep in tail-risk territory'; 'Heavy flows "

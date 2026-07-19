@@ -245,7 +245,7 @@ SYS = (
     "NAME THE GEOGRAPHY: these benchmarks are US series (FRED/BEA/BLS), so the metric is US — write 'US GDP', "
     "'US inflation', 'US 10-year yield' when the bare metric ('GDP', 'inflation') would leave the country "
     "ambiguous. Don't bolt 'US' on when context already implies it. "
-    "NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only — no permanence. Do NOT invent a date/horizon absent from the question. VARIATION (whole "
+    "NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'; the '$' sign itself is REQUIRED notation, not a banned math symbol — write '$100K', never the word 'dollar' ('dollar 100K' / '100 dollar range' are wrong). Snapshot only — no permanence. Do NOT invent a date/horizon absent from the question. VARIATION (whole "
     "batch in one call): alternate Subject-first and Market-first; do NOT reuse an opening verb/noun across "
     "items. GOOD: 'Traders fully price CPI breaking above 4%'; 'A 10-year yield at 5% stays written off'; "
     "'Capital leans hard on inflation topping 4%'. BAD: chart-speak ('CPI gaps from the FRED print', 'yield "

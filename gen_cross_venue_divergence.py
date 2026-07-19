@@ -87,7 +87,7 @@ SYS = (
     "(inspiration, NOT a lookup): splits sharply, decouples, mirrors, bridges, spreads, isolates, converges, "
     "tracks a premium. MAX 62 characters (hard limit — count them; the long stance tail is the usual cause, keep it 2-3 words). Refer to venues GENERICALLY ('across venues', 'on the major desks') — do "
     "NOT name Kalshi/Polymarket or print either price (those live in telemetry). NO probability, NO math "
-    "symbols; claim-defining figures (the level/date in the claim) may be spelled out. NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'. Snapshot only. Do NOT "
+    "symbols; claim-defining figures (the level/date in the claim) may be spelled out. NUMBER FORMAT: compact notation only — dollar PRICE LEVELS from the claim as $65K or $150K, non-dollar counts/index levels as 30K / 80K (the 24h trading VOLUME is telemetry — NEVER put a volume dollar figure in the title); NEVER spell out 'thousand' or 'million'; the '$' sign itself is REQUIRED notation, not a banned math symbol — write '$100K', never the word 'dollar' ('dollar 100K' / '100 dollar range' are wrong). Snapshot only. Do NOT "
     "invent a date/horizon absent from the claim. VARIATION (whole batch in one call): alternate Subject-first "
     "and Market-first; do NOT reuse an opening verb/noun across items. GOOD: 'Anthropic IPO pricing splits "
     "sharply across venues'; 'Grok 5 timeline decouples on the major prediction desks'. BAD (predicts/asks/"
