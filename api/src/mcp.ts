@@ -15,8 +15,8 @@
  */
 import { Env, num, parseJson, marketOut, marketConcise, findMarketRow, eventSummary, loadCalendar, windowCatalysts, logCall, provenance } from './index';
 
-const PROTOCOL_VERSION = '2025-06-18';
-const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
+export const PROTOCOL_VERSION = '2025-06-18';
+export const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
 const CATEGORIES = ['economics', 'financials', 'crypto', 'companies', 'technology', 'politics', 'geopolitics', 'health', 'climate'];
 
 const CORS = {
@@ -29,7 +29,7 @@ const CORS = {
 // Order matters: LLM tool-selection has a documented "first-tool" positional bias, so the safe
 // entry point (works with no args, can't misfire) goes first. Four tools only — no redundant
 // `search` tool (it collapsed into list_events' `q`; overlapping tools measurably hurt selection).
-const TOOLS = [
+export const TOOLS = [
   {
     name: 'list_events',
     description:
