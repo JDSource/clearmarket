@@ -19,7 +19,19 @@ const CATEGORIES = ['economics', 'financials', 'crypto', 'companies', 'technolog
 const PLATFORMS = ['kalshi', 'polymarket'];
 const GRADES = ['A', 'B', 'C'];
 
-const strip = (s: any) => { const { $schema, ...rest } = s; return rest; };
+// Embed a canonical schema as a RESPONSE component: drop $schema (3.1 sets the dialect
+// document-wide) and drop `additionalProperties: false` — the canonical files describe the
+// strict data contract, but API responses decorate rows with serve-time fields (_provenance,
+// _notice, venues_covered, current_primary_mark, …). A validating client must not reject those.
+const responseShape = (s: any) => {
+  const { $schema, additionalProperties, ...rest } = s;
+  return {
+    ...rest,
+    description:
+      (rest.description ? rest.description + ' ' : '') +
+      'API responses add serve-time fields beyond this canonical schema (_provenance, _notice, and per-endpoint extras).',
+  };
+};
 
 export const OPENAPI_SPEC = {
   openapi: '3.1.0',
@@ -55,7 +67,7 @@ export const OPENAPI_SPEC = {
           { name: 'grade', in: 'query', description: 'Resolution Clarity Grade of the primary market', schema: { type: 'string', enum: GRADES } },
           { name: 'q', in: 'query', description: 'Token-AND search across question and tags', schema: { type: 'string' } },
           { name: 'status', in: 'query', description: 'active = has at least one open market; resolved = none', schema: { type: 'string', enum: ['all', 'active', 'resolved'], default: 'all' } },
-          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 100, default: 25 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 100, default: 50 } },
           { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 } },
         ],
         responses: {
@@ -63,7 +75,7 @@ export const OPENAPI_SPEC = {
             description: 'Paged event list. Unknown filter values return an empty page plus a notice naming the valid set.',
             content: { 'application/json': { schema: {
               type: 'object',
-              properties: { count: { type: 'integer' }, total: { type: 'integer' }, events: { type: 'array', items: { $ref: '#/components/schemas/Event' } } },
+              properties: { count: { type: 'integer', description: 'rows in this page' }, total: { type: 'integer', description: 'full count under the active filters' }, limit: { type: 'integer' }, offset: { type: 'integer' }, events: { type: 'array', items: { $ref: '#/components/schemas/Event' } } },
               additionalProperties: true,
             } } },
           },
@@ -79,10 +91,14 @@ export const OPENAPI_SPEC = {
           { name: 'detail', in: 'query', schema: { type: 'string', enum: ['full', 'concise'], default: 'full' } },
         ],
         responses: {
-          '200': { description: 'Event + markets', content: { 'application/json': { schema: {
-            type: 'object',
-            properties: { event: { $ref: '#/components/schemas/Event' }, markets: { type: 'array', items: { $ref: '#/components/schemas/Market' } } },
-            additionalProperties: true,
+          '200': { description: 'Event fields FLATTENED at the top level (not wrapped in an `event` key), plus linked markets and resolution log', content: { 'application/json': { schema: {
+            allOf: [
+              { $ref: '#/components/schemas/Event' },
+              { type: 'object', properties: {
+                markets: { type: 'array', items: { $ref: '#/components/schemas/Market' } },
+                resolution_log: { type: 'array', items: { $ref: '#/components/schemas/ResolutionLogEntry' } },
+              } },
+            ],
           } } } },
           '404': { description: 'Unknown slug/event_id' },
         },
@@ -151,10 +167,10 @@ export const OPENAPI_SPEC = {
   },
   components: {
     schemas: {
-      Event: strip(EVENT_SCHEMA),
-      Market: strip(MARKET_SCHEMA),
-      Mark: strip(MARK_SCHEMA),
-      ResolutionLogEntry: strip(RESOLUTION_LOG_SCHEMA),
+      Event: responseShape(EVENT_SCHEMA),
+      Market: responseShape(MARKET_SCHEMA),
+      Mark: responseShape(MARK_SCHEMA),
+      ResolutionLogEntry: responseShape(RESOLUTION_LOG_SCHEMA),
     },
   },
 } as const;
