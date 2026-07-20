@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026071701"
 signal_slug: "june-fed-funds-upper-bound-seen-3-50-3-75-kalshi-2026-07-17"
 headline: "June Fed funds upper bound seen 3.50-3.75%: Kalshi"
-semantic_title: "Fed funds at 3.50-3.75 percent hardens after CPI relief"
+semantic_title: "Fed funds upper bound anchors in 3.50-3.75 percent range"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -15,16 +15,16 @@ primary_market:
   platform: "kalshi"
   platform_market_id: "KXFED-26JUL-T3.75"
   question_raw: "Will the upper bound of the federal funds rate be above 3.75% following the Fed's Jul 29, 2026 meeting?"
-  current_price: 0.06
-  volume_24h_usd: 162.76
+  current_price: 0.07
+  volume_24h_usd: 530.94
   arbitration_model: "kalshi_staff"
   resolution_source: "Federal Reserve Board of Governors"
   resolves_at: "2026-08-05T18:05:00Z"
 bullets:
-  - "Kalshi ladder prices 98% odds the June 2026 Fed funds upper bound is above 3.50%, but only 6% above 3.75%, pinning the implied level firmly in the 3.50-3.75% range."
-  - "The soft headline CPI print is consistent with the current pricing, but Warsh's caution on core stickiness keeps the market from pricing any near-term cut below 3.50%."
-  - "Core CPI barely moved even as energy dragged the headline lower, supporting the market's refusal to price the upper bound below 3.50%."
-  - "A companion Kalshi contract on the June 2026 meeting outcome (CM-EVT-RJ6SMJGK50) provides a cross-check on whether the June decision itself was a hold or cut at this level."
+  - "Kalshi ladder pins the June 2026 Fed funds upper bound in the 3.50-3.75% range: 98% above 3.50% but only 7% above 3.75%."
+  - "June headline CPI at 3.5% is consistent with the market pricing a hold; the distribution shows virtually no chance of a cut pulling the upper bound below 3.50%."
+  - "Fed Chair Kevin Warsh's explicit inflation-watch posture aligns with the ladder's sharp drop above 3.75%, signaling the market sees no near-term hike either."
+  - "Resolution via the named June 2026 FOMC meeting outcome; any emergency inter-meeting action would also settle the contract."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -32,7 +32,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active kalshi market"
-    story: "June CPI fell 0.4% month-over-month, bringing the annual rate to 3.5%, driven by a 5.7% energy price drop, though core prices barely moved and Fed Chair Kevin Warsh cautioned against declaring victory."
+    story: "June CPI cooled to 3.5% year-over-year on cheaper gas, but core prices barely moved and Fed Chair Kevin Warsh warned against declaring victory."
     publisher: "James Veale  
  
  
@@ -48,9 +48,9 @@ atomic_claims:
  
  Published: Jul 17 2026, 11:37 AM EDT"
         source_url: "https://www.moneytimes.com/articles/60652/20260717/june-inflation-cooled-35-cheaper-gas-fed-says-relief-may-not-last.htm"
-        retrieved_at: "2026-07-19T09:48:56+00:00"
+        retrieved_at: "2026-07-20T10:47:34+00:00"
   - type: "pm_response"
-    notes: "Kalshi ladder contract with 11 strikes; current distribution clusters 98% above 3.50% and just 6% above 3.75%, reflecting a hold-in-place consensus."
+    notes: "Kalshi ladder covers the full upper-bound strike range; distribution consistent with a hold and no imminent hike."
     field_provenance:
       notes:
         tier: "editorial"
@@ -62,7 +62,7 @@ sources:
  Published: Jul 17 2026, 11:37 AM EDT: June Inflation Cooled to 3.5% on Cheaper Gas, but the Fed Says the Rel"
     url: "https://www.moneytimes.com/articles/60652/20260717/june-inflation-cooled-35-cheaper-gas-fed-says-relief-may-not-last.htm"
     published_at: "2026-07-17T00:00:00.000Z"
-    retrieved_at: "2026-07-19T09:48:56+00:00"
+    retrieved_at: "2026-07-20T10:47:34+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   news_context: "exa_search"
