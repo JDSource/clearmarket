@@ -1033,9 +1033,23 @@ export default {
     // x402 discovery stub — there is no official well-known format (Bazaar listing is
     // facilitator-based), but x402/agent directories probe this path daily. Everything
     // is free (empty `accepts`, price 0): this exists for discovery, not revenue.
-    if (path === '/.well-known/x402') {
+    if (path === '/.well-known/x402' || path === '/.well-known/x402.json') {
       logCall(env, ctx, req, 'rest', 'x402_manifest');
       return json(X402_MANIFEST, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
+    // llms.txt on the API host — agent crawlers probe it here (observed 404s from AgentSEO
+    // and friends). The canonical file is build-time generated on the site (coverage counts
+    // come from the bundle), so proxy it with an edge cache rather than shipping a copy.
+    if (path === '/llms.txt' || path === '/.well-known/llms.txt') {
+      logCall(env, ctx, req, 'rest', 'llms_txt', path);
+      const res = await fetch('https://clearmarket.fyi/llms.txt', {
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      });
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600', ...CORS },
+      });
     }
 
     if (MCP_MANIFEST_PATHS.has(path)) {
