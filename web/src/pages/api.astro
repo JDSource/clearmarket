@@ -139,8 +139,34 @@ const updated = '2026-05-29';
           <div class="tool"><span class="tool-name">get_signal</span><span class="tool-desc">full wire bulletin by slug</span></div>
         </div>
 
-        <h3>Claude Desktop / Cursor</h3>
-        <p class="ep-desc">Add to <code>claude_desktop_config.json</code> or <code>~/.cursor/mcp.json</code> (bridges stdio to the remote server via <code>mcp-remote</code>):</p>
+        <h3>Connect your agent</h3>
+        <p class="ep-desc">One step on most platforms — the server is open, read-only, no auth, so there is nothing to configure beyond the URL.</p>
+
+        <h4>Claude Code</h4>
+        <pre><code>{`claude mcp add clearmarket --transport http ${MCP}`}</code></pre>
+
+        <h4>Claude Desktop</h4>
+        <p class="ep-desc"><strong>Settings → Connectors → Add custom connector</strong>, then paste <code>{`${MCP}`}</code>.</p>
+
+        <h4>ChatGPT</h4>
+        <p class="ep-desc">Turn on <strong>Developer Mode</strong>, then <strong>Settings → Apps → Create app</strong> and paste <code>{`${MCP}`}</code>.</p>
+
+        <h4>Codex CLI</h4>
+        <pre><code>{`codex mcp add clearmarket --url ${MCP}`}</code></pre>
+
+        <h4>Cursor</h4>
+        <p class="ep-desc">Add to <code>~/.cursor/mcp.json</code>:</p>
+        <pre><code>{`{
+  "mcpServers": {
+    "clearmarket": { "url": "${MCP}" }
+  }
+}`}</code></pre>
+
+        <h4>Grok</h4>
+        <p class="ep-desc">In a chat: <strong>+ → Add connector → Custom</strong>, then paste <code>{`${MCP}`}</code>.</p>
+
+        <h4>Other platforms / stdio-only clients</h4>
+        <p class="ep-desc">Any MCP client that takes a remote URL works with <code>{`${MCP}`}</code> directly. Clients that only speak stdio can bridge via <code>mcp-remote</code>:</p>
         <pre><code>{`{
   "mcpServers": {
     "clearmarket": {
