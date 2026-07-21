@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026071608"
 signal_slug: "ukraine-russia-peace-deal-before-2027-polymarket-20-2026-07-16"
 headline: "Ukraine-Russia peace deal before 2027: Polymarket 20%"
-semantic_title: "Ukraine peace deal consensus stays below quarter odds"
+semantic_title: "Ukraine peace deal before 2027 stays below 25%"
 telemetry: "Polymarket 20%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -21,7 +21,7 @@ primary_market:
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
   - "Polymarket prices 20% on Ukraine signing a peace deal with Russia before 2027, with active Russian missile strikes on Kyiv ongoing."
-  - "The Ukraine-EU drone deal and Russian retaliation signal a continued war footing on both sides, consistent with prediction markets holding well below even odds."
+  - "The Ukraine-EU drone deal and Russian retaliation signal a continued war footing on both sides, consistent with prediction markets holding well below 50%."
   - "A companion Polymarket contract on the US recognizing Russian sovereignty over Crimea before 2027 sits at 12%, suggesting markets see the political preconditions for a deal as similarly distant."
   - "Polymarket resolves via UMA oracle; a signed peace deal requires formal treaty execution, not merely ceasefire announcements, raising the resolution bar considerably."
 atomic_claims:

@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026071403"
 signal_slug: "us-nonfarm-productivity-yoy-above-3-in-2026-kalshi-45-2026-07-14"
 headline: "US nonfarm productivity YoY above 3% in 2026: Kalshi 45%"
-semantic_title: "Nonfarm productivity above 3 percent in 2026 anchors near even odds"
+semantic_title: "Nonfarm productivity above 3% in 2026 trades near 50%"
 telemetry: "Kalshi 45%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -21,7 +21,7 @@ primary_market:
   resolution_source: "Bureau of Labor Statistics- Employment Situation"
   resolves_at: "2027-06-02T15:30:00Z"
 bullets:
-  - "Kalshi prices the US nonfarm productivity YoY above 3% in any 2026 quarter at 45%, near even odds."
+  - "Kalshi prices the US nonfarm productivity YoY above 3% in any 2026 quarter at 45%, close to a coin flip."
   - "Cooling inflation reduces nominal output distortion, but does not directly confirm real productivity gains above 3%."
   - "The Fed holding rates steady despite softer CPI keeps financing costs elevated, which could compress capital investment and weigh on productivity."
   - "Resolves via Bureau of Labor Statistics Employment Situation releases; quarterly data cadence means multiple resolution windows remain in 2026."

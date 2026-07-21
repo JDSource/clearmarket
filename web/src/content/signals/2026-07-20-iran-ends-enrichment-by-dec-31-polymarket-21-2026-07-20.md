@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072005"
 signal_slug: "iran-ends-enrichment-by-dec-31-polymarket-21-2026-07-20"
 headline: "Iran ends enrichment by Dec 31: Polymarket 21%"
-semantic_title: "Iran uranium enrichment halt by year-end holds below quarter odds"
+semantic_title: "Iran uranium enrichment halt by year-end holds below 25%"
 telemetry: "Polymarket 21%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"

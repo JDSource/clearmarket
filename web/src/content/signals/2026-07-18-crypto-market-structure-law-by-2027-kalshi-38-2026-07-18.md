@@ -21,7 +21,7 @@ primary_market:
   resolution_source: "White House"
   resolves_at: "2027-01-01T15:00:00Z"
 bullets:
-  - "Kalshi prices crypto market structure legislation becoming law by 2027 at 38%, below even odds despite regulatory momentum."
+  - "Kalshi prices crypto market structure legislation becoming law by 2027 at 38% despite regulatory momentum."
   - "SEC rulemaking entering White House review is a procedural step consistent with progress, but the market stops well short of pricing passage as likely."
   - "Senate Banking Committee is separately expected to take up the crypto market structure bill within weeks, yet the Kalshi contract is unmoved from sub-50%."
   - "Resolves via White House confirmation of presidential signature on qualifying crypto market structure legislation by the 2027 deadline."

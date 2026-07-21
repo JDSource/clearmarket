@@ -63,6 +63,10 @@ BANNED = [
                                       "financial-poetry verb (2026-07-21)"),
     (r"\bfractures?\b[^.\n]{0,30}\bodds\b",
                                       "financial-poetry verb near odds (2026-07-21)"),
+    # odds-speak instead of a number — "less-than-even odds" / "quarter odds" (Jeremy 2026-07-21):
+    # write the landmark percentage ("slips below 50%", "holds under 25%").
+    (r"\b(even|near-even|quarter|three-quarter) odds\b|\bless-than-even\b",
+                                      "odds-speak — write 50% / 25% (2026-07-21)"),
 ]
 # NOT banned: "collapse" — audit 2026-07-14: ~15 false positives, ZERO true positives.
 # Legitimate uses: the contract's literal subject (regime/ceasefire collapse) and
