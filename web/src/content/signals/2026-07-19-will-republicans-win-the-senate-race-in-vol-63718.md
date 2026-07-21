@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260719VS02"
 signal_slug: "will-republicans-win-the-senate-race-in-vol-63718"
 headline: "Republicans win Iowa Senate: 63% on $63K inflow"
-semantic_title: "Republican Senate hold in Iowa draws firm institutional defense"
+semantic_title: "Betting picks back up on a Republican Senate hold in Iowa"
 telemetry: "63% · $64K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

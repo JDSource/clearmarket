@@ -45,6 +45,28 @@ BANNED = [
     # dollar", "firm dollar" are legitimate and must NOT match.
     (r"\bdollar\s+\d|\b\d[\d,.]*\s+dollar\b",
                                       "spelled-out '$' — write $100K (2026-07-18)"),
+    # participant-type inference from anonymous flow — "institutional defense" shipped 2026-07-19
+    # (Iowa Senate wire). Collocation-scoped: a market whose literal subject is an institution
+    # ("institutional adoption of BTC ETFs") must not match.
+    (r"\binstitutional\s+(defen[cs]e|conviction|bids?|buyers?|sellers?|flows?|capital|money|demand|support|accumulation)\b",
+                                      "participant-type inference from anonymous flow (2026-07-19)"),
+    (r"\bsmart money\b|\bwhales?\s+(buy|sell|bid|accumulate|defend|stack)\w*\b",
+                                      "participant-type inference from anonymous flow (2026-07-19)"),
+    # spelled-out large numbers — "above one and a half billion" shipped 2026-07-20 (crypto-hack
+    # wire). '$1.5 billion' / '$1.5B' are fine; a spelled-out numeral before the unit is not.
+    (r"\b(one|two|three|four|five|six|seven|eight|nine|ten|a)\s+(and\s+a\s+(half|quarter)\s+)?(thousand|million|billion|trillion)\b",
+                                      "spelled-out numeral — write $1.5B (2026-07-20)"),
+    # financial-poetry verbs flagged by Jeremy 2026-07-21 ("solidifies", "fractures below even
+    # odds"). solidifies/crystallizes/calcifies have no legit reader-copy use; 'fractures' only
+    # banned in the odds-collocation (a market about a coalition fracturing is a legit subject).
+    (r"\b(solidif|crystalliz|calcif)\w*\b",
+                                      "financial-poetry verb (2026-07-21)"),
+    (r"\bfractures?\b[^.\n]{0,30}\bodds\b",
+                                      "financial-poetry verb near odds (2026-07-21)"),
+    # odds-speak instead of a number — "less-than-even odds" / "quarter odds" (Jeremy 2026-07-21):
+    # write the landmark percentage ("slips below 50%", "holds under 25%").
+    (r"\b(even|near-even|quarter|three-quarter) odds\b|\bless-than-even\b",
+                                      "odds-speak — write 50% / 25% (2026-07-21)"),
 ]
 # NOT banned: "collapse" — audit 2026-07-14: ~15 false positives, ZERO true positives.
 # Legitimate uses: the contract's literal subject (regime/ceasefire collapse) and

@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026071905"
 signal_slug: "strait-of-hormuz-normal-by-dec-31-polymarket-51-2026-07-19"
 headline: "Strait of Hormuz normal by Dec 31: Polymarket 51%"
-semantic_title: "Hormuz normalization by year-end sits near even odds amid escalation"
+semantic_title: "Hormuz normalization by year-end sits near 50% amid escalation"
 telemetry: "Polymarket 51%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"

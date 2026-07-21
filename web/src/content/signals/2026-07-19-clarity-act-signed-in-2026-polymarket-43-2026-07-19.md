@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026071907"
 signal_slug: "clarity-act-signed-in-2026-polymarket-43-2026-07-19"
 headline: "CLARITY Act signed in 2026: Polymarket 43%"
-semantic_title: "CLARITY Act passage in 2026 holds below even odds at Polymarket"
+semantic_title: "CLARITY Act passage in 2026 holds below 50%"
 telemetry: "Polymarket 43%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -21,7 +21,7 @@ primary_market:
   resolves_at: "2027-01-01T05:00:00Z"
 bullets:
   - "Polymarket prices a 43% probability that the CLARITY Act is signed into law in 2026."
-  - "Warren's ethics pushback and Trump's crypto income scrutiny are consistent with the below-even odds; the market does not yet see passage as a base case."
+  - "Warren's ethics pushback and Trump's crypto income scrutiny are consistent with the below-50% pricing; the market does not yet see passage as a base case."
   - "Story 35 reports Trump has agreed to ethics amendments as the final hurdle; if confirmed, that could shift the distribution materially, but no official White House confirmation exists yet."
   - "Resolves via Polymarket UMA oracle on signing by the President; Senate passage and House reconciliation both remain prerequisites."
 atomic_claims:

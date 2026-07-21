@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072006"
 signal_slug: "hormuz-traffic-normal-by-dec-31-polymarket-56-2026-07-20"
 headline: "Hormuz traffic normal by Dec 31: Polymarket 56%"
-semantic_title: "Hormuz traffic returning to normal by year-end holds near even odds"
+semantic_title: "Hormuz traffic returning to normal by year-end holds near 50%"
 telemetry: "Polymarket 56%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"

@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072003"
 signal_slug: "gas-above-4-60-by-dec-31-kalshi-ladder-near-48-2026-07-20"
 headline: "Gas above $4.60 by Dec 31: Kalshi ladder near 48%"
-semantic_title: "Gas above $4.60 by year-end fractures below even odds"
+semantic_title: "Odds of gas above $4.60 this year slip below 50%"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -22,7 +22,7 @@ primary_market:
   resolves_at: "2027-01-07T06:30:00Z"
 bullets:
   - "Kalshi ladder shows 48% probability gas exceeds $4.60 by year-end, with probabilities declining steadily to 6% above $7.00."
-  - "Gas topping $4 now does not yet push the market to favor sustained above-$4.60 pricing by December; the contract sits nearly at even odds."
+  - "Gas topping $4 now does not yet push the market to favor sustained above-$4.60 pricing by December; the contract sits just under 50%."
   - "The $82 WTI print is a live input: further oil price gains would shift the distribution rightward, but the current ladder reflects uncertainty rather than conviction."
   - "Resolution is based on the national average gas price at Dec 31, 2026; seasonal demand and geopolitical risk in the Strait of Hormuz (see Iran wires) are key drivers."
 atomic_claims:

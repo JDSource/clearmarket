@@ -2,7 +2,7 @@
 signal_id: "CMSIG20260709VS04"
 signal_slug: "fed-rate-hike-by-october-2026-meeting-vol-83477"
 headline: "Fed rate hike by Oct 2026: 46% on $83K inflow"
-semantic_title: "Rates desks defend near-even odds on a Fed hike by October"
+semantic_title: "Odds of a Fed hike by October hold near 50%"
 telemetry: "46% · $83K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"

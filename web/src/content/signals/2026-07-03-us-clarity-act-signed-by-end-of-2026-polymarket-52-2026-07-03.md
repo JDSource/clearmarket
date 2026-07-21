@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026070308"
 signal_slug: "us-clarity-act-signed-by-end-of-2026-polymarket-52-2026-07-03"
 headline: "US Clarity Act signed by end of 2026: Polymarket 52%"
-semantic_title: "US crypto Clarity Act signing by year-end holds near even odds"
+semantic_title: "US crypto Clarity Act signing by year-end holds near 50%"
 telemetry: "Polymarket 52%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
