@@ -23,7 +23,7 @@ primary_market:
 bullets:
   - "Kalshi prices Kirkmeyer at 45%, a narrow underdog to Marx but within striking distance."
   - "$92K in 24h is 73% of all-time volume, mirroring the Marx contract's simultaneous surge."
-  - "Paired volume spikes on both contracts signal a binary primary race crystallizing around two candidates."
+  - "Paired volume spikes on both contracts signal a primary race narrowing to two candidates."
   - "Marx 57% vs. Kirkmeyer 45% implies thin residual probability for any other entrant."
 atomic_claims:
   - type: "volume_anomaly"

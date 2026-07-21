@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072003"
 signal_slug: "gas-above-4-60-by-dec-31-kalshi-ladder-near-48-2026-07-20"
 headline: "Gas above $4.60 by Dec 31: Kalshi ladder near 48%"
-semantic_title: "Gas above $4.60 by year-end fractures below even odds"
+semantic_title: "Gas topping $4.60 this year slips to less-than-even odds"
 telemetry: "Kalshi ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"

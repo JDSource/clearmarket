@@ -22,7 +22,7 @@ primary_market:
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
   - "Market prices zero probability Khatami holds or gains head-of-state status by end of 2026."
-  - "Polymarket logged $1.53M in 24h volume, 43% of all-time handle, signaling sharp institutional conviction."
+  - "Polymarket logged $1.53M in 24h volume, 43% of all-time handle, an unusually heavy single-day re-engagement."
   - "Fresh capital flooding a zero-priced contract suggests confirming news or a definitive political development in Tehran."
   - "Contract resolves end of 2026; volume spike implies the question is effectively settled in the market's view."
 atomic_claims:

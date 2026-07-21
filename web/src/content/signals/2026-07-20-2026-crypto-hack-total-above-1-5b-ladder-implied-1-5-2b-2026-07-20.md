@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072008"
 signal_slug: "2026-crypto-hack-total-above-1-5b-ladder-implied-1-5-2b-2026-07-20"
 headline: "2026 crypto hack total above $1.5B: ladder-implied ~$1.5-2B"
-semantic_title: "Total 2026 crypto hack value solidifies above one and a half billion"
+semantic_title: "Markets firmly price 2026 crypto hack losses above $1.5B"
 telemetry: "Polymarket ladder"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
