@@ -220,4 +220,12 @@ const jsonld = {
       .dg-nav a { border-bottom: 0; padding: 2px 0; }
     }
   </style>
+  <script is:inline>
+    // Attribution beacon (same pattern as /for-data): a named-recipient (?p=… or ?partner=…) open
+    // is logged server-side via /v1/ping so a shared link's opens are visible in call_log.
+    var _ref = new URLSearchParams(location.search).get('p') || new URLSearchParams(location.search).get('partner');
+    if (_ref) {
+      try { fetch('https://api.clearmarket.fyi/v1/ping?p=' + encodeURIComponent(_ref), { keepalive: true, mode: 'no-cors' }); } catch (e) {}
+    }
+  </script>
 </Site>
