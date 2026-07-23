@@ -28,6 +28,28 @@ const websiteJsonLd = {
     url: "https://clearmarket.fyi",
   },
 };
+
+// Entity-disambiguation markup: ties this ClearMarket to its profiles so search engines and
+// AI knowledge graphs distinguish it from the unrelated automotive / real-estate / commodities
+// ClearMarkets (a real collision — Brave serves those for our own domain query, 2026-07-23).
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://clearmarket.fyi/#organization",
+  name: "ClearMarket",
+  legalName: "ClearMarket",
+  url: "https://clearmarket.fyi",
+  logo: "https://clearmarket.fyi/og.png",
+  description:
+    "The reference data layer for prediction markets: resolution clarity grades, regulatory eligibility screens, and cross-venue linking across Kalshi and Polymarket, served through an open API and MCP server.",
+  founder: { "@type": "Person", name: "Jeremy Dietz", sameAs: "https://www.linkedin.com/in/jeremydietz/" },
+  foundingDate: "2026",
+  knowsAbout: ["prediction markets", "event contracts", "market reference data", "resolution clarity", "regulatory eligibility screening"],
+  sameAs: [
+    "https://github.com/JDSource/clearmarket",
+    "https://www.linkedin.com/company/clearmarketdata/",
+  ],
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -56,6 +78,7 @@ const websiteJsonLd = {
     <meta name="twitter:image" content="https://clearmarket.fyi/og.png" />
 
     <script type="application/ld+json" set:html={JSON.stringify(websiteJsonLd)} />
+    <script type="application/ld+json" set:html={JSON.stringify(organizationJsonLd)} />
     <slot name="head" />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
