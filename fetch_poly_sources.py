@@ -28,7 +28,7 @@ import re
 import sys
 from pathlib import Path
 
-UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-06-12"
+UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-07-23"
 URL_RE = re.compile(r'https?://[^\s\)\]\}"\'<>]+')
 
 # Bare domains cited without a scheme. Tight TLD list to avoid prose false-positives;

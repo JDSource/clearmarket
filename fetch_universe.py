@@ -106,17 +106,54 @@ def kalshi_event_resolve_at(event: dict) -> str | None:
 # Polymarket: paginate Gamma /events (events carry tags[] + volume + endDate)
 # -----------------------------------------------------------------
 def fetch_poly_events(max_events: int | None, max_pages: int = MAX_PAGES) -> list[dict]:
+    # Gamma hard-caps offsets (~2000 as of 2026-07: deeper pages 422), so a single
+    # offset walk can no longer cover the open set. Page inside end-date windows
+    # instead — each window restarts offset at 0 — and dedup on event id across
+    # the overlapping boundaries. First window (no end_date_min) catches past-due
+    # events that are still open; last window (no end_date_max) catches far-dated ones.
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
     events: list[dict] = []
-    offset = 0
-    for _ in range(max_pages):
-        params = {"closed": "false", "limit": PAGE_POLY, "offset": offset}
-        batch = _get(f"{POLY_GAMMA}/events", params)
+    seen: set = set()
+
+    def harvest(batch) -> None:
         if not isinstance(batch, list):  # Gamma returns a bare array
             batch = batch.get("events", []) if isinstance(batch, dict) else []
-        events.extend(batch)
-        offset += PAGE_POLY
-        if len(batch) < PAGE_POLY or (max_events and len(events) >= max_events):
-            break
+        for ev in batch:
+            eid = ev.get("id")
+            if eid is None or eid in seen:
+                continue
+            seen.add(eid)
+            events.append(ev)
+
+    def pull_window(lo, hi) -> None:
+        """Offset-walk one end-date window; on the offset cap (422), bisect."""
+        offset = 0
+        for _ in range(max_pages):
+            params = {
+                "closed": "false", "limit": PAGE_POLY, "offset": offset,
+                "end_date_min": lo.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "end_date_max": hi.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            }
+            try:
+                batch = _get(f"{POLY_GAMMA}/events", params)
+            except requests.HTTPError as e:
+                if (e.response is not None and e.response.status_code == 422
+                        and hi - lo > timedelta(hours=6)):
+                    mid = lo + (hi - lo) / 2
+                    pull_window(lo, mid)
+                    pull_window(mid, hi)
+                    return
+                raise
+            harvest(batch)
+            offset += PAGE_POLY
+            if not batch or (isinstance(batch, list) and len(batch) < PAGE_POLY):
+                return
+
+    # Past-due-but-open events back 3 years, forward 5 years for far-dated ones.
+    pull_window(now - timedelta(days=3 * 365), now)
+    pull_window(now, now + timedelta(days=5 * 365))
     return events[:max_events] if max_events else events
 
 
