@@ -16,6 +16,13 @@
 
 import { handleMcp, TOOLS, SERVER_INFO, PROTOCOL_VERSION } from './mcp';
 import { AGENT_CARD, handleA2A } from './a2a';
+import { OPENAPI_SPEC, AGENTS_MANIFEST } from './openapi';
+
+// agents.json probe variants observed as 404s in call_log (AgenstryBot walks all of these daily).
+const AGENTS_JSON_PATHS = new Set([
+  '/agents.json', '/.well-known/agents.json',
+  '/agent-directory.json', '/.well-known/agent-directory.json',
+]);
 
 export interface Env {
   DB: D1Database;
@@ -899,6 +906,7 @@ const API_CATALOG = {
     {
       anchor: 'https://api.clearmarket.fyi/',
       'service-desc': [
+        { href: 'https://api.clearmarket.fyi/openapi.json', type: 'application/vnd.oai.openapi+json', title: 'OpenAPI 3.1 spec (component schemas = the canonical JSON Schemas)' },
         { href: 'https://clearmarket.fyi/schema.json', type: 'application/json', title: 'ClearMarket 4-table schema (events/markets/marks/resolution_log)' },
       ],
       'service-doc': [
@@ -1033,9 +1041,49 @@ export default {
     // x402 discovery stub — there is no official well-known format (Bazaar listing is
     // facilitator-based), but x402/agent directories probe this path daily. Everything
     // is free (empty `accepts`, price 0): this exists for discovery, not revenue.
-    if (path === '/.well-known/x402') {
+    if (path === '/.well-known/x402' || path === '/.well-known/x402.json') {
       logCall(env, ctx, req, 'rest', 'x402_manifest');
       return json(X402_MANIFEST, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
+    // OpenAPI 3.1 spec — the machine-readable API description codegen tools and agents ask for
+    // (observed 404s: /openapi.json from generic clients, /swagger.json probes). Component
+    // schemas are the canonical /schema JSON Schemas, imported at build time.
+    if (path === '/openapi.json' || path === '/.well-known/openapi.json' || path === '/swagger.json') {
+      logCall(env, ctx, req, 'rest', 'openapi', path);
+      return json(OPENAPI_SPEC, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+
+    // agents.json — directory-facing manifest; AgenstryBot probes six path variants daily.
+    if (AGENTS_JSON_PATHS.has(path)) {
+      logCall(env, ctx, req, 'rest', 'agents_json', path);
+      return json(AGENTS_MANIFEST, 200, { 'cache-control': 'public, max-age=3600' });
+    }
+    if (path === '/agents.txt') {
+      logCall(env, ctx, req, 'rest', 'agents_json', path);
+      return new Response(
+        'ClearMarket — prediction-market reference layer (open, free, attribution required)\n' +
+        'manifest: https://api.clearmarket.fyi/agents.json\n' +
+        'openapi:  https://api.clearmarket.fyi/openapi.json\n' +
+        'mcp:      https://api.clearmarket.fyi/mcp\n' +
+        'a2a:      https://api.clearmarket.fyi/a2a\n' +
+        'llms.txt: https://clearmarket.fyi/llms.txt\n',
+        { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600', ...CORS } },
+      );
+    }
+
+    // llms.txt on the API host — agent crawlers probe it here (observed 404s from AgentSEO
+    // and friends). The canonical file is build-time generated on the site (coverage counts
+    // come from the bundle), so proxy it with an edge cache rather than shipping a copy.
+    if (path === '/llms.txt' || path === '/.well-known/llms.txt') {
+      logCall(env, ctx, req, 'rest', 'llms_txt', path);
+      const res = await fetch('https://clearmarket.fyi/llms.txt', {
+        cf: { cacheTtl: 3600, cacheEverything: true },
+      });
+      return new Response(res.body, {
+        status: res.status,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600', ...CORS },
+      });
     }
 
     if (MCP_MANIFEST_PATHS.has(path)) {
