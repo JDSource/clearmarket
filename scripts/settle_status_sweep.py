@@ -110,6 +110,7 @@ def sweep_poly(markets, stats):
     for i in range(0, len(cids), 50):
         batch = cids[i:i + 50]
         rows = []
+        failed = False
         for closed in (None, "true"):
             params = [("condition_ids", c) for c in batch] + [("limit", "100")]
             if closed:
@@ -121,6 +122,7 @@ def sweep_poly(markets, stats):
             res = _get(GAMMA, params)
             if res in (None, "ERR"):
                 stats["errors"] += 1
+                failed = True
                 continue
             rows += res
         seen = set()
@@ -152,6 +154,13 @@ def sweep_poly(markets, stats):
                 if lp is not None:
                     m["last_price"] = float(lp)
                 stats["still_active"] += 1
+        if failed:
+            # A request in this batch failed — "absent from the response" is not "venue
+            # confirmed gone". Leave the unseen markets untouched rather than closing
+            # them off an HTTP error; the next sweep gets another look.
+            stats["gone_left"] += len([c for c in batch if c not in seen])
+            time.sleep(0.2)
+            continue
         for cid in batch:
             if cid not in seen:
                 m = by_cid[cid]

@@ -241,9 +241,13 @@ export function getMarksForEvent(event_id: string): Mark[] {
     .map((m) => synthMarkByMarketId.get(m.market_id))
     .filter((x): x is Mark => Boolean(x));
 }
-// Resolved-market history for an event, newest settlement first.
+// Resolved-market history for an event, newest settlement first. The log file also holds
+// status_change/'closed' rows (trading stopped, settlement unconfirmed — often with future
+// deadline dates); those are not settlements and are excluded from this history surface.
+// resolutionLogByMarket below reads the unfiltered array, so wire-outcome logic is unaffected.
 export function getResolutionLogForEvent(event_id: string): ResolutionLogEntry[] {
   return (resolutionLogByEvent.get(event_id) ?? [])
+    .filter((r) => r.event_type === 'resolved')
     .slice()
     .sort((a, b) => (b.occurred_at ?? '').localeCompare(a.occurred_at ?? ''));
 }
