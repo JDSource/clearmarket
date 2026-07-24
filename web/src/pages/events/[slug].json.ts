@@ -76,7 +76,11 @@ export const GET: APIRoute = ({ params }) => {
       market_id: r.market_id,
       platform: r.platform,
       outcome: r.to_value,
-      resolved_at: r.occurred_at,
+      // A deadline is not a settlement: deadline-basis rows (venue exposes no settlement
+      // time) publish the date as deadline_at and leave resolved_at null.
+      resolved_at: r.occurred_basis === 'deadline' ? null : r.occurred_at,
+      deadline_at: r.occurred_basis === 'deadline' ? r.occurred_at : null,
+      occurred_basis: r.occurred_basis ?? null,
       final_price: r.final_price,
       recorded_at: r.recorded_at,
       source: r.source,

@@ -437,12 +437,17 @@ async function getEvent(env: Env, slug: string, auth: Auth, detail: string = 'fu
   let resolutionLog: any[] = [];
   try {
     const { results } = await env.DB.prepare(
-      `SELECT market_id, platform, to_value, occurred_at, final_price, recorded_at, source, source_ref
+      `SELECT market_id, platform, event_type, to_value, occurred_at, occurred_basis, final_price, recorded_at, source, source_ref
          FROM resolution_log WHERE event_id = ? ORDER BY occurred_at DESC`
     ).bind(e.event_id).all<any>();
+    // A deadline is not a settlement: deadline-basis timestamps (venue exposes no settlement
+    // time, e.g. delisted-before-settlement) go out as deadline_at, never as resolved_at.
     resolutionLog = results.map((r) => ({
-      market_id: r.market_id, platform: r.platform, outcome: r.to_value,
-      resolved_at: r.occurred_at, final_price: num(r.final_price), recorded_at: r.recorded_at,
+      market_id: r.market_id, platform: r.platform, event_type: r.event_type, outcome: r.to_value,
+      resolved_at: r.occurred_basis === 'deadline' ? null : r.occurred_at,
+      deadline_at: r.occurred_basis === 'deadline' ? r.occurred_at : null,
+      occurred_basis: r.occurred_basis ?? null,
+      final_price: num(r.final_price), recorded_at: r.recorded_at,
       source: r.source, source_ref: r.source_ref,
     }));
   } catch { resolutionLog = []; }
@@ -717,13 +722,17 @@ const SETTLE_WINDOW_DAYS = 14;  // recently-settled lookback; tolerates a few mi
 
 type RowLite = { market_id: string; event_id: string; platform: string };
 function resLogRow(env: Env, m: RowLite, eventType: string, fromV: string | null, toV: string,
-                   finalPrice: number | null, occurredAt: string | null, recordedAt: string): D1PreparedStatement {
+                   finalPrice: number | null, settleTime: string | null, deadline: string | null,
+                   recordedAt: string): D1PreparedStatement {
   // occurred_at is half the (market_id, occurred_at) PK — never bind NULL (SQLite treats NULLs as
-  // distinct, which would let duplicate rows accrue), so fall back to the record time.
+  // distinct, which would let duplicate rows accrue), so fall back deadline -> record time.
+  // The basis says which clock occurred_at holds; only a real venue timestamp may claim settlement.
+  const occurredAt = settleTime ?? deadline ?? recordedAt;
+  const basis = settleTime ? 'venue_settlement' : deadline ? 'deadline' : 'first_observed';
   return env.DB.prepare(
-    `INSERT INTO resolution_log (market_id, event_id, platform, event_type, occurred_at, recorded_at, from_value, to_value, final_price, source, source_ref, actor)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(market_id, occurred_at) DO NOTHING`
-  ).bind(m.market_id, m.event_id, m.platform, eventType, occurredAt ?? recordedAt, recordedAt,
+    `INSERT INTO resolution_log (market_id, event_id, platform, event_type, occurred_at, occurred_basis, recorded_at, from_value, to_value, final_price, source, source_ref, actor)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(market_id, occurred_at) DO NOTHING`
+  ).bind(m.market_id, m.event_id, m.platform, eventType, occurredAt, basis, recordedAt,
          fromV, toV, finalPrice, 'platform_api', null, 'clearmarket-reconcile-cron');
 }
 
@@ -736,8 +745,17 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
   const unseen = results.filter((r) => !seenOpen.has(r.platform_market_id));
   if (!unseen.length) { console.log('reconcile: 0 unseen open markets'); return; }
 
-  // recently-settled feeds -> platform_market_id -> { resolved, price (settlement, 0..1), closeTime }
-  type Settle = { resolved: boolean; price: number | null; closeTime: string | null };
+  // recently-settled feeds -> platform_market_id -> { resolved, price (settlement, 0..1), closeTime,
+  // settleTime }. closeTime is deadline-class metadata (endDate/close_time) used for resolve_at;
+  // settleTime is the venue's actual settlement timestamp (Kalshi settlement_ts, Poly closedTime)
+  // and is the only value allowed into resolution_log as occurred_basis='venue_settlement'.
+  type Settle = { resolved: boolean; price: number | null; closeTime: string | null; settleTime: string | null };
+  const normCt = (v: unknown): string | null => {
+    if (!v) return null;
+    let s = String(v).trim().replace(' ', 'T');
+    if (s.endsWith('+00')) s = s.slice(0, -3) + 'Z';
+    return s;
+  };
   const settled = new Map<string, Settle>();
   const cutoffMs = Date.now() - SETTLE_WINDOW_DAYS * 86_400_000;
 
@@ -754,10 +772,11 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
     for (const m of d.markets ?? []) {
       const result = String(m.result ?? '').toLowerCase();
       const closeTime = m.close_time ?? m.expiration_time ?? null;
+      const settleTime = m.settlement_ts ?? m.close_time ?? null;
       if (result === 'yes' || result === 'no')
-        settled.set(m.ticker, { resolved: true, price: result === 'yes' ? 1.0 : 0.0, closeTime });
+        settled.set(m.ticker, { resolved: true, price: result === 'yes' ? 1.0 : 0.0, closeTime, settleTime });
       else
-        settled.set(m.ticker, { resolved: false, price: null, closeTime }); // settled w/o yes/no -> closed
+        settled.set(m.ticker, { resolved: false, price: null, closeTime, settleTime }); // settled w/o yes/no -> closed
     }
     kCursor = d.cursor;
     if (!kCursor) { kCap = false; break; }
@@ -794,7 +813,7 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
             if (Array.isArray(p) && p.length) price = Number(p[0]);
           } catch { /* unparseable -> leave null, handled as PENDING below */ }
         }
-        settled.set(m.conditionId, { resolved: true, price, closeTime: m.endDate ?? null });
+        settled.set(m.conditionId, { resolved: true, price, closeTime: m.endDate ?? null, settleTime: normCt(m.closedTime) });
       }
     }
     pOffset += 100;
@@ -812,20 +831,20 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
       const outcome = s.price >= 0.5 ? 'YES' : 'NO';
       stmts.push(env.DB.prepare('UPDATE markets SET status=?, last_price=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
         .bind('resolved', s.price, s.closeTime, nowIso, m.market_id));
-      logStmts.push(resLogRow(env, m, 'resolved', 'open', outcome, s.price, s.closeTime ?? m.close_at, nowIso));
+      logStmts.push(resLogRow(env, m, 'resolved', 'open', outcome, s.price, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.resolved++;
     } else if (s && s.resolved) {
       // venue says resolved but no parseable settlement price — flip status, keep price, outcome PENDING (no guess)
       stmts.push(env.DB.prepare('UPDATE markets SET status=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
         .bind('resolved', s.closeTime, nowIso, m.market_id));
-      logStmts.push(resLogRow(env, m, 'resolved', 'open', 'PENDING', null, s.closeTime ?? m.close_at, nowIso));
+      logStmts.push(resLogRow(env, m, 'resolved', 'open', 'PENDING', null, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.resolved++;
     } else if (s) {
       // Kalshi affirmatively SETTLED with no determinable yes/no outcome (void/cancelled) -> terminal 'closed'.
       // (Polymarket never lands here: the Poly pull only records UMA-resolved markets above.)
       stmts.push(env.DB.prepare('UPDATE markets SET status=?, reconciled_at=? WHERE market_id=?')
         .bind('closed', nowIso, m.market_id));
-      logStmts.push(resLogRow(env, m, 'status_change', 'open', 'closed', null, s.closeTime ?? m.close_at, nowIso));
+      logStmts.push(resLogRow(env, m, 'status_change', 'open', 'closed', null, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.closed++;
     } else {
       // Absent from the live open feed AND from the in-window settled/resolved feeds. Could be closed-

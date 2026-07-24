@@ -323,7 +323,9 @@ export function resolveSignalStatus(
       // future date. Never surface a future "settled on" date; the first-observation
       // date is the honest fallback.
       const occ = (log.occurred_at ?? '').slice(0, 10);
-      s.resolved_at = occ && occ <= TODAY_ISO ? occ : ((log.recorded_at ?? '').slice(0, 10) || null);
+      s.resolved_at = occ && occ <= TODAY_ISO && log.occurred_basis !== 'deadline'
+        ? occ
+        : ((log.recorded_at ?? '').slice(0, 10) || null);
     } else if (m.last_price !== null && m.last_price >= 0.95) { s.outcome = 'YES'; s.outcome_basis = 'price_inferred'; }
     else if (m.last_price !== null && m.last_price <= 0.05) { s.outcome = 'NO'; s.outcome_basis = 'price_inferred'; }
     return s;

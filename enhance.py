@@ -346,6 +346,14 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
     else:
         resolved_at = None
 
+    # settled_at: the venue settlement timestamp ONLY (never a deadline fallback) — the field
+    # build_resolution_log.py reads. Stamping it at ingest keeps union_vintages' "fresh wins"
+    # from regressing resolution dates to deadlines on re-enrich (2026-07-24 swarm finding).
+    settled_at = None
+    if status in ("resolved", "closed") and poly_market.get("closedTime"):
+        ct = str(poly_market["closedTime"]).strip().replace(" ", "T")
+        settled_at = ct[:-3] + "Z" if ct.endswith("+00") else ct
+
     # underlying_reference: autofill wins if provided, else stub
     underlying_ref = autofill.get("poly_underlying_reference", EDITORIAL_STUB)
 
@@ -389,6 +397,7 @@ def poly_market_to_cm(poly_market: dict, event_id: str, res_source_type_default:
         "resolution_outcome":       None,
         "resolution_value":         None,
         "resolved_at":              resolved_at,
+        "settled_at":               settled_at,
         "first_seen_at":            RUN_AT,
         "last_updated_at":          RUN_AT,
     }
@@ -485,6 +494,7 @@ def kalshi_market_to_cm(kalshi_market: dict, event_id: str, series_meta: dict,
         "resolution_outcome":       kalshi_market.get("result") or None,
         "resolution_value":         float(kalshi_market["expiration_value"]) if kalshi_market.get("expiration_value") not in (None, "") else None,
         "resolved_at":              kalshi_market.get("expiration_time") if status == "resolved" else None,
+        "settled_at":               (kalshi_market.get("settlement_ts") or kalshi_market.get("close_time")) if status == "resolved" else None,
         "first_seen_at":            RUN_AT,
         "last_updated_at":          RUN_AT,
     }
