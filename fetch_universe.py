@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,11 +54,27 @@ OUT_ROOT = Path.home() / "jeremy-os/raw"
 RUN_DATE = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
-def _get(url: str, params: dict) -> dict:
-    r = requests.get(url, params=params, timeout=TIMEOUT,
-                     headers={"User-Agent": "clearmarket-fetcher/0.1"})
-    r.raise_for_status()
-    return r.json()
+RETRY_STATUSES = {429, 500, 502, 503, 504}
+
+
+def _get(url: str, params: dict, tries: int = 4) -> dict:
+    """Bounded retries with backoff for transient failures. 422 propagates immediately —
+    it is Gamma's offset-cap signal and the pager's bisect trigger, never a retry case."""
+    for attempt in range(tries):
+        try:
+            r = requests.get(url, params=params, timeout=TIMEOUT,
+                             headers={"User-Agent": "clearmarket-fetcher/0.1"})
+            r.raise_for_status()
+            return r.json()
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status == 422 or attempt == tries - 1 or \
+                    (status is not None and status not in RETRY_STATUSES):
+                raise
+            wait = 2.0 ** attempt
+            if status == 429 and e.response is not None:
+                wait = max(wait, float(e.response.headers.get("Retry-After", 0) or 0))
+            time.sleep(wait)
 
 
 # -----------------------------------------------------------------
@@ -108,9 +125,13 @@ def kalshi_event_resolve_at(event: dict) -> str | None:
 def fetch_poly_events(max_events: int | None, max_pages: int = MAX_PAGES) -> list[dict]:
     # Gamma hard-caps offsets (~2000 as of 2026-07: deeper pages 422), so a single
     # offset walk can no longer cover the open set. Page inside end-date windows
-    # instead — each window restarts offset at 0 — and dedup on event id across
-    # the overlapping boundaries. First window (no end_date_min) catches past-due
-    # events that are still open; last window (no end_date_max) catches far-dated ones.
+    # instead — every window is DOUBLE-bounded (Gamma excludes null-endDate events
+    # from any end_date-filtered query, and unbounded windows can't bisect) — with
+    # recursive bisection on the offset cap and dedup on event id across boundaries.
+    # First window catches past-due-but-open events; the last is capped at a far-future
+    # constant so far-dated listings are never silently dropped. A final UNWINDOWED
+    # offset walk (up to the cap) recovers null-endDate events, which no date-filtered
+    # window can ever return (2026-07-24 swarm finding: 48+ live events, $10M+ volume).
     from datetime import datetime, timedelta, timezone
 
     now = datetime.now(timezone.utc)
@@ -151,9 +172,27 @@ def fetch_poly_events(max_events: int | None, max_pages: int = MAX_PAGES) -> lis
             if not batch or (isinstance(batch, list) and len(batch) < PAGE_POLY):
                 return
 
-    # Past-due-but-open events back 3 years, forward 5 years for far-dated ones.
-    pull_window(now - timedelta(days=3 * 365), now)
-    pull_window(now, now + timedelta(days=5 * 365))
+    # Past-due-but-open events back to Polymarket's launch era; far-future capped at 2099.
+    pull_window(datetime(2020, 1, 1, tzinfo=timezone.utc), now)
+    pull_window(now, datetime(2099, 1, 1, tzinfo=timezone.utc))
+
+    # Unwindowed sweep for null-endDate events (invisible to every date-filtered window).
+    # Highest-volume first so the most consequential ones land before Gamma's offset cap.
+    offset = 0
+    for _ in range(max_pages):
+        try:
+            batch = _get(f"{POLY_GAMMA}/events",
+                         {"closed": "false", "limit": PAGE_POLY, "offset": offset,
+                          "order": "volume", "ascending": "false"})
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code == 422:
+                break  # hit the offset cap — took everything reachable
+            raise
+        harvest(batch)
+        offset += PAGE_POLY
+        if not batch or (isinstance(batch, list) and len(batch) < PAGE_POLY):
+            break
+
     return events[:max_events] if max_events else events
 
 

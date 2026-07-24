@@ -35,6 +35,11 @@
       ],
       "description": "Lifecycle event type. status_change: market state transition (active -> closed, etc). rule_change: resolution criteria amended mid-life. resolution_proposed: outcome submitted (UMA or staff). disputed: proposed resolution challenged. resolved: final outcome committed. amended: post-resolution correction. reversed: post-resolution full reversal."
     },
+    "occurred_basis": {
+      "type": ["string", "null"],
+      "enum": ["venue_settlement", "deadline", "first_observed", null],
+      "description": "Which clock occurred_at holds. venue_settlement: the venue's actual settlement timestamp (Kalshi settlement_ts, Polymarket closedTime). deadline: the contract deadline, used as fallback when the venue exposes no settlement time (e.g. delisted before settlement) — deadline-basis timestamps are NOT settlement times. first_observed: neither was available; the first pipeline observation date."
+    },
     "occurred_at": {
       "type": "string",
       "format": "date-time",
