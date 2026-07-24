@@ -1,0 +1,58 @@
+---
+signal_id: "CMSIG20260724DV00"
+signal_slug: "arc-token-event-k60-p40"
+headline: "Arc token launch before 2027: Kalshi 60% vs Polymarket 40%"
+semantic_title: "Arc token launch odds split sharply across venues"
+telemetry: "Polymarket 40% vs Kalshi 60%"
+category_tag: "CROSS_VENUE_DIVERGENCE"
+detection_path: "cross_venue_divergence"
+pre_news_classification: "concurrent"
+published_at: "2026-07-24T10:14:49+00:00"
+event_id: "CM-EVT-K7DR5FCFM0"
+event_slug: "kxtokenlaunch-27jan01"
+event_question: "Will Arc launch a token before Jan 1, 2027?"
+primary_market:
+  platform: "polymarket"
+  platform_market_id: "0x0a8d89321f01639ec17b6bcf1ef0b6c15137b1934605f8bffeb50b2f291756d4"
+  question_raw: "Will Arc launch a token by December 31 2026?"
+  current_price: 0.4
+  volume_cumulative_usd: 89187.51116400007
+  arbitration_model: "uma_oracle"
+  resolves_at: "2027-01-01T05:00:00Z"
+related_markets:
+  - platform: "kalshi"
+    platform_market_id: "KXTOKENLAUNCH-27JAN01-ARC"
+    question_raw: "Will Arc launch a token before Jan 1, 2027?"
+    current_price: 0.6
+bullets:
+  - "Kalshi prices Arc token launch at 60%, Polymarket at 40%, a 20pp gap"
+  - "Kalshi is the higher venue; liquidity thin at $3,501 vs Polymarket's $89,188"
+  - "Shallow Kalshi volume likely reflects a small, bullish base with little opposing flow; Polymarket's deeper book is more price-discovered"
+  - "Resolves YES if Arc publicly launches a token before Jan 1, 2027"
+atomic_claims:
+  - type: "cross_venue_spread"
+    provenance: "CM cross-venue link (question_id CMX-F36B8880EB); prices direct from venue APIs"
+    field_provenance:
+      kalshi_price:
+        tier: "direct"
+        method: "kalshi_api"
+      poly_price:
+        tier: "direct"
+        method: "polymarket_clob_api"
+      divergence_pp:
+        tier: "derived"
+        method: "arithmetic"
+        inputs: ["kalshi_price", "poly_price"]
+    liquidity_context:
+      kalshi_vol_24h_usd: 28.29
+      poly_vol_24h_usd: 130.09
+sources:
+  - label: "ClearMarket cross-venue record: Will Arc launch a token before Jan 1, 2027?"
+    url: "https://clearmarket.fyi/compare/arc-token-event-y-2026"
+    retrieved_at: "2026-07-24T10:14:49+00:00"
+field_provenance:
+  pm_data: "kalshi_api, polymarket_clob_api"
+  editorial_judgment: "cm_signal_llm_judge"
+---
+
+The 20pp spread on razor-thin Kalshi volume signals the higher price is unreliable, Polymarket's 40%, backed by 25x more liquidity, is the more credible anchor for a desk pricing this event.
