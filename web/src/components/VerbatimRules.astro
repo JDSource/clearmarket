@@ -167,14 +167,14 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                 <td><span class={`rl-badge rl-${(r.to_value || 'pending').toLowerCase()}`}>{r.to_value}</span></td>
                 <td class="rl-mkt">{mByIdVR.get(r.market_id)?.question_raw ?? r.market_id}</td>
                 <td class="cm-res-td-venue">{r.platform}</td>
-                <td><code class="rl-date">{fmtDay(r.occurred_at)}</code></td>
+                <td><code class="rl-date">{r.occurred_basis === 'deadline' ? `by ${fmtDay(r.occurred_at)}` : fmtDay(r.occurred_at)}</code></td>
                 <td><code class="rl-date">{fmtPrice(r.final_price)}</code></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div class="rl-note">Derived from the platform price + resolution-date snapshot ({resolutionLog.length} resolved {resolutionLog.length === 1 ? 'market' : 'markets'}). PENDING upgrades to a final outcome on the next refresh.</div>
+      <div class="rl-note">Resolution dates are the venue's settlement timestamps ({resolutionLog.length} resolved {resolutionLog.length === 1 ? 'market' : 'markets'}). Rows shown as "by [date]" carry the contract deadline: the venue no longer exposes a settlement time for them. PENDING upgrades to a final outcome on the next refresh.</div>
     </div>
   )}
 </section>
