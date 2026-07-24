@@ -71,6 +71,16 @@ Jurisdiction-specific distribution rule-sets screened per contract. eligibility 
 - https://clearmarket.fyi/screens/ciro-26-0076.json : machine twin (screen summary + market-id lists by status; full per-contract records in the .csv)
 - https://clearmarket.fyi/screens/ciro-26-0076.csv : flat per-contract export
 
+## Research — validation backtest
+
+Does the Resolution Clarity Grade predict disputes? Across 7,166 Polymarket markets
+with public dispute records, C-rated contracts were formally disputed at 20 times the
+rate of A- and B-rated contracts (1.59% vs 0.08%), with a volume-confound control.
+Measured on Polymarket because its on-chain dispute record is the only one complete
+enough to audit; Kalshi publishes no dispute feed.
+- https://clearmarket.fyi/research/resolution-clarity-index/ : the full study (method, volume control, case table; Dataset JSON-LD)
+- https://clearmarket.fyi/methodology/ : how the A/B/C grade is scored (seven factors + hard caps)
+
 ## Schema
 
 JSON Schema files (draft 2020-12):

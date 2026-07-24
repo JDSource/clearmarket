@@ -14,6 +14,8 @@ export async function GET() {
     { loc: `${SITE}/events/` },
     { loc: `${SITE}/signals/` },
     { loc: `${SITE}/methodology/` },
+    // Research — the validation backtest (Dataset JSON-LD; the study analysts/press cite).
+    { loc: `${SITE}/research/resolution-clarity-index/` },
     { loc: `${SITE}/api/` },
     { loc: `${SITE}/schema/` },
     // Eligibility screens — index + one page per regime (keep in sync with src/pages/screens/).
