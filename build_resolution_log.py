@@ -49,15 +49,17 @@ def main():
     # (settled_at, 2026-07-23), so exact keys break once per market — without the fallback every
     # row would re-stamp recorded_at and destroy the detection-lag history.
     prior = {}
-    prior_by_mid = {}
+    prior_by_mid = {}  # keyed (market_id, event_type): a closed->resolved transition is a NEW
+    # observation and must not inherit the closed row's earlier recorded_at (that would print
+    # a negative detection lag: recorded before the settlement occurred).
     if os.path.exists(OUT):
         try:
             for r in json.load(open(OUT)):
                 prior[(r.get("market_id"), day(r.get("occurred_at")))] = r.get("recorded_at")
-                mid = r.get("market_id")
+                k2 = (r.get("market_id"), r.get("event_type"))
                 ra = r.get("recorded_at")
-                if mid and ra and (mid not in prior_by_mid or ra < prior_by_mid[mid]):
-                    prior_by_mid[mid] = ra
+                if r.get("market_id") and ra and (k2 not in prior_by_mid or ra < prior_by_mid[k2]):
+                    prior_by_mid[k2] = ra
         except (ValueError, OSError):
             pass
 
@@ -70,8 +72,11 @@ def main():
         # Venue settlement time is the truth; the deadline is only a fallback (and is
         # labeled as such via occurred_basis so no surface prints a deadline as a settlement).
         settled = m.get("settled_at")
-        occurred = settled or m.get("resolve_at") or m.get("close_at") or pull_date
-        basis = "venue_settlement" if settled else "deadline"
+        deadline = m.get("resolve_at") or m.get("close_at")
+        occurred = settled or deadline or pull_date
+        basis = ("venue_settlement" if settled
+                 else "deadline" if deadline
+                 else "first_observed")
         lp = m.get("last_price")
 
         if status == "resolved":
@@ -102,7 +107,7 @@ def main():
             "event_type": event_type,
             "occurred_at": occurred,
             "occurred_basis": basis,
-            "recorded_at": prior.get(key) or prior_by_mid.get(m.get("market_id")) or pull_date,
+            "recorded_at": prior.get(key) or prior_by_mid.get((m.get("market_id"), event_type)) or pull_date,
             "from_value": "open",
             "to_value": to_value,
             "final_price": final_price,

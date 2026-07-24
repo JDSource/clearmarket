@@ -43,6 +43,17 @@ def main():
 
     fresh, live = load(args.fresh), load(args.live)
 
+    # settled_at is written only by the sweeps/backfill, never by fetch/enrich — so a fresh
+    # record for an already-settled market arrives WITHOUT it. "Fresh wins" must not wipe the
+    # venue settlement timestamp or resolution dates regress to deadlines on every re-enrich.
+    live_settled = {m["market_id"]: m["settled_at"]
+                    for m in live["markets"] if m.get("settled_at")}
+    restored = 0
+    for m in fresh["markets"]:
+        if not m.get("settled_at") and m["market_id"] in live_settled:
+            m["settled_at"] = live_settled[m["market_id"]]
+            restored += 1
+
     fe = {e["event_id"] for e in fresh["events"]}
     live_only_events = [e for e in live["events"] if e["event_id"] not in fe]
     fresh["events"] += live_only_events
@@ -58,6 +69,7 @@ def main():
     meta["vintage_union"] = {
         "live_only_events": len(live_only_events),
         "live_only_markets": len(live_only_markets),
+        "settled_at_restored": restored,
     }
     Path(args.fresh).write_text(json.dumps(fresh, ensure_ascii=False, separators=(",", ":")))
     print(f"events: +{len(live_only_events)} live-only -> {len(fresh['events'])}")
