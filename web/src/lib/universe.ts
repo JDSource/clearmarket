@@ -199,7 +199,8 @@ export type ResolutionLogEntry = {
   event_id: string;
   platform: 'kalshi' | 'polymarket' | string;
   event_type: string;            // 'resolved'
-  occurred_at: string;           // when it settled
+  occurred_at: string;           // venue settlement time; contract deadline only as fallback
+  occurred_basis?: 'venue_settlement' | 'deadline' | string; // which of the two occurred_at holds
   recorded_at: string;           // pull date that observed it
   to_value: 'YES' | 'NO' | 'PENDING' | string;
   final_price: number | null;
@@ -313,9 +314,10 @@ export function resolveSignalStatus(
     if (log) {
       s.outcome = log.to_value as 'YES' | 'NO';
       s.outcome_basis = 'resolution_log';
-      // occurred_at is the venue's SCHEDULED deadline (build_resolution_log.py) — an
-      // early-resolved market carries a future date there. Never surface a future
-      // "settled on" date; the first-observation date is the honest fallback.
+      // occurred_at is now the venue settlement time where the venue exposes one
+      // (occurred_basis='venue_settlement'); deadline-basis rows can still carry a
+      // future date. Never surface a future "settled on" date; the first-observation
+      // date is the honest fallback.
       const occ = (log.occurred_at ?? '').slice(0, 10);
       s.resolved_at = occ && occ <= TODAY_ISO ? occ : ((log.recorded_at ?? '').slice(0, 10) || null);
     } else if (m.last_price !== null && m.last_price >= 0.95) { s.outcome = 'YES'; s.outcome_basis = 'price_inferred'; }

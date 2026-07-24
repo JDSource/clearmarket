@@ -40,6 +40,17 @@ TIMEOUT = 30
 WRITE = "--write" in sys.argv
 
 
+def poly_closed_time(row):
+    """Gamma closedTime arrives as '2026-06-18 00:38:20+00' — normalize to ISO-8601 Z."""
+    ct = row.get("closedTime")
+    if not ct:
+        return None
+    ct = str(ct).strip().replace(" ", "T")
+    if ct.endswith("+00"):
+        ct = ct[:-3] + "Z"
+    return ct
+
+
 def _get(url, params=None):
     for attempt in range(3):
         try:
@@ -78,6 +89,9 @@ def sweep_kalshi(markets, stats):
             if ct:
                 m["close_at"] = ct
                 m["resolve_at"] = ct
+            st = k.get("settlement_ts") or k.get("close_time")
+            if st:
+                m["settled_at"] = st
             stats["resolved"] += 1
         elif vstatus in ("finalized", "settled", "closed"):
             m["status"] = "closed"
@@ -129,6 +143,9 @@ def sweep_poly(markets, stats):
                 ed = row.get("endDate")
                 if ed:
                     m["resolve_at"] = ed
+                ct = poly_closed_time(row)
+                if ct:
+                    m["settled_at"] = ct
                 stats["resolved" if final else "closed"] += 1
             else:
                 lp = row.get("lastTradePrice")

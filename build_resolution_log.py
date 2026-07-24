@@ -45,11 +45,19 @@ def main():
     markets = bundle["markets"]
 
     # Prior log -> carry forward recorded_at (first-observation), keyed by (market_id, occurred_at).
+    # Fallback keyed by market_id alone: occurred_at moved from deadline to venue settlement time
+    # (settled_at, 2026-07-23), so exact keys break once per market — without the fallback every
+    # row would re-stamp recorded_at and destroy the detection-lag history.
     prior = {}
+    prior_by_mid = {}
     if os.path.exists(OUT):
         try:
             for r in json.load(open(OUT)):
                 prior[(r.get("market_id"), day(r.get("occurred_at")))] = r.get("recorded_at")
+                mid = r.get("market_id")
+                ra = r.get("recorded_at")
+                if mid and ra and (mid not in prior_by_mid or ra < prior_by_mid[mid]):
+                    prior_by_mid[mid] = ra
         except (ValueError, OSError):
             pass
 
@@ -59,7 +67,11 @@ def main():
 
     for m in markets:
         status = (m.get("status") or "").lower()
-        occurred = m.get("resolve_at") or m.get("close_at") or pull_date
+        # Venue settlement time is the truth; the deadline is only a fallback (and is
+        # labeled as such via occurred_basis so no surface prints a deadline as a settlement).
+        settled = m.get("settled_at")
+        occurred = settled or m.get("resolve_at") or m.get("close_at") or pull_date
+        basis = "venue_settlement" if settled else "deadline"
         lp = m.get("last_price")
 
         if status == "resolved":
@@ -89,7 +101,8 @@ def main():
             "platform": m.get("platform"),
             "event_type": event_type,
             "occurred_at": occurred,
-            "recorded_at": prior.get(key) or pull_date,
+            "occurred_basis": basis,
+            "recorded_at": prior.get(key) or prior_by_mid.get(m.get("market_id")) or pull_date,
             "from_value": "open",
             "to_value": to_value,
             "final_price": final_price,
