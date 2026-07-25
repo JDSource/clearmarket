@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026072304"
 signal_slug: "iran-ends-enrichment-by-dec-31-polymarket-23-2026-07-23"
 headline: "Iran ends enrichment by Dec 31: Polymarket 23%"
-semantic_title: "Iran uranium enrichment end by December stays a long shot at 23%"
+semantic_title: "Iran enrichment deal by year-end stays a long shot at 23 percent"
 telemetry: "Polymarket 23%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0xff68b32e6543ae8b44ccb520604b6ea224a1bac071a186fb65f6f40949a758df"
   question_raw: " Iran agrees to end enrichment of uranium by December 31?"
   current_price: 0.23
-  volume_24h_usd: 1759.9592830000001
+  volume_24h_usd: 1631.006954
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "Polymarket puts only 23% probability on Iran agreeing to end uranium enrichment by December 31, 2026; trading volume is up 1,330% day over day, the largest volume surge in this batch."
-  - "The House war-powers rebuke signals congressional fracture on Iran policy, and surging volume on the enrichment contract suggests fresh attention is being priced, though the market remains skeptical of a deal."
-  - "Iran rejecting the Iraqi-brokered ceasefire proposal (Story 27) is consistent with the low 23% probability, the market is not pricing imminent diplomatic resolution."
-  - "Kalshi (CM-EVT-34SYT4T2T1) prices only 5% on the US reopening its embassy in Iran, a harder diplomatic bar but directionally confirming that markets put long odds against near-term normalization."
+  - "Polymarket prices a 23% chance Iran agrees to end uranium enrichment by December 31, 2026."
+  - "The House resolution signals congressional pressure to de-escalate, but the Polymarket contract at 23% reflects the market treating a full enrichment halt as still an unlikely outcome this year."
+  - "A companion Polymarket contract (CM-EVT-QNQ4VPVP80) puts the Iranian regime's collapse before 2027 at just 9%, suggesting markets see the conflict as sustained but not regime-ending."
+  - "Resolution depends on an official Iranian commitment to halt enrichment, as adjudicated by the Polymarket UMA oracle."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,7 +31,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "The US House narrowly passed a resolution to halt military action in Iran as the conflict with Iran escalates, with four Republicans joining Democrats."
+    story: "The House narrowly passed a resolution seeking to halt U.S. military action in Iran as the conflict continues to escalate."
     publisher: "apnews.com"
     published_at: "2026-07-23T00:00:00.000Z"
     source_url: "https://apnews.com/article/iran-congress-war-powers-resolution-vote-0ba2387a476fe08de0bfd6281adb9639"
@@ -41,9 +41,9 @@ atomic_claims:
         method: "exa_search"
         source: "apnews.com"
         source_url: "https://apnews.com/article/iran-congress-war-powers-resolution-vote-0ba2387a476fe08de0bfd6281adb9639"
-        retrieved_at: "2026-07-24T10:13:15+00:00"
+        retrieved_at: "2026-07-25T09:42:27+00:00"
   - type: "pm_response"
-    notes: "Polymarket contract resolves via UMA oracle; the 1,330% volume spike day over day is a real measured signal of surging market attention on this claim."
+    notes: "Polymarket at 23% shows the market is skeptical a diplomatic resolution materializes by year-end despite congressional de-escalation efforts."
     field_provenance:
       notes:
         tier: "editorial"
@@ -52,7 +52,7 @@ sources:
   - label: "apnews.com: House again passes resolution seeking to halt military action in Iran"
     url: "https://apnews.com/article/iran-congress-war-powers-resolution-vote-0ba2387a476fe08de0bfd6281adb9639"
     published_at: "2026-07-23T00:00:00.000Z"
-    retrieved_at: "2026-07-24T10:13:15+00:00"
+    retrieved_at: "2026-07-25T09:42:27+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
