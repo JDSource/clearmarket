@@ -13,7 +13,7 @@
  * differentiators (graded resolution clarity, cross-venue links, provenance).
  * These are solid drafts pending the copy-optimization pass.
  */
-import { Env, num, parseJson, marketOut, marketConcise, findMarketRow, eventSummary, loadCalendar, windowCatalysts, logCall, provenance } from './index';
+import { Env, num, parseJson, marketOut, marketConcise, findMarketRow, eventSummary, loadCalendar, windowCatalysts, logCall, provenance, NOTICE } from './index';
 
 export const PROTOCOL_VERSION = '2025-06-18';
 export const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
@@ -295,9 +295,16 @@ export async function handleMcp(req: Request, env: Env, ctx: { waitUntil(p: Prom
       const name = params?.name;
       logCall(env, ctx, req, 'mcp', String(name ?? 'unknown'), params?.arguments ?? {});
       const data = await callTool(env, name, params?.arguments ?? {});
+      // Same additive _notice the REST surface has carried since July (free-key offer +
+      // hello@). Extended to MCP 2026-08-04: the heaviest standing consumer (a ~1k call/day
+      // scheduled pipeline) is MCP-only and had never seen the invite. Additive-stable per
+      // the NOTICE policy field; object results only.
+      const payload = (data && typeof data === 'object' && !Array.isArray(data))
+        ? { ...data, _notice: NOTICE }
+        : data;
       return json(rpcResult(id, {
-        content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
-        structuredContent: data,
+        content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+        structuredContent: payload,
       }));
     }
     if (method === 'ping') return json(rpcResult(id, {}));

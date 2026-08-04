@@ -183,6 +183,14 @@ export function rationaleFor(m: {
     return { grade, word: 'Elevated risk', flag: 'no committed source',
       text: `The venue committed to no controlling source — placeholder or menu language decides at resolution.` };
   }
+  // exchange-notice conflict BEFORE the generic branches: the venue DID commit a source —
+  // the defect is two venue documents disagreeing (v3.7; same wrong-cause class as cl-hit oil)
+  if (caps.includes('exchange_notice_source_conflict')) {
+    return { grade, word: 'Elevated risk', flag: 'venue notice conflict',
+      text: src
+        ? `The venue committed to ${src}, but its own page notice names a different settlement source.`
+        : `The venue's own page notice names a settlement source different from its committed source.` };
+  }
   if (caps.includes('adversarial_ground_truth')) {
     return { grade, word: 'Elevated risk', flag: 'contested outcome',
       text: `The outcome depends on a fact an interested party controls or can dispute.` };

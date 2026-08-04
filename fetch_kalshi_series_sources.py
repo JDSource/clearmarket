@@ -52,7 +52,11 @@ def fetch_series(st: str) -> dict:
         print(f"   {st} ERR {e}", file=sys.stderr)
         if cp.exists():  # refresh failed — keep the cached copy rather than blanking it
             return json.loads(cp.read_text())
-        s = {}
+        return {}
+    if not s:
+        # never cache an empty fetch (a 404 on a bogus prefix-derived ticker would otherwise
+        # become a permanent junk cache entry that default runs never retry)
+        return {}
     CACHE.mkdir(exist_ok=True)
     cp.write_text(json.dumps(s))
     return s

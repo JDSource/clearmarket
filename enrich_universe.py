@@ -75,13 +75,13 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
     notice = (src or {}).get("important_info")
     notice_conflict = False
     if notice:
-        from apply_exchange_notices import notice_conflict as _nc
+        # PREPEND (not append): enhance.llm_rcg_factors truncates the corpus at 1800 chars,
+        # and an appended block falls past the cut on long-rules series.
+        from apply_exchange_notices import notice_block, notice_conflict as _nc
         notice_conflict = _nc(notice.get("text", ""),
                               ksrc[0]["name"] if ksrc else "",
                               ksrc[0]["url"] if ksrc else "")
-        rules = (rules or "") + (
-            f"\n\nEXCHANGE NOTICE (venue page banner, notice id {notice.get('id')}):\n"
-            f"{notice.get('text', '')}")
+        rules = notice_block(m.get("ticker", "").split("-")[0], notice) + (rules or "")
     mk = {
         "market_id":             E.generate_market_id("kalshi:" + (m.get("ticker") or m.get("title") or "")),
         "platform":              "kalshi",

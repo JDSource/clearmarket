@@ -132,10 +132,11 @@ defects, so the grade scores those defects directly.
   series `product_metadata.important_info` page banner — names a settlement source/feed identifier absent
   from the committed settlement source, i.e. two venue documents disagree about what settles the contract.
   Deterministic identifier match, cap-only: it never contributes points, so a market without a notice is
-  never rewarded for the field's absence. Notices are also appended verbatim to the resolution-rules corpus
-  every LLM factor reads, and stored whole on the market record as `exchange_notice`; notice content that
-  fits no codified rule surfaces in `editorial_notes` rather than silently moving a score — rubric changes
-  are versioned, never improvised per market.)
+  never rewarded for the field's absence. Notices are also prepended verbatim to the resolution-rules corpus
+  every LLM factor reads (prepended so corpus truncation can never drop them), and stored whole on the
+  internal market record as `exchange_notice`; notice content that fits no codified rule is queued for
+  methodology review rather than silently moving a score — rubric changes are versioned, never improvised
+  per market.)
   Caps only ever *lower* a grade, never raise it.
 - The **applicable-factor count is surfaced with the grade** ("B — scored on 6 of 7 factors") for
   comparability across markets of different complexity.

@@ -115,7 +115,7 @@ export const provenance = (ref: string) => ({
 // hello@clearmarket.fyi) before schema changes. MCP deliberately excluded — agents
 // re-reading the same notice every tool call is context pollution; MCP carries the
 // equivalent once in its initialize instructions.
-const NOTICE = {
+export const NOTICE = {
   type: 'free_key_offer',
   message: 'Free and anonymous access is staying. If this endpoint is in your pipeline, a free key adds advance notice before any schema change or deprecation. POST /v1/keys {"email": "you@firm.com"} — nothing else required. Something broken or missing? hello@clearmarket.fyi reaches a human.',
   docs: 'https://clearmarket.fyi/for-data/',
