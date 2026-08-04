@@ -127,7 +127,15 @@ defects, so the grade scores those defects directly.
   uncommitted-placeholder or none → C** (§2 — a hedge is not a committed source, and a secondhand
   aggregator is not an authority; the binding constraint on most unregulated markets);
   2+ *genuinely competing* sources with no precedence rule → C; discretionary trigger with no named source → C;
-  permissionless oracle + discretionary trigger → C; **adversarial ground truth (contested reality) → B**.
+  permissionless oracle + discretionary trigger → C; **adversarial ground truth (contested reality) → B**;
+  **exchange-notice source conflict → C** (v3.7, 2026-08-04: the venue's own notice channel — Kalshi's
+  series `product_metadata.important_info` page banner — names a settlement source/feed identifier absent
+  from the committed settlement source, i.e. two venue documents disagree about what settles the contract.
+  Deterministic identifier match, cap-only: it never contributes points, so a market without a notice is
+  never rewarded for the field's absence. Notices are also appended verbatim to the resolution-rules corpus
+  every LLM factor reads, and stored whole on the market record as `exchange_notice`; notice content that
+  fits no codified rule surfaces in `editorial_notes` rather than silently moving a score — rubric changes
+  are versioned, never improvised per market.)
   Caps only ever *lower* a grade, never raise it.
 - The **applicable-factor count is surfaced with the grade** ("B — scored on 6 of 7 factors") for
   comparability across markets of different complexity.
