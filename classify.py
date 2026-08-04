@@ -355,6 +355,13 @@ def _rcg_caps(r: dict) -> list[tuple[str, str]]:
     caps = []
     if r.get("source_conflict") == "fail":
         caps.append(("multi_source_no_conflict_rule", "C"))
+    # Deterministic, non-weighted pseudo-factor (methodology v3.7, 2026-08-04): the venue's
+    # own notice channel (Kalshi product_metadata.important_info) names a settlement source
+    # that differs from the committed settlement_sources entry — two venue documents disagree
+    # about what settles the contract (Burke gold case: XAU/USD vs Metal.Index.GOLD/USD).
+    # Cap-only: never contributes to score, so absence never inflates a grade.
+    if r.get("exchange_notice_conflict") == "fail":
+        caps.append(("exchange_notice_source_conflict", "C"))
     if r.get("trigger_objectivity") == "fail" and r.get("source_clarity") == "fail":
         caps.append(("discretionary_trigger_no_source", "C"))
     if r.get("arbiter_incentive") == "fail" and r.get("trigger_objectivity") == "fail":
@@ -483,6 +490,10 @@ def grade_market(market: dict, description: str = "", llm_ratings: dict | None =
         "source_clarity":    rate_source_clarity(market),
         "arbiter_incentive": rate_arbiter(market),
     }
+    # deterministic exchange-notice conflict flag, set at enrich/apply time (v3.7) —
+    # cap-only input; read by _rcg_caps, never scored.
+    if market.get("source_notice_conflict"):
+        ratings["exchange_notice_conflict"] = "fail"
     if not llm_ratings or any(f not in llm_ratings for f in ("trigger_objectivity", "contested_reality")):
         return {"grade": "pending", "score": None, "applied_factors": None,
                 "total_factors": len(RCG_WEIGHTS), "caps": [],

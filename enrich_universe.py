@@ -66,6 +66,22 @@ def _kalshi_status(s: str) -> str:
 def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict:
     rules = "\n\n".join(filter(None, [m.get("rules_primary"), m.get("rules_secondary")]))
     ksrc = (src or {}).get("sources") or []
+    # Exchange notice (series product_metadata.important_info, captured by
+    # fetch_kalshi_series_sources since 2026-08-04): resolution text in a banner field.
+    # Three channels (methodology v3.7): append to the rules corpus every LLM pass reads;
+    # deterministic conflict check vs the committed source (-> grade cap in classify);
+    # store whole on the record. See apply_exchange_notices.py for the same logic applied
+    # retroactively to a live bundle.
+    notice = (src or {}).get("important_info")
+    notice_conflict = False
+    if notice:
+        # PREPEND (not append): enhance.llm_rcg_factors truncates the corpus at 1800 chars,
+        # and an appended block falls past the cut on long-rules series.
+        from apply_exchange_notices import notice_block, notice_conflict as _nc
+        notice_conflict = _nc(notice.get("text", ""),
+                              ksrc[0]["name"] if ksrc else "",
+                              ksrc[0]["url"] if ksrc else "")
+        rules = notice_block(m.get("ticker", "").split("-")[0], notice) + (rules or "")
     mk = {
         "market_id":             E.generate_market_id("kalshi:" + (m.get("ticker") or m.get("title") or "")),
         "platform":              "kalshi",
@@ -100,6 +116,8 @@ def build_kalshi_market(m: dict, event_id: str, src: dict | None = None) -> dict
         "resolution_source_provenance": "kalshi_series_settlement_sources" if ksrc else None,
         "resolution_source_quality":    (src or {}).get("quality"),   # venue self-tag — NOT trusted for grading
         "resolution_source_type": None,             # RENAMED from source_type; TODO: classify
+        "exchange_notice":       notice or None,
+        "source_notice_conflict": notice_conflict or None,
         "last_price":            E._to_float(m.get("last_price_dollars")),
         "volume_24h_usd":        E._mult(m.get("volume_24h_fp"), E._to_float(m.get("last_price_dollars"))),
         "volume_total_usd":      E._mult(m.get("volume_fp"), E._to_float(m.get("last_price_dollars"))),
