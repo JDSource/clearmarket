@@ -168,13 +168,13 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                 {b.noticeConflict && s.url && feedSlug(s.url) && s.name && !s.name.includes(feedSlug(s.url)!) &&
                   <span class="vr-src-slug">({feedSlug(s.url)})</span>}
                 {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
+                {/* One amber chip per block (the header) states the conflict; rows keep quiet
+                    grey provenance labels only — three stacked badges was too loud (Jeremy). */}
                 {b.noticeConflict && s.name && b.noticeText.includes(s.name)
                   ? <span class="vr-src-prov">from venue notice</span>
                   : <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
                       {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
                     </span>}
-                {b.noticeConflict && s.name && b.noticeText.includes(s.name) &&
-                  <span class="vr-src-conflict">conflicts with source of record</span>}
               </li>
             ))}
           </ul>
