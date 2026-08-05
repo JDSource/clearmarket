@@ -157,7 +157,10 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
               design review: unified tag typography, grid alignment, no outline pills). */}
           <span class="vr-k">sources ({b.sources.length}){!b.noticeConflict && b.mechanism
             ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : ''}</span>
-          {b.noticeConflict && <span class="vr-src-warn"> · venue notice names a different source</span>}
+          {b.noticeConflict && <span class="vr-src-warn"> · source conflict</span>}
+          {/* compact 3-column grid (name | feed id | tag) in a soft sub-card — max-content
+              columns keep the tag NEAR the name instead of fleeing to the card edge
+              (the 1fr + justify-end version opened a 600px scanning chasm) */}
           <div class="vr-src-grid">
             {b.sources.map((s) => {
               const isNoticeSrc = b.noticeConflict && s.name && b.noticeText.includes(s.name);
@@ -169,15 +172,14 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                     {s.url
                       ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
                       : <span class="vr-src-name">{s.name}</span>}
-                    {/* feed identity from the citation URL — without it a conflict row reads
-                        as "Pyth gold vs Pyth gold" and the contradiction is invisible */}
-                    {slug && !s.name!.includes(slug) && <span class="vr-src-slug"> {slug}</span>}
                   </span>
-                  {/* ONE plain-language tag per row — "source of record · venue-listed" jammed
-                      role and provenance into unreadable jargon (Jeremy). "Committed source"
-                      answers both: it is the controlling source AND it came from the venue's
-                      formal commitment. */}
-                  <span class="vr-src-cell vr-src-role">
+                  {/* feed identity from the citation URL — without it a conflict row reads
+                      as "Pyth gold vs Pyth gold" and the contradiction is invisible */}
+                  <span class="vr-src-cell vr-src-slug">{slug && !s.name!.includes(slug) ? slug : ''}</span>
+                  {/* ONE plain-language tag per row: "committed source" = controlling AND
+                      from the venue's formal commitment (kills the source-of-record ·
+                      venue-listed jargon pair) */}
+                  <span class="vr-src-cell">
                     {isSor
                       ? <span class="vr-src-tag is-sor">committed source</span>
                       : isNoticeSrc
@@ -254,14 +256,14 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
   /* tabular source rows: name+identifier | role/origin tags — aligned grid, unified tag
      typography, no outline pills (one style of metadata text, tinted by role) */
   .vr-src-grid {
-    display: grid; grid-template-columns: max-content 1fr;
-    column-gap: 16px; row-gap: 7px; align-items: baseline;
-    margin-top: 7px; padding-top: 7px;
-    border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+    display: inline-grid; grid-template-columns: max-content max-content max-content;
+    column-gap: 20px; row-gap: 7px; align-items: baseline;
+    margin-top: 7px; padding: 7px 10px;
+    border-radius: 4px;
+    background: color-mix(in srgb, currentColor 4%, transparent);
     font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary);
   }
   .vr-src-cell { min-width: 0; }
-  .vr-src-role { justify-self: end; text-align: right; }   /* tags locked to the right edge */
   .vr-src-name { color: var(--cm-fg-primary); }
   .vr-src-slug { font-family: var(--cm-font-mono, monospace); color: var(--cm-fg-faint); }
   /* soft pills: low-contrast fill, no border — bounded without being loud */
