@@ -50,6 +50,20 @@ const blocks = VENUES.map((v) => {
     noticeText: (((rep as any)?.exchange_notice ?? null) as { text?: string } | null)?.text ?? '',
   };
 });
+// Feed identity from a citation URL: last two path segments, %2F-decoded — turns
+// https://pythdata.app/explore/Metal.XAU%2FUSD into "Metal.XAU/USD". Null when the URL
+// has no meaningful slug (bare domains).
+function feedSlug(u: string | null | undefined): string | null {
+  if (!u) return null;
+  try {
+    const path = decodeURIComponent(new URL(u.startsWith('http') ? u : `https://${u}`).pathname);
+    const segs = path.split('/').filter(Boolean);
+    if (!segs.length) return null;
+    const tail = segs.slice(-2).join('/');
+    // require it to look like a feed identifier, not a generic path
+    return /[A-Z]{2,}|\./.test(tail) ? tail : null;
+  } catch { return null; }
+}
 // Auto analyst note when the conflict flag is set and no hand-written note exists.
 const CONFLICT_NOTE =
   "The venue's own page notice names a settlement source different from its committed " +
@@ -148,6 +162,11 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                 {s.url
                   ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
                   : <span class="vr-src-name">{s.name}</span>}
+                {/* Disambiguate a generic venue display name ("Pyth - Gold") with the actual
+                    feed identity from its citation URL — without it, a conflict row reads as
+                    "Pyth gold vs Pyth gold" and the contradiction is invisible (Jeremy, v3.7). */}
+                {b.noticeConflict && s.url && feedSlug(s.url) && s.name && !s.name.includes(feedSlug(s.url)!) &&
+                  <span class="vr-src-slug">({feedSlug(s.url)})</span>}
                 {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
                 {b.noticeConflict && s.name && b.noticeText.includes(s.name)
                   ? <span class="vr-src-prov">from venue notice</span>
@@ -231,6 +250,7 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
     padding: 0 5px; border-radius: 2px;
   }
   .vr-src-prov { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-fg-faint); }
+  .vr-src-slug { font-family: var(--cm-mono, monospace); font-size: 11px; color: var(--cm-fg-secondary); }
   .vr-src-conflict {
     font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
     color: var(--cm-grade-c, #d9a53f); border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
