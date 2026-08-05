@@ -173,12 +173,16 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                         as "Pyth gold vs Pyth gold" and the contradiction is invisible */}
                     {slug && !s.name!.includes(slug) && <span class="vr-src-slug"> {slug}</span>}
                   </span>
-                  <span class="vr-src-cell">
-                    {isSor && <span class="vr-src-tag is-sor">source of record</span>}
-                    {isSor && ' · '}
-                    {isNoticeSrc
-                      ? <span class="vr-src-tag is-notice">venue notice</span>
-                      : <span class="vr-src-tag">{s.provenance === 'clearmarket_editorial' ? 'from rules text' : 'venue-listed'}</span>}
+                  {/* ONE plain-language tag per row — "source of record · venue-listed" jammed
+                      role and provenance into unreadable jargon (Jeremy). "Committed source"
+                      answers both: it is the controlling source AND it came from the venue's
+                      formal commitment. */}
+                  <span class="vr-src-cell vr-src-role">
+                    {isSor
+                      ? <span class="vr-src-tag is-sor">committed source</span>
+                      : isNoticeSrc
+                        ? <span class="vr-src-tag is-notice">from page notice</span>
+                        : <span class="vr-src-tag">{s.provenance === 'clearmarket_editorial' ? 'from rules text' : 'venue-listed'}</span>}
                   </span>
                 </>
               );
@@ -251,13 +255,21 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
      typography, no outline pills (one style of metadata text, tinted by role) */
   .vr-src-grid {
     display: grid; grid-template-columns: max-content 1fr;
-    column-gap: 16px; row-gap: 3px; margin-top: 5px; align-items: baseline;
+    column-gap: 16px; row-gap: 7px; align-items: baseline;
+    margin-top: 7px; padding-top: 7px;
+    border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
     font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary);
   }
   .vr-src-cell { min-width: 0; }
+  .vr-src-role { justify-self: end; text-align: right; }   /* tags locked to the right edge */
   .vr-src-name { color: var(--cm-fg-primary); }
-  .vr-src-slug { font-family: var(--cm-font-mono, monospace); color: var(--cm-fg-secondary); }
-  .vr-src-tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--cm-fg-faint); }
+  .vr-src-slug { font-family: var(--cm-font-mono, monospace); color: var(--cm-fg-faint); }
+  /* soft pills: low-contrast fill, no border — bounded without being loud */
+  .vr-src-tag {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--cm-fg-faint); padding: 1px 6px; border-radius: 3px;
+    background: color-mix(in srgb, currentColor 11%, transparent);
+  }
   .vr-src-tag.is-sor { color: var(--cm-dot-positive, #36c08a); }
   .vr-src-tag.is-notice { color: var(--cm-grade-c, #d9a53f); }
   .vr-src-warn {
