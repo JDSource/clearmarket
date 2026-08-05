@@ -152,32 +152,38 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
       ); })()}
       {b.sources && b.sources.length > 0 && (
         <div class="vr-srcs">
-          <span class="vr-k">sources ({b.sources.length}){b.noticeConflict
-            ? ' · '
-            : (b.mechanism ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : '')}</span>
-          {b.noticeConflict && <span class="vr-src-conflict">conflicting — venue notice names a different source</span>}
-          <ul class="vr-src-list">
-            {b.sources.map((s) => (
-              <li>
-                {s.url
-                  ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
-                  : <span class="vr-src-name">{s.name}</span>}
-                {/* Disambiguate a generic venue display name ("Pyth - Gold") with the actual
-                    feed identity from its citation URL — without it, a conflict row reads as
-                    "Pyth gold vs Pyth gold" and the contradiction is invisible (Jeremy, v3.7). */}
-                {b.noticeConflict && s.url && feedSlug(s.url) && s.name && !s.name.includes(feedSlug(s.url)!) &&
-                  <span class="vr-src-slug">({feedSlug(s.url)})</span>}
-                {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
-                {/* One amber chip per block (the header) states the conflict; rows keep quiet
-                    grey provenance labels only — three stacked badges was too loud (Jeremy). */}
-                {b.noticeConflict && s.name && b.noticeText.includes(s.name)
-                  ? <span class="vr-src-prov">from venue notice</span>
-                  : <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
-                      {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
-                    </span>}
-              </li>
-            ))}
-          </ul>
+          {/* Header: muted count; conflict state is a borderless amber string, not a chip —
+              one badge style per block, tabular rows below (badging reduced per Jeremy +
+              design review: unified tag typography, grid alignment, no outline pills). */}
+          <span class="vr-k">sources ({b.sources.length}){!b.noticeConflict && b.mechanism
+            ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : ''}</span>
+          {b.noticeConflict && <span class="vr-src-warn"> · venue notice names a different source</span>}
+          <div class="vr-src-grid">
+            {b.sources.map((s) => {
+              const isNoticeSrc = b.noticeConflict && s.name && b.noticeText.includes(s.name);
+              const isSor = b.sourceOfRecord && s.name && s.name === b.sourceOfRecord;
+              const slug = b.noticeConflict && s.url && s.name ? feedSlug(s.url) : null;
+              return (
+                <>
+                  <span class="vr-src-cell">
+                    {s.url
+                      ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
+                      : <span class="vr-src-name">{s.name}</span>}
+                    {/* feed identity from the citation URL — without it a conflict row reads
+                        as "Pyth gold vs Pyth gold" and the contradiction is invisible */}
+                    {slug && !s.name!.includes(slug) && <span class="vr-src-slug"> {slug}</span>}
+                  </span>
+                  <span class="vr-src-cell">
+                    {isSor && <span class="vr-src-tag is-sor">source of record</span>}
+                    {isSor && ' · '}
+                    {isNoticeSrc
+                      ? <span class="vr-src-tag is-notice">venue notice</span>
+                      : <span class="vr-src-tag">{s.provenance === 'clearmarket_editorial' ? 'from rules text' : 'venue-listed'}</span>}
+                  </span>
+                </>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -241,20 +247,22 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
   .vr-empty { color: var(--cm-fg-faint); font-style: italic; }
   /* full source set */
   .vr-srcs { margin-top: 8px; }
-  .vr-src-list { list-style: none; margin: 4px 0 0; padding: 0; }
-  .vr-src-list li { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary); }
-  .vr-src-name { color: var(--cm-fg-primary); }
-  .vr-src-sor {
-    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--cm-dot-positive, #36c08a); border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
-    padding: 0 5px; border-radius: 2px;
+  /* tabular source rows: name+identifier | role/origin tags — aligned grid, unified tag
+     typography, no outline pills (one style of metadata text, tinted by role) */
+  .vr-src-grid {
+    display: grid; grid-template-columns: max-content 1fr;
+    column-gap: 16px; row-gap: 3px; margin-top: 5px; align-items: baseline;
+    font-family: var(--cm-font-mono); font-size: 11px; color: var(--cm-fg-secondary);
   }
-  .vr-src-prov { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-fg-faint); }
-  .vr-src-slug { font-family: var(--cm-mono, monospace); font-size: 11px; color: var(--cm-fg-secondary); }
-  .vr-src-conflict {
-    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--cm-grade-c, #d9a53f); border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
-    padding: 0 5px; border-radius: 2px;
+  .vr-src-cell { min-width: 0; }
+  .vr-src-name { color: var(--cm-fg-primary); }
+  .vr-src-slug { font-family: var(--cm-font-mono, monospace); color: var(--cm-fg-secondary); }
+  .vr-src-tag { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--cm-fg-faint); }
+  .vr-src-tag.is-sor { color: var(--cm-dot-positive, #36c08a); }
+  .vr-src-tag.is-notice { color: var(--cm-grade-c, #d9a53f); }
+  .vr-src-warn {
+    font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--cm-grade-c, #d9a53f);
   }
   .vr-conflict-note { color: var(--cm-grade-c, #d9a53f); }
   /* resolution history ledger */
