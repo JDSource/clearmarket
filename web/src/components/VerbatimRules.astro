@@ -42,8 +42,18 @@ const blocks = VENUES.map((v) => {
       { name?: string | null; url?: string | null; provenance?: string | null }[] | null),
     sourceOfRecord: (rep as any)?.source_of_record ?? null,
     mechanism: (rep as any)?.source_mechanism ?? null,
+    // exchange-notice conflict (v3.7): the venue's own page banner names a settlement
+    // source that differs from its committed settlement_sources entry. The grade cap is
+    // computed at enrich; here we NARRATE it — a page that grades C for a source conflict
+    // must say so where the sources are listed, not leave the reader to reconstruct it.
+    noticeConflict: Boolean((rep as any)?.source_notice_conflict),
+    noticeText: (((rep as any)?.exchange_notice ?? null) as { text?: string } | null)?.text ?? '',
   };
 });
+// Auto analyst note when the conflict flag is set and no hand-written note exists.
+const CONFLICT_NOTE =
+  "The venue's own page notice names a settlement source different from its committed " +
+  "settlement_sources entry; no rules mechanism governs the transition. Grade capped.";
 const MECH_LABEL: Record<string, string> = {
   single_authority: 'single authority',
   precedence: 'stated precedence rule',
@@ -99,7 +109,7 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
             <td>{b.sourceUrl && !isPlaceholderCitation(b.sourceUrl) ? <a class="cm-res-link" href={b.sourceUrl} rel="noopener nofollow">link</a> : <span class="cm-dd-empty">not provided</span>}</td>
             <td>{b.arbiter ? <code class="cm-code-pill">{arbiterLabel(b.arbiter)}</code> : '—'}</td>
             <td><code class={`cm-class-chip cm-class-${b.regClass.toLowerCase()}`}>{b.regClass}</code></td>
-            <td class="cm-res-td-notes">{b.notes ?? <span class="cm-dd-empty">—</span>}</td>
+            <td class="cm-res-td-notes">{b.notes ?? (b.noticeConflict ? <span class="vr-conflict-note">{CONFLICT_NOTE}</span> : <span class="cm-dd-empty">—</span>)}</td>
           </tr>
         ))}
       </tbody>
@@ -128,7 +138,10 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
       ); })()}
       {b.sources && b.sources.length > 0 && (
         <div class="vr-srcs">
-          <span class="vr-k">sources ({b.sources.length}){b.mechanism ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : ''}</span>
+          <span class="vr-k">sources ({b.sources.length}){b.noticeConflict
+            ? ' · '
+            : (b.mechanism ? ` · ${MECH_LABEL[b.mechanism] ?? b.mechanism}` : '')}</span>
+          {b.noticeConflict && <span class="vr-src-conflict">conflicting — venue notice names a different source</span>}
           <ul class="vr-src-list">
             {b.sources.map((s) => (
               <li>
@@ -136,9 +149,13 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
                   ? <a class="cm-res-link" href={s.url.startsWith('http') ? s.url : `https://${s.url}`} rel="noopener nofollow">{s.name ?? s.url}</a>
                   : <span class="vr-src-name">{s.name}</span>}
                 {b.sourceOfRecord && s.name && s.name === b.sourceOfRecord && <span class="vr-src-sor">source of record</span>}
-                <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
-                  {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
-                </span>
+                {b.noticeConflict && s.name && b.noticeText.includes(s.name)
+                  ? <span class="vr-src-prov">from venue notice</span>
+                  : <span class={`vr-src-prov vr-src-prov-${(s.provenance ?? 'platform_api').replace(/[^a-z_]/g, '')}`}>
+                      {s.provenance === 'clearmarket_editorial' ? 'from rules text · editorial' : 'venue-listed'}
+                    </span>}
+                {b.noticeConflict && s.name && b.noticeText.includes(s.name) &&
+                  <span class="vr-src-conflict">conflicts with source of record</span>}
               </li>
             ))}
           </ul>
@@ -214,6 +231,12 @@ function verbatimSource(b: any): { field: string; val: string; href: string | nu
     padding: 0 5px; border-radius: 2px;
   }
   .vr-src-prov { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--cm-fg-faint); }
+  .vr-src-conflict {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--cm-grade-c, #d9a53f); border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+    padding: 0 5px; border-radius: 2px;
+  }
+  .vr-conflict-note { color: var(--cm-grade-c, #d9a53f); }
   /* resolution history ledger */
   .rl-wrap { margin-top: 22px; }
   .rl-table .rl-mkt { font-family: var(--cm-font-sans); font-size: 11.5px; color: var(--cm-fg-secondary); }
