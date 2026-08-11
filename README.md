@@ -1,5 +1,7 @@
 # ClearMarket
 
+[![MCP Toplist](https://mcptoplist.com/badge/fyi.clearmarket%2Fclearmarket.svg)](https://mcptoplist.com/server/fyi.clearmarket%2Fclearmarket)
+
 > Institutional reference layer for prediction market data. Structures, classifies, grades, and links markets across Polymarket and Kalshi so research, risk, and data teams can use them like any other asset class.
 
 **Live now:** [clearmarket.fyi](https://clearmarket.fyi) · REST `api.clearmarket.fyi/v1` · MCP `api.clearmarket.fyi/mcp` · daily wire feed at [`/signals`](https://clearmarket.fyi/signals). Open and read-only — no key required.
