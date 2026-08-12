@@ -53,7 +53,7 @@ if (summary) {
         venue_id: (m as any).platform_market_id ?? '',
         question: display,
         slug: ev.slug,
-        bucket: rec.bucket ?? '',
+        bucket: rec.permitted_category ?? '',
         reason: rec.reasons[0] ?? '',
         cluster: rec.cluster ?? '',
         resolves: (m.resolve_at ?? m.close_at ?? '').slice(0, 10),

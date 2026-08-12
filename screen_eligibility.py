@@ -296,7 +296,7 @@ def main():
             "regime": args.regime,
             "status": status,
             "reasons": reasons,
-            "bucket": bucket,
+            "permitted_category": bucket,
             # diligence metadata (NOT eligibility gates)
             "source_commitment": m.get("source_commitment"),
             "source_class": src_cls,
@@ -408,7 +408,18 @@ def main():
                 "review": stats["review"],
                 "not_eligible": stats["not_eligible"],
             },
-            "eligible_buckets": dict(pass_buckets),
+            "eligible_categories": dict(pass_buckets),
+            # Plain-English legend for the machine reason codes — mirrored in
+            # web/src/lib/eligibility.ts REASON_COPY; keep the two in step.
+            "reason_definitions": {
+                "category_not_permitted": "Subject falls outside the categories Section 1 of Bulletin 26-0076 Appendix A permits (economic forecasts, financial indicators, environment forecasts) — e.g. sports, entertainment, elections.",
+                "under_min_maturity": "Term to maturity is under the 30-day minimum (Section 2).",
+                "no_resolution_date": "No parseable resolution date, so the Section 2 term test cannot be evidenced.",
+                "category_interpretation_s1": "Fits a Section 1 permitted category only under interpretation — Section 1's 'such as' examples are macro statistics and this subject is adjacent rather than enumerated.",
+                "category_not_enumerated_s1": "Subject category is not enumerated in Section 1 (currently crypto price contracts) — held for review rather than excluded.",
+                "political_nature_s3": "Language suggests political character (Section 3) inside an otherwise permitted category.",
+                "venue_out_of_scope": "Venue outside the regime's scope (CIRO terms require CFTC-regulated venues).",
+            },
             "eligible_no_committed_source": sum(
                 n for (sc, _), n in pass_diligence.items() if sc != "named"),
             "review_reasons": dict(review_reasons),

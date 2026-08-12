@@ -23,7 +23,7 @@ export const GET: APIRoute = () => {
     markets: Object.fromEntries(
       Object.entries(getAllEligibility()).map(([id, r]) => [
         id,
-        { status: r.status, reasons: r.reasons, bucket: r.bucket ?? null, ...(r.cluster ? { cluster: r.cluster } : {}) },
+        { status: r.status, reasons: r.reasons, permitted_category: r.permitted_category ?? null, ...(r.cluster ? { cluster: r.cluster } : {}) },
       ])
     ),
   };

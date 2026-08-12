@@ -14,7 +14,7 @@ export type EligibilityRecord = {
   status: EligibilityStatus;
   reasons: string[];
   cluster?: string | null; // review judgment-cluster key (review rows only)
-  bucket: string | null;
+  permitted_category: string | null; // which Section 1 permitted category (eligible rows)
   source_commitment: string | null;
   source_class: string | null;
   rcg_grade: string | null;
@@ -44,7 +44,8 @@ export type ScreenSummary = {
     review: number;
     not_eligible: number;
   };
-  eligible_buckets: Record<string, number>;
+  eligible_categories: Record<string, number>;
+  reason_definitions?: Record<string, string>;
   eligible_no_committed_source: number;
   review_reasons: Record<string, number>;
   review_clusters: ReviewCluster[];

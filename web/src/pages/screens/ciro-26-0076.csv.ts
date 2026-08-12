@@ -31,7 +31,7 @@ export async function GET() {
         rec.status,
         (rec.reasons ?? []).join(';'),
         rec.cluster ?? '',
-        rec.bucket ?? '',
+        rec.permitted_category ?? '',
         (m.resolve_at ?? m.close_at ?? '').slice(0, 10),
         m.resolution_source ?? '',
         rec.rcg_grade ?? '',
