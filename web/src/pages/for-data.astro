@@ -28,18 +28,11 @@ const jsonld = {
     <!-- HERO — asymmetric 60/40 -->
     <header class="fd-hero">
       <div class="fd-hero-main">
-        <!-- Eyebrow: default on public; ?partner=tmx swaps in the personalized line via the inline script below -->
-        <p class="fd-kick" id="fd-kick-default">Reference data &middot; prediction markets</p>
-        <p class="fd-kick fd-kick-tmx" id="fd-kick-tmx" hidden><span class="fd-pf-spec">Prepared for</span> <span class="fd-pf-div">/</span> <span class="fd-pf-name">TMX Datalinx</span> <span class="fd-pf-div">/</span> <span class="fd-pf-doc">Reference data overview</span></p>
+        <p class="fd-kick">Reference data &middot; prediction markets</p>
         <script is:inline>
-          var _partner = new URLSearchParams(location.search).get('partner');
-          if (_partner === 'tmx') {
-            var d = document.getElementById('fd-kick-default'), t = document.getElementById('fd-kick-tmx');
-            if (d) d.hidden = true;
-            if (t) t.hidden = false;
-          }
           // Attribution beacon: a named-recipient (?partner=…) open is logged server-side (call_log)
           // so we know who checked the page. Static HTML is otherwise invisible to the Worker.
+          var _partner = new URLSearchParams(location.search).get('partner');
           if (_partner) {
             try { fetch('https://api.clearmarket.fyi/v1/ping?p=' + encodeURIComponent(_partner), { keepalive: true, mode: 'no-cors' }); } catch (e) {}
           }
@@ -79,12 +72,12 @@ const jsonld = {
         <span class="fd-stat-lbl">Kalshi + Polymarket</span>
       </div>
       <div class="fd-stat-item">
-        <span class="fd-stat-num">Intraday</span>
-        <span class="fd-stat-lbl">Sync Frequency</span>
+        <span class="fd-stat-num">Hourly</span>
+        <span class="fd-stat-lbl">Price Refresh</span>
       </div>
       <div class="fd-stat-item">
-        <span class="fd-stat-num">CIRO, CFTC</span>
-        <span class="fd-stat-lbl">Eligibility Screens</span>
+        <span class="fd-stat-num">CIRO</span>
+        <span class="fd-stat-lbl">Eligibility Screening</span>
       </div>
       <div class="fd-stat-item">
         <span class="fd-stat-num">API + MCP</span>
@@ -125,13 +118,13 @@ const jsonld = {
       <p class="fd-label">What you get</p>
       <div class="fd-feats">
         <div class="fd-feat-tile">
-          <div class="fd-tile-meta"><span class="fd-tile-status">CIRO + CFTC</span></div>
+          <div class="fd-tile-meta"><span class="fd-tile-status">CIRO 26-0076</span></div>
           <p class="fd-feat-tag">Screen to any regime</p>
-          <p>Screen the universe to the rules your clients fall under, starting with CIRO and extendable to any jurisdiction or mandate. Filter down for client distribution, or keep the whole universe for maximum signal.</p>
+          <p>Screen the universe to the rules your clients fall under, starting with CIRO and extendable to any jurisdiction or mandate. Filter down for client distribution, or keep the whole universe for maximum signal. <a href="/screens/ciro-26-0076/" target="_blank" rel="noopener">See the live CIRO screen &rarr;</a></p>
         </div>
 
         <div class="fd-feat-tile">
-          <div class="fd-tile-meta"><code>/v1/schema</code></div>
+          <div class="fd-tile-meta"><code>openapi.json</code></div>
           <p class="fd-feat-tag">Clean, structured, ready to build on</p>
           <p>Two venues, two formats, one normalized schema. Delivered by documented API and MCP, so your team integrates once and builds on top.</p>
         </div>
@@ -145,7 +138,7 @@ const jsonld = {
         <div class="fd-feat-tile">
           <div class="fd-tile-meta"><span class="fd-tile-pulse">&#9679;</span> Live</div>
           <p class="fd-feat-tag">The whole market, kept current</p>
-          <p>The full Kalshi and Polymarket universe, refreshed throughout the day. Resolved markets are kept as settled history, not mixed into the live view. Related markets linked across venues where they exist.</p>
+          <p>The full Kalshi and Polymarket universe, prices refreshed hourly and timestamped per market. Resolved markets are kept as settled history, not mixed into the live view. Related markets linked across venues where they exist.</p>
         </div>
       </div>
     </section>
@@ -193,9 +186,9 @@ const jsonld = {
     <section class="fd-sec">
       <p class="fd-label">How it's delivered</p>
       <dl class="fd-spec">
-        <div class="fd-spec-row"><dt>Coverage</dt><dd>Full Kalshi and Polymarket universe, normalized into one schema, refreshed throughout the day.</dd></div>
-        <div class="fd-spec-row"><dt>Eligibility</dt><dd>Jurisdiction-specific distribution screens. CIRO live; extendable to any regime or mandate.</dd></div>
-        <div class="fd-spec-row"><dt>Access</dt><dd>Documented REST API and MCP endpoint, full schema, open methodology.</dd></div>
+        <div class="fd-spec-row"><dt>Coverage</dt><dd>Full Kalshi and Polymarket universe, normalized into one schema, prices refreshed hourly.</dd></div>
+        <div class="fd-spec-row"><dt>Eligibility</dt><dd>Jurisdiction-specific distribution screens. <a href="/screens/ciro-26-0076/" target="_blank" rel="noopener">CIRO live</a>; extendable to any regime or mandate.</dd></div>
+        <div class="fd-spec-row"><dt>Access</dt><dd>Documented REST API and MCP endpoint, <a href="https://api.clearmarket.fyi/openapi.json" target="_blank" rel="noopener">OpenAPI spec</a>, open methodology.</dd></div>
         <div class="fd-spec-row"><dt>Licensing</dt><dd>Feed and ratings-data access under license. White-label ready, built to drop into an existing product.</dd></div>
       </dl>
     </section>
@@ -289,14 +282,6 @@ const jsonld = {
     .fd p.fd-close-meta { font-family: var(--va-mono); font-size: 12px; letter-spacing: 0.03em; color: var(--va-fg-faint); margin: 28px 0 0 !important; }
     .fd p.fd-close-meta a { color: var(--va-fg-faint); text-decoration: none; }
     .fd p.fd-close-meta a:hover { color: var(--va-fg); }
-
-    /* TMX eyebrow variant (?partner=tmx) — replaces the default hero eyebrow; weight on the client name.
-       The base .fd-kick is all-accent; this dials the utility words back so TMX Datalinx is the focal point. */
-    .fd p.fd-kick-tmx { font-size: 13px; color: var(--va-fg-muted); margin-bottom: 24px; }
-    .fd-pf-spec { color: var(--va-fg-faint); }
-    .fd-pf-name { font-size: 15px; color: var(--va-accent); font-weight: 700; }
-    .fd-pf-doc { color: var(--va-fg-muted); }
-    .fd-pf-div { color: var(--va-fg-faint); }
 
     /* High-density prose split (category section) */
     .fd-prose-split { grid-column: 2; display: grid; grid-template-columns: 1.2fr 1fr; gap: 44px; align-items: start; }

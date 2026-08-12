@@ -186,7 +186,7 @@ async function buildList(env: Env, p: Record<string, any>): Promise<any> {
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
-    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
+    `SELECT market_id, event_id, platform, last_price, last_updated_at, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);

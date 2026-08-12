@@ -181,6 +181,9 @@ export function marketOut(m: any) {
     },
     last_price: num(m.last_price),
     implied_probability: num(m.last_price),
+    // price recency ≠ record recency: last_updated_at is stamped by the hourly marks cron,
+    // while the event-level updated_at reflects the enrichment vintage.
+    price_as_of: m.last_updated_at ?? null,
     volume_24h_usd: num(m.volume_24h_usd),
     volume_total_usd: num(m.volume_total_usd),
     settlement_style: m.settlement_style ?? null,
@@ -207,6 +210,7 @@ export function marketConcise(m: any) {
     question: f.question,
     last_price: f.last_price,
     implied_probability: f.implied_probability,
+    price_as_of: f.price_as_of,
     status: f.status,
     rcg: { grade: f.rcg.grade, score: f.rcg.score },
     resolution: {
@@ -235,8 +239,9 @@ export function eventSummary(e: any, mkts: any[]) {
     grade: primary?.resolution_clarity_grade ?? null,
     rcg_score: num(primary?.rcg_score),
     last_price: num(primary?.last_price),
+    price_as_of: primary?.last_updated_at ?? null,
     status: primary?.status ?? null,   // open / resolved — lets an agent filter without a get_event round-trip
-    updated_at: e.updated_at,
+    updated_at: e.updated_at,   // enrichment vintage, NOT price recency (that's price_as_of)
     _provenance: provenance(e.event_id),
   };
 }
@@ -389,7 +394,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
-    `SELECT market_id, event_id, platform, last_price, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
+    `SELECT market_id, event_id, platform, last_price, last_updated_at, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
@@ -466,7 +471,7 @@ async function getEvent(env: Env, slug: string, auth: Auth, detail: string = 'fu
     editorial_notes: e.editorial_notes,
     venues_covered: venues,
     primary_market_id: e.primary_market_id,
-    current_primary_mark: primary ? { last_price: num(primary.last_price), implied_probability: num(primary.last_price) } : null,
+    current_primary_mark: primary ? { last_price: num(primary.last_price), implied_probability: num(primary.last_price), as_of: primary.last_updated_at ?? null } : null,
     created_at: e.created_at,
     updated_at: e.updated_at,
     markets: mkts.map(concise ? marketConcise : marketOut),

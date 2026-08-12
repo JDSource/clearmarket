@@ -6,7 +6,7 @@ import { coverageLabel } from '../lib/universe';
 const API = 'https://api.clearmarket.fyi';
 const MCP = 'https://api.clearmarket.fyi/mcp';
 const sampleSlug = 'kxgdpyear-26';
-const updated = '2026-05-29';
+const updated = '2026-08-12';
 ---
 <Site title="ClearMarket API + MCP" description="Open REST API and MCP server for ClearMarket: graded, cross-venue reference data for prediction markets across Kalshi and Polymarket.">
   <div class="doc">
@@ -32,7 +32,8 @@ const updated = '2026-05-29';
       <header class="doc-head" id="overview">
         <h1>API <span class="dh-plus">+</span> MCP</h1>
         <p class="doc-lede">Open JSON over HTTPS, and a live MCP server for agents. {coverageLabel()} across Kalshi and Polymarket, each with a <a href="/methodology/">Resolution Clarity Grade</a> — the named resolution source where one is committed, and a graded <code>source_status</code> when it isn't. No key required.</p>
-        <p class="doc-note">Every event is single-venue; the same question priced on both venues is linked by a shared <code>question_id</code>, and each market's <code>also_on</code> lists its cross-venue twins. Prices refresh hourly. Catalyst dates (CPI, FOMC, jobs, earnings) are joined per event. Read-only.</p>
+        <p class="doc-note">Every event is single-venue; the same question priced on both venues is linked by a shared <code>question_id</code>, and each market's <code>also_on</code> lists its cross-venue twins. Prices refresh hourly (<code>price_as_of</code> on every market). Catalyst dates (CPI, FOMC, jobs, earnings) are joined per event. Read-only.</p>
+        <p class="doc-note">Machine-readable spec: <a href="https://api.clearmarket.fyi/openapi.json"><code>api.clearmarket.fyi/openapi.json</code></a> (OpenAPI 3.1) — the complete endpoint inventory for codegen and agents.</p>
       </header>
 
       <section class="surface" id="access">
@@ -108,6 +109,7 @@ const updated = '2026-05-29';
         <p>Query and filter the universe directly. Every response is the canonical schema with derived fields added at serve time.</p>
 
         <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/events?category=&platform=&grade=&q=&limit=&offset=</span></div>
+        <p class="ep-desc"><code>limit</code> caps at 100 per page — page through with <code>offset</code>.</p>
         <pre><code>{`curl -s '${API}/v1/events?category=economics&grade=A&limit=5' \\
   | jq '.events[] | {slug, grade, question}'`}</code></pre>
 
@@ -122,6 +124,17 @@ const updated = '2026-05-29';
         <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/catalysts/upcoming?days=N</span></div>
         <p class="ep-desc">Scheduled catalysts across all events, cross-event view.</p>
         <pre><code>{`curl -s '${API}/v1/catalysts/upcoming?days=14' | jq '.catalysts'`}</code></pre>
+
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/markets/movers</span></div>
+        <p class="ep-desc">Largest day-over-day price moves on volume, across the open universe.</p>
+
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/signals &nbsp;·&nbsp; /v1/signals/{`{slug}`}</span></div>
+        <p class="ep-desc">The CM Signal wire: cross-venue divergence, benchmark drift, news-cycle and volume-spike bulletins.</p>
+
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/spot</span></div>
+        <p class="ep-desc">Reference spot prices (crypto) used by benchmark-drift signals.</p>
+
+        <p class="ep-desc">Eligibility screens ship as site artifacts, not /v1 routes: <a href="/screens/ciro-26-0076/">HTML</a> · <a href="/screens/ciro-26-0076.json">JSON</a> · <a href="/screens/ciro-26-0076.csv">CSV</a> — join to the API on <code>cm_market_id</code> = <code>market_id</code>. Index at <a href="/screens/">/screens/</a>.</p>
       </section>
 
       <section class="surface" id="mcp">
