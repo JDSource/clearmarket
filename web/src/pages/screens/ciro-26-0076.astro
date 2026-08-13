@@ -340,12 +340,13 @@ const jsonLd = summary && {
 
         {/* ===== RULE MAPPING ===== */}
         <section id="rules" class="cm-section">
-          <div class="cm-section-h">rule mapping <span class="cm-section-tag">| verbatim term → field → logic</span></div>
+          <div class="cm-section-h">rule mapping <span class="cm-section-tag">| CIRO Bulletin 26-0076, Appendix A → screening logic</span></div>
+          <p class="scr-note">Section numbers below are the sections of Appendix A in CIRO Administrative Bulletin 26-0076. Expand any row for the bulletin&rsquo;s verbatim text.</p>
           <div class="scr-rules">
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 1 · PERMITTED SUBJECT CATEGORIES</span>
-                <span class="scr-rule-logic">&ldquo;such as&rdquo; = illustrative → clear subject match <span class="scr-st scr-st-eligible">eligible</span> · gray area <span class="scr-st scr-st-review">review</span></span>
+                <span class="scr-rule-logic">The bulletin permits three subject categories, each described with illustrative (&ldquo;such as&rdquo;) examples rather than an exhaustive list. A market clearly inside a permitted category: <span class="scr-st scr-st-eligible">eligible</span> · an arguable fit: <span class="scr-st scr-st-review">review</span></span>
                 <span class="scr-rule-toggle">[ VERBATIM + ]</span>
               </summary>
               <div class="scr-rule-body">
@@ -377,8 +378,8 @@ const jsonLd = summary && {
             </details>
             <details class="scr-rule">
               <summary class="scr-rule-line">
-                <span class="scr-rule-ref">BODY · DUE-DILIGENCE EXPECTATION</span>
-                <span class="scr-rule-logic">ClearMarket&rsquo;s evidence columns — diligence support, never eligibility gates</span>
+                <span class="scr-rule-ref">BULLETIN BODY · DUE-DILIGENCE EXPECTATION</span>
+                <span class="scr-rule-logic">The bulletin expects dealers to vet each contract themselves. ClearMarket&rsquo;s resolution-source and grade columns are supporting evidence for that vetting — they never determine a market&rsquo;s eligibility status</span>
                 <span class="scr-rule-toggle">[ VERBATIM + ]</span>
               </summary>
               <div class="scr-rule-body">
@@ -393,13 +394,11 @@ const jsonLd = summary && {
         <section id="methodology" class="cm-section cm-section-machine">
           <div class="cm-section-h">methodology &middot; status vocabulary &middot; changelog</div>
           <div class="scr-method">
-            <p>
-              <strong>Statuses.</strong> <span class="scr-st scr-st-eligible">eligible</span> — clears every Appendix A term mechanically.
-              <span class="scr-st scr-st-review">review</span> — clears the mechanical terms; what remains is a documented Section 1/Section 3
-              interpretation call. A contract matching no core pattern never silently passes — it lands in review.
-              <span class="scr-st scr-st-not">not_eligible</span> — misses a mechanical term (category, maturity). Statuses describe fit against
-              <em>this rule-set only</em> — market quality is the <a href="/methodology/">Resolution Clarity Grade</a>.
-            </p>
+            <p><strong>Statuses.</strong></p>
+            <p><span class="scr-st scr-st-eligible">eligible</span> — clears every Appendix A term mechanically.</p>
+            <p><span class="scr-st scr-st-review">review</span> — clears the mechanical terms; what remains is a documented Section 1 or Section 3 interpretation call. A contract matching no core pattern never silently passes — it lands in review.</p>
+            <p><span class="scr-st scr-st-not">not_eligible</span> — misses a mechanical term (permitted category, or the 30-day minimum maturity).</p>
+            <p>Statuses describe fit against <em>this rule-set only</em> — market quality is the separate <a href="/methodology/">Resolution Clarity Grade</a>.</p>
             <p>
               <strong>Primary source.</strong> Built from the verbatim text of
               <a href="https://www.ciro.ca/newsroom/publications/application-ciro-requirements-event-contracts" rel="noopener">CIRO Administrative Bulletin 26-0076</a>
