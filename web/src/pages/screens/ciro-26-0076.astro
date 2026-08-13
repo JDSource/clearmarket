@@ -346,7 +346,8 @@ const jsonLd = summary && {
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 1 · PERMITTED SUBJECT CATEGORIES</span>
-                <span class="scr-rule-logic">The bulletin permits three subject categories, each described with illustrative (&ldquo;such as&rdquo;) examples rather than an exhaustive list. A market clearly inside a permitted category: <span class="scr-st scr-st-eligible">eligible</span> · an arguable fit: <span class="scr-st scr-st-review">review</span></span>
+                <span class="scr-rule-logic">The bulletin permits three subject categories, each described with illustrative (&ldquo;such as&rdquo;) examples rather than an exhaustive list.
+                  <span class="scr-rule-outcomes">clear category match → <span class="scr-st scr-st-eligible">eligible</span> <span class="scr-out-sep">·</span> arguable fit → <span class="scr-st scr-st-review">review</span></span></span>
                 <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
@@ -357,7 +358,8 @@ const jsonLd = summary && {
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 2 · MINIMUM TERM TO MATURITY</span>
-                <span class="scr-rule-logic">≥ 30d from screen date, per market (a new threshold = a new contract)</span>
+                <span class="scr-rule-logic">Contracts need 30 days or more to maturity, measured from the screen date, per market — a new threshold on an existing event counts as a new contract.
+                  <span class="scr-rule-outcomes">under 30 days → <span class="scr-st scr-st-not">not_eligible</span></span></span>
                 <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
@@ -368,7 +370,8 @@ const jsonLd = summary && {
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 3 · PROHIBITED SUBJECT MATTER</span>
-                <span class="scr-rule-logic">politics/geopolitics <span class="scr-st scr-st-not">not_eligible</span> · in-category political language <span class="scr-st scr-st-review">review</span></span>
+                <span class="scr-rule-logic">Election, political-event, and unlawful-activity contracts are excluded outright; political wording inside an otherwise permitted category is held for judgment.
+                  <span class="scr-rule-outcomes">politics / geopolitics → <span class="scr-st scr-st-not">not_eligible</span> <span class="scr-out-sep">·</span> in-category political language → <span class="scr-st scr-st-review">review</span></span></span>
                 <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
@@ -531,7 +534,9 @@ const jsonLd = summary && {
     .scr-rule-logic { font-size: 11.5px; line-height: 1.5; color: var(--cm-fg-muted); }
     .scr-rule-toggle { font-family: var(--cm-font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--cm-fg-link); white-space: nowrap; }
     .scr-rule[open] .scr-rule-toggle { color: var(--cm-fg-faint); }
-    .scr-rule-body { padding: 2px 10px 10px 326px; }
+    .scr-rule-body { margin: 0 10px; padding: 8px 2px 10px 14px; border-top: 1px solid var(--cm-border-hairline); }
+    .scr-rule-outcomes { display: block; margin-top: 7px; font-family: var(--cm-font-mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--cm-fg-faint); }
+    .scr-out-sep { margin: 0 6px; }
     .scr-verbatim { margin: 4px 0 6px; padding: 8px 12px; border-left: 2px solid var(--cm-fg-link); background: rgba(255, 255, 255, 0.02); font-size: 11.5px; line-height: 1.55; color: var(--cm-fg-muted); max-width: 760px; }
     .scr-verbatim em { font-style: normal; color: var(--cm-fg-primary); }
     .scr-rule-note { margin: 0; font-family: var(--cm-font-mono); font-size: 10.5px; color: var(--cm-fg-faint); }
@@ -570,7 +575,6 @@ const jsonLd = summary && {
       .scr-cluster-top { flex-direction: column; gap: 2px; }
       .scr-rule-line { grid-template-columns: 1fr auto; }
       .scr-rule-logic { grid-column: 1 / -1; }
-      .scr-rule-body { padding: 2px 10px 10px; }
       .cm-subnav { padding: 10px 16px; gap: 14px; overflow-x: auto; }
     }
   </style>
