@@ -253,8 +253,8 @@ const jsonLd = summary && {
         <section id="review" class="cm-section">
           <div class="cm-section-h">review markets <span class="cm-section-tag">| {fmt(f.review)} markets in {summary.review_clusters.length} judgment clusters</span></div>
           <p class="scr-intro">
-            Nine documented calls cover all {fmt(f.review)} of these markets. Each clears the mechanical terms;
-            what remains is interpretation — does it fit a Section 1 category, or does its wording trip Section 3?
+            These {fmt(f.review)} markets reduce to {summary.review_clusters.length} documented interpretation questions.
+            Every market here clears the mechanical terms; what remains is interpretation — does it fit a Section 1 category, or does its wording trip Section 3?
             The screen holds them for a documented judgment instead of silently passing them, grouped below by
             the question that needs answering.
           </p>
@@ -347,18 +347,18 @@ const jsonLd = summary && {
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 1 · PERMITTED SUBJECT CATEGORIES</span>
                 <span class="scr-rule-logic">The bulletin permits three subject categories, each described with illustrative (&ldquo;such as&rdquo;) examples rather than an exhaustive list. A market clearly inside a permitted category: <span class="scr-st scr-st-eligible">eligible</span> · an arguable fit: <span class="scr-st scr-st-review">review</span></span>
-                <span class="scr-rule-toggle">[ VERBATIM + ]</span>
+                <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
                 <blockquote class="scr-verbatim">&ldquo;offering of event contracts will be <em>limited to the following</em>: Economic Forecasts: <em>such as</em> contracts based on economic statistics related to the amount of sovereign debt, inflation rates, central bank reserve rates, labor markets, and housing; Environment Forecasts: <em>such as</em>&hellip; climate indicators related to the average global temperature; Financial indicators: <em>such as</em> US 500 Forecast Contracts that settle based on the daily settlement price of the&hellip; CME E-Mini S&amp;P 500 Futures&rdquo;</blockquote>
-                <p class="scr-rule-note">screened field: event tags + question text</p>
+                <p class="scr-rule-note">screened fields: <code>tags</code> + <code>question</code> text</p>
               </div>
             </details>
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 2 · MINIMUM TERM TO MATURITY</span>
                 <span class="scr-rule-logic">≥ 30d from screen date, per market (a new threshold = a new contract)</span>
-                <span class="scr-rule-toggle">[ VERBATIM + ]</span>
+                <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
                 <blockquote class="scr-verbatim">&ldquo;Investment Dealer Members&rsquo; offering of event contracts will be limited to contracts with a term to maturity of 30 days or longer. For greater certainty, issuing a new threshold in respect of an event contract constitutes a new contract, this new contract must also have a term to maturity of 30 days or longer&rdquo;</blockquote>
@@ -369,18 +369,18 @@ const jsonLd = summary && {
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">SECTION 3 · PROHIBITED SUBJECT MATTER</span>
                 <span class="scr-rule-logic">politics/geopolitics <span class="scr-st scr-st-not">not_eligible</span> · in-category political language <span class="scr-st scr-st-review">review</span></span>
-                <span class="scr-rule-toggle">[ VERBATIM + ]</span>
+                <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
                 <blockquote class="scr-verbatim">&ldquo;will not offer event contracts based on the outcome of elections, political events, or other events of a political nature&hellip; or&hellip; unlawful activities&rdquo;</blockquote>
-                <p class="scr-rule-note">screened field: category + in-category language flag</p>
+                <p class="scr-rule-note">screened fields: <code>category</code> + in-category language flag</p>
               </div>
             </details>
             <details class="scr-rule">
               <summary class="scr-rule-line">
                 <span class="scr-rule-ref">BULLETIN BODY · DUE-DILIGENCE EXPECTATION</span>
                 <span class="scr-rule-logic">The bulletin expects dealers to vet each contract themselves. ClearMarket&rsquo;s resolution-source and grade columns are supporting evidence for that vetting — they never determine a market&rsquo;s eligibility status</span>
-                <span class="scr-rule-toggle">[ VERBATIM + ]</span>
+                <span class="scr-rule-toggle">[ + BULLETIN TEXT ]</span>
               </summary>
               <div class="scr-rule-body">
                 <blockquote class="scr-verbatim">&ldquo;Investment Dealer Members are <em>expected to exercise due diligence</em> to ensure that any event contracts made available to clients do not fall within these prohibited categories&rdquo;</blockquote>
@@ -500,9 +500,9 @@ const jsonLd = summary && {
     .scr-noteligible { max-width: 560px; }
 
     .scr-st { font-family: var(--cm-font-mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 0 4px; border: 1px solid var(--cm-border-rule); }
-    .scr-st-eligible { color: var(--cm-positive); }
-    .scr-st-review { color: var(--cm-divergence); }
-    .scr-st-not { color: var(--cm-negative, #ef5d6a); }
+    .scr-st-eligible { color: var(--cm-positive); background: rgba(16, 185, 129, 0.09); }
+    .scr-st-review { color: var(--cm-divergence); background: rgba(245, 158, 11, 0.09); }
+    .scr-st-not { color: var(--cm-negative, #ef5d6a); background: rgba(239, 93, 106, 0.09); }
 
     /* ===== Review: split-level cluster blocks ===== */
     .scr-clusters { display: flex; flex-direction: column; margin-bottom: 12px; }
@@ -521,19 +521,21 @@ const jsonLd = summary && {
 
     /* ===== Rule mapping: one-line tracker, verbatim behind toggle ===== */
     .scr-rules { display: flex; flex-direction: column; margin-top: 4px; }
-    .scr-rule { border-bottom: 1px solid var(--cm-border-hairline); }
-    .scr-rule:first-child { border-top: 1px solid var(--cm-border-hairline); }
-    .scr-rule-line { display: grid; grid-template-columns: max-content 1fr auto; gap: 16px; align-items: baseline; padding: 7px 2px; cursor: pointer; list-style: none; user-select: none; }
+    .scr-rules { display: flex; flex-direction: column; gap: 6px; }
+    .scr-rule { border: 1px solid var(--cm-border-hairline); background: rgba(255, 255, 255, 0.015); }
+    .scr-rule-line { display: grid; grid-template-columns: 300px 1fr auto; gap: 16px; align-items: baseline; padding: 8px 10px; cursor: pointer; list-style: none; user-select: none; }
     .scr-rule-line::-webkit-details-marker { display: none; }
     .scr-rule-line:hover { background: var(--cm-bg-surface); }
-    .scr-rule-ref { font-family: var(--cm-font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--cm-fg-primary); white-space: nowrap; }
+    .scr-rule-line:hover .scr-rule-toggle { text-decoration: underline; }
+    .scr-rule-ref { font-family: var(--cm-font-mono); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: var(--cm-fg-primary); }
     .scr-rule-logic { font-size: 11.5px; line-height: 1.5; color: var(--cm-fg-muted); }
     .scr-rule-toggle { font-family: var(--cm-font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--cm-fg-link); white-space: nowrap; }
     .scr-rule[open] .scr-rule-toggle { color: var(--cm-fg-faint); }
-    .scr-rule-body { padding: 2px 2px 10px; }
-    .scr-verbatim { margin: 4px 0 6px; padding: 6px 12px; border-left: 2px solid var(--cm-border-rule); font-size: 11.5px; line-height: 1.55; color: var(--cm-fg-muted); max-width: 760px; }
+    .scr-rule-body { padding: 2px 10px 10px 326px; }
+    .scr-verbatim { margin: 4px 0 6px; padding: 8px 12px; border-left: 2px solid var(--cm-fg-link); background: rgba(255, 255, 255, 0.02); font-size: 11.5px; line-height: 1.55; color: var(--cm-fg-muted); max-width: 760px; }
     .scr-verbatim em { font-style: normal; color: var(--cm-fg-primary); }
     .scr-rule-note { margin: 0; font-family: var(--cm-font-mono); font-size: 10.5px; color: var(--cm-fg-faint); }
+    .scr-rule-note code { border: 1px solid var(--cm-border-rule); padding: 0 4px; }
 
     /* ===== Expandable ledgers (eligible + review) ===== */
     .scr-ledger-action { display: block; text-align: center; font-family: var(--cm-font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: var(--cm-fg-link); border: 1px solid var(--cm-border-rule); padding: 9px 12px; cursor: pointer; list-style: none; user-select: none; }
@@ -568,6 +570,7 @@ const jsonLd = summary && {
       .scr-cluster-top { flex-direction: column; gap: 2px; }
       .scr-rule-line { grid-template-columns: 1fr auto; }
       .scr-rule-logic { grid-column: 1 / -1; }
+      .scr-rule-body { padding: 2px 10px 10px; }
       .cm-subnav { padding: 10px 16px; gap: 14px; overflow-x: auto; }
     }
   </style>
