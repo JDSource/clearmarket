@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026081406"
+signal_id: "CMSIG2026081405"
 signal_slug: "democrats-win-us-house-2026-kalshi-86-2026-08-14"
 headline: "Democrats win US House 2026: Kalshi 86%"
-semantic_title: "Democrats winning the House stays heavily favored at 86%"
+semantic_title: "Democrats taking back the House stays heavily favored at 86%"
 telemetry: "Kalshi 86%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,15 +16,15 @@ primary_market:
   platform_market_id: "CONTROLH-2026-D"
   question_raw: "Will Democrats win the House in 2026?"
   current_price: 0.86
-  volume_24h_usd: 6199.71
+  volume_24h_usd: 3679.22
   arbitration_model: "kalshi_staff"
   resolution_source: "Library of Congress"
   resolves_at: "2027-02-01T15:00:00Z"
 bullets:
-  - "Kalshi prices Democrats winning the US House at 86%, a heavily favored outcome resolved via the Library of Congress."
-  - "State-level Democratic election-security moves signal confidence in a competitive cycle, consistent with an 86% market price."
-  - "The companion Kalshi contract on Republicans retaining at least one chamber sits at 47%, implying the Senate race is viewed as genuinely competitive even as the House leans strongly Democratic."
-  - "Resolves via the Library of Congress following the November 2026 midterm results."
+  - "Kalshi prices an 86% probability that the Democratic Party wins the US House in the next election, resolves via Library of Congress."
+  - "Election-security concerns and state-level Democratic mobilization are consistent with a market strongly favoring a Democratic House flip."
+  - "Companion Kalshi contract on Republicans holding at least one chamber of Congress after the 2026 midterms sits at 47%, suggesting Senate control is far less certain."
+  - "Polymarket contract on a blue wave in 2026 is at 76%, broadly consistent with the Kalshi House reading and pointing to a Democratic sweep scenario as the market consensus."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -32,7 +32,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active kalshi market"
-    story: "State Democratic officials are legislating election security measures ahead of November, citing Trump's casting of doubt on election integrity and increased federal involvement."
+    story: "State Democratic officials are preparing election-integrity defenses ahead of November as Trump pushes for more federal involvement in local voting."
     publisher: "Kevin Hardy"
     published_at: "2026-08-14T00:00:00.000Z"
     source_url: "https://stateline.org/2026/08/14/no-more-hypothetical-situations-state-officials-work-to-protect-elections-from-the-feds/"
@@ -42,9 +42,9 @@ atomic_claims:
         method: "exa_search"
         source: "Kevin Hardy"
         source_url: "https://stateline.org/2026/08/14/no-more-hypothetical-situations-state-officials-work-to-protect-elections-from-the-feds/"
-        retrieved_at: "2026-08-16T08:23:09+00:00"
+        retrieved_at: "2026-08-17T08:37:49+00:00"
   - type: "pm_response"
-    notes: "Kalshi's 86% on Democrats winning the House contrasts with the 47% on Republicans holding at least one chamber, pointing to the Senate as the true battleground in market pricing."
+    notes: "Kalshi contract resolves via Library of Congress; the 86% price reflects a strong structural lean toward Democrats in the current generic-ballot environment."
     field_provenance:
       notes:
         tier: "editorial"
@@ -53,7 +53,7 @@ sources:
   - label: "Kevin Hardy: No more 'hypothetical situations': States move to fortify elections ag"
     url: "https://stateline.org/2026/08/14/no-more-hypothetical-situations-state-officials-work-to-protect-elections-from-the-feds/"
     published_at: "2026-08-14T00:00:00.000Z"
-    retrieved_at: "2026-08-16T08:23:09+00:00"
+    retrieved_at: "2026-08-17T08:37:49+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   news_context: "exa_search"
