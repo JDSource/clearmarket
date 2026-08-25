@@ -2,7 +2,7 @@
 signal_id: "CMSIG2026082306"
 signal_slug: "hormuz-traffic-normal-by-dec-31-polymarket-33-2026-08-23"
 headline: "Hormuz traffic normal by Dec 31: Polymarket 33%"
-semantic_title: "Strait of Hormuz return to normal by year-end holds near 33 percent"
+semantic_title: "Strait of Hormuz reopening by year-end stays a long shot"
 telemetry: "Polymarket 33%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc"
   question_raw: "Strait of Hormuz traffic returns to normal by December 31?"
   current_price: 0.33
-  volume_24h_usd: 90906.823548
+  volume_24h_usd: 146477.760731
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "Polymarket puts 33% on Strait of Hormuz traffic returning to normal by December 31, resolves via UMA oracle."
-  - "Iran's 'act of war' warning over new sanctions is consistent with the sub-50% pricing; markets are not expecting a near-term resolution."
-  - "Pakistan's army chief traveling to Tehran as mediator introduces a non-zero diplomatic path, but the 33% price shows the market assigns it limited weight."
-  - "The Kalshi contract on the US reopening its embassy in Iran (CM-EVT-34SYT4T2T1) sits at just 5%, signaling the market sees no imminent normalization on any front."
+  - "The Polymarket contract prices Strait of Hormuz traffic returning to normal by December 31 at 33%, keeping full reopening a distinct minority outcome."
+  - "U.S. sanctions escalation and Iran's defiant posture are consistent with this below-50% reading; China's diplomatic backing for talks is the main upside risk the market is partially pricing."
+  - "At 33%, the market is not ruling out a resolution, Pakistan's mediation role and Egypt's parallel diplomacy keep the tail alive."
+  - "Resolves via UMA oracle; 'normal' traffic is likely defined against a pre-conflict baseline, creating potential dispute risk at settlement."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,28 +31,28 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Iran's new security chief warned that support for new U.S. sanctions would be treated as an act of war, deepening the diplomatic impasse."
-    publisher: "apnews.com"
+    story: "China backed diplomatic talks with Iran as the U.S. prepared sweeping new sanctions under 'Operation Economic Outcast,' keeping Strait of Hormuz disruption at the center of global trade risk."
+    publisher: "Randy Thanthong-Knight"
     published_at: "2026-08-23T00:00:00.000Z"
-    source_url: "https://apnews.com/article/middle-east-iran-israel-west-bank-august-23-2026-a3fff9eba47a5510060e8014b82d794f"
+    source_url: "https://www.bloomberg.com/news/articles/2026-08-23/china-actively-committed-to-iran-talks-with-tensions-rising"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "apnews.com"
-        source_url: "https://apnews.com/article/middle-east-iran-israel-west-bank-august-23-2026-a3fff9eba47a5510060e8014b82d794f"
-        retrieved_at: "2026-08-24T08:42:17+00:00"
+        source: "Randy Thanthong-Knight"
+        source_url: "https://www.bloomberg.com/news/articles/2026-08-23/china-actively-committed-to-iran-talks-with-tensions-rising"
+        retrieved_at: "2026-08-25T08:36:45+00:00"
   - type: "pm_response"
-    notes: "Polymarket contract resolves via UMA oracle on whether commercial shipping volumes through the Strait of Hormuz return to pre-disruption norms by December 31."
+    notes: "Polymarket hosts this year-end contract at 33%; no near-term companion contract has a live price, leaving the full timeline risk concentrated in this single year-end read."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "apnews.com: Iran’s president says US memorandum is best path out of stalled war |"
-    url: "https://apnews.com/article/middle-east-iran-israel-west-bank-august-23-2026-a3fff9eba47a5510060e8014b82d794f"
+  - label: "Randy Thanthong-Knight: China Backs Diplomatic Talks With Iran as US Prepares New Sanctions -"
+    url: "https://www.bloomberg.com/news/articles/2026-08-23/china-actively-committed-to-iran-talks-with-tensions-rising"
     published_at: "2026-08-23T00:00:00.000Z"
-    retrieved_at: "2026-08-24T08:42:17+00:00"
+    retrieved_at: "2026-08-25T08:36:45+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
