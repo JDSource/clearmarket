@@ -1103,6 +1103,46 @@ async function applyScreen(env: Env, runId: string, regime = SCREEN_REGIME): Pro
   }
 }
 
+// Kalshi finalized -> resolved, from the same hourly snapshot (venue-authoritative status + result). Closes
+// the gap the Worker's own settled-feed reconcile cannot (Kalshi 429s Cloudflare) and the daily past-due
+// sweep does not reach (markets that settle BEFORE their deadline). Settlement time is not in the snapshot,
+// so the resolution_log row carries the venue close_time on a deadline basis, never a fabricated settle time.
+async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResult> {
+  const startedAt = new Date().toISOString();
+  try {
+    const snap: any = await fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/kalshi-tracked-latest.json?t=${Date.now()}`, undefined, 2);
+    if (!Array.isArray(snap?.markets)) throw new Error('snapshot has no markets[]');
+    const age = (Date.now() - Date.parse(snap?.generated_at ?? '')) / 60e3;
+    if (!(age <= 24 * 60)) throw new Error(`snapshot too old (${Math.round(age)} min)`);
+    const fin = new Map<string, { result: string; ct: string | null }>();
+    for (const m of snap.markets) {
+      const r = String(m.r ?? '').toLowerCase();
+      if (m.s === 'finalized' && (r === 'yes' || r === 'no')) fin.set(m.t, { result: r, ct: m.ct ?? null });
+    }
+    const { results } = await env.DB.prepare(
+      `SELECT market_id, event_id, platform_market_id, close_at FROM markets WHERE platform='kalshi' AND status='open' AND platform_market_id IS NOT NULL`
+    ).all<{ market_id: string; event_id: string; platform_market_id: string; close_at: string | null }>();
+    const nowIso = new Date().toISOString();
+    const stmts: D1PreparedStatement[] = []; const logStmts: D1PreparedStatement[] = [];
+    for (const row of results) {
+      const f = fin.get(row.platform_market_id);
+      if (!f) continue;
+      const price = f.result === 'yes' ? 1 : 0;
+      stmts.push(env.DB.prepare(`UPDATE markets SET status='resolved', last_price=?, reconciled_at=? WHERE market_id=? AND status='open'`).bind(price, nowIso, row.market_id));
+      logStmts.push(resLogRow(env, { market_id: row.market_id, event_id: row.event_id, platform: 'kalshi' }, 'resolved', 'open', 'resolved', price, null, f.ct ?? row.close_at, nowIso, 'clearmarket-kalshi-snapshot'));
+    }
+    for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
+    for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
+    await recordRun(env, runId, 'kalshi_finalized', '', startedAt, fin.size, stmts.length, null);
+    if (stmts.length) console.log(`kalshi finalized: ${stmts.length} open markets -> resolved (snapshot ${snap.generated_at})`);
+    return { step: 'kalshi_finalized', applied: stmts.length, total: fin.size, file_generated_at: snap.generated_at ?? null };
+  } catch (e) {
+    const msg = errStr(e); console.error('kalshi finalized failed:', msg);
+    await recordRun(env, runId, 'kalshi_finalized', '', startedAt, null, null, msg);
+    return { step: 'kalshi_finalized', applied: 0, total: 0, file_generated_at: null, error: msg };
+  }
+}
+
 // ---- /v1/marks — bulk + incremental pull ----------------------------------
 // The way to consume the hourly cadence. Without since= it is the baseline (every market, 1,000 per
 // page); with since=<ISO> it returns only markets whose price/volume or status changed after that
@@ -1378,9 +1418,10 @@ const worker = {
       let out: unknown;
       if (step === 'sweep_apply') out = await applySweep(env, runId, url.searchParams.get('file') ?? undefined);
       else if (step === 'screen_apply') out = await applyScreen(env, runId);
+      else if (step === 'kalshi_finalized') out = await applyKalshiFinalized(env, runId);
       else if (step === 'marks') { const r = await refreshMarks(env, runId); out = { step, seen: r.seenOpen.size, venue_ok: r.venueOk }; }
       else if (step === 'snapshot') { await snapshotDaily(env, runId); out = { step, done: true }; }
-      else return err(400, 'unknown step', 'sweep_apply | screen_apply | marks | snapshot');
+      else return err(400, 'unknown step', 'sweep_apply | screen_apply | kalshi_finalized | marks | snapshot');
       return json({ run_id: runId, result: out });
     }
 
@@ -1581,6 +1622,7 @@ const worker = {
       if (hour === APPLY_UTC_HOUR) {
         await applySweep(env, runId);
         await applyScreen(env, runId);
+        await applyKalshiFinalized(env, runId);
         try { await env.DB.prepare('DELETE FROM cron_runs WHERE started_at < ?').bind(isoAgo(24 * 45)).run(); } catch {}
       }
       try { await refreshSpot(env); } catch (e) { console.warn('refreshSpot failed', errStr(e)); }
