@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-06T00:30:45.836226+00:00",
+  "generated_at": "2026-08-04T20:03:51.865287+00:00",
   "schema": "v0.2.0-universe",
-  "event_count": 2448,
-  "market_count": 20040,
+  "event_count": 3859,
+  "market_count": 39215,
   "demo_slugs": [
     "kxlayoffsyinfo-26",
-    "fed-decision-in-june-825",
+    "fed-decision-in-july-181",
     "when-will-bitcoin-hit-150k"
   ]
 }

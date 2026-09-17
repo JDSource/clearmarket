@@ -24,7 +24,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from enhance import llm_call, LLM_MODEL_HAIKU
 
-RAW = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-07-23"
+RAW = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-08-04"
 ROOT = Path(__file__).parent
 CATEGORY = sys.argv[1] if len(sys.argv) > 1 else "crypto"
 

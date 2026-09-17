@@ -161,6 +161,11 @@ ALL_CATEGORIES = CATEGORIES_IN + CATEGORIES_OUT
 KALSHI_CATEGORY_MAP = {
     "Economics":              "economics",
     "Financials":             "financials",
+    "Commodities":            "financials",  # ADDED 2026-08-04: gold/oil/metals price series.
+                                             # Squarely CIRO's permitted "financial markets"
+                                             # category; excluding it hid the KXGOLD source-
+                                             # conflict case (methodology v3.7 acceptance case).
+                                             # Volume threshold still gates junk.
     "Companies":              "companies",
     "Science and Technology": "technology",
     "Health":                 "health",

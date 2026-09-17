@@ -47,7 +47,7 @@ from pathlib import Path
 
 ROOT   = Path(__file__).parent
 BUNDLE = ROOT / "web/data/universe-enriched-linked.json"
-UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-07-23"
+UNIV   = Path.home() / "jeremy-os/raw/clearmarket-universe-2026-08-04"
 SRCS   = UNIV / "series-sources.json"
 BACKUP = ROOT / f"web/data/universe-enriched-linked.pre-notices-{date.today().isoformat()}-bak.json"
 DRY    = "--dry" in sys.argv
