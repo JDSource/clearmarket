@@ -44,7 +44,7 @@ const eligScreens = (marketId) => {
   if (!r) return null;
   return [{
     regime: r.regime, screen_version: eligVersion, status: r.status,
-    reasons: r.reasons ?? [], bucket: r.bucket ?? null, screened_at: r.screened_at,
+    reasons: r.reasons ?? [], permitted_category: r.permitted_category ?? r.bucket ?? null, screened_at: r.screened_at,
   }];
 };
 console.error(`bundle: ${events.length} events / ${markets.length} markets (schema ${bundle._meta?.schema})`);

@@ -85,6 +85,13 @@ have the column until then, and the cron's `UPDATE` will throw "no such column" 
 ```bash
 cd api && wrangler d1 execute clearmarket --remote --file=zombie-cols-migration.sql   # last_updated_at, reconciled_at, from_value (run from api/)
 ```
+Freshness migration (2026-09-17): `cd api && wrangler d1 execute clearmarket --remote --file=freshness-migration.sql` — adds
+`markets.last_checked_at`, `marks_daily.price_as_of/carried_forward`, and the `cron_runs` + `feed_meta` tables. The Worker's
+daily 09:00 UTC step applies the site-side sweep (`status-sweep-latest.json`) and screen (`eligibility-ciro-26-0076*.json`)
+files from R2 into D1, so a reseed is no longer the only path from bundle to API. Operator trigger for any step:
+`POST /v1/admin/run?step=sweep_apply|screen_apply|marks|snapshot` with `Authorization: Bearer $ADMIN_TOKEN` (Worker secret).
+Feed health: `GET /v1/status`; hourly GitHub check `status-check.yml` fails (and emails) when a core pipeline is stale.
+
 **ALTER-only deploys: do NOT run `npm run seed:remote`.** A reseed drops+recreates `markets` from the bundle,
 which clobbers the cron-fresh `last_price`/`volume`/`status` in D1 with the (older) bundle snapshot. For a
 Worker-logic + new-column change (like the zombie fix), the steps are just: apply the migration, then

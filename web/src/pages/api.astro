@@ -125,6 +125,13 @@ const updated = '2026-08-12';
         <p class="ep-desc">Scheduled catalysts across all events, cross-event view.</p>
         <pre><code>{`curl -s '${API}/v1/catalysts/upcoming?days=14' | jq '.catalysts'`}</code></pre>
 
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/marks?since=&status=&platform=&limit=&cursor=</span></div>
+        <p class="ep-desc">Bulk and incremental pull. Without <code>since</code>: the whole universe, 1,000 per page via <code>next_cursor</code>. With <code>since</code> (the <code>as_of</code> of your last pull): only markets whose price, volume or status changed after it. Every row carries two clocks: <code>price_as_of</code> (last price change) and <code>last_checked_at</code> (last seen in a live venue feed; <code>null</code> means not seen since the last reload, so treat the price as historical).</p>
+        <pre><code>{`curl -s '${API}/v1/marks?since=2026-09-17T13:00:00Z' | jq '.count, .marks[0]'`}</code></pre>
+
+        <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/status</span></div>
+        <p class="ep-desc">Feed integrity. One object with an overall <code>state</code> (ok, degraded, stale) and a per-pipeline check for prices, daily history, status reconcile, sweep apply and the eligibility screen, each with <code>as_of</code>, age and threshold. Poll it before trusting a pull.</p>
+
         <div class="ep"><span class="ep-verb">GET</span><span class="ep-path">/v1/markets/movers</span></div>
         <p class="ep-desc">Largest day-over-day price moves on volume, across the open universe.</p>
 

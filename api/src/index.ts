@@ -30,6 +30,10 @@ export interface Env {
   // (/signals.json, /signals/<slug>.json). MCP signal tools fetch from here so
   // wires stay single-sourced as static content (no D1 duplication). Defaults to prod.
   SIGNALS_BASE?: string;
+  // Public R2 base that serves the bundle + the daily sweep/screen files the Worker applies to D1.
+  DATA_BASE?: string;
+  // Secret. When set, POST /v1/admin/run?step=… (Bearer) triggers a pipeline step on demand.
+  ADMIN_TOKEN?: string;
 }
 
 const CORS = {
@@ -38,11 +42,20 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
 };
 
+// Response-contract version. Additive field changes bump the patch digit; renames/removals bump minor
+// and are announced to keyed users first. Emitted as a header on every JSON response so a consumer can
+// detect a contract change programmatically.
+const SCHEMA_VERSION = 'v0.2.1';
+
 const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(data, null, 2), {
     status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS, ...extra },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'X-CM-Schema-Version': SCHEMA_VERSION, ...CORS, ...extra },
   });
+
+// ISO-8601 UTC timestamp h hours ago — the ONLY timestamp format the Worker writes or compares
+// (toISOString: 24 chars, 'T', millis, 'Z'). Never mix with SQLite datetime('now') strings.
+const isoAgo = (hours: number) => new Date(Date.now() - hours * 3600e3).toISOString();
 
 const err = (status: number, message: string, hint?: string) =>
   json({ error: message, ...(hint ? { hint } : {}) }, status);
@@ -195,6 +208,12 @@ export function marketOut(m: any) {
     // Jurisdiction-specific distribution rule-set fit (e.g. ciro-26-0076): eligible / review /
     // not_eligible against ONE named rule-set. NOT market quality — quality is rcg.grade.
     eligibility_screens: parseJson(m.eligibility_screens, null),
+    // Two clocks. price_as_of (above) = last time the price CHANGED. last_checked_at = last time the
+    // hourly cron saw this market in a venue's live feed and confirmed the price, changed or not.
+    // NULL = not seen in any live feed since the last reload: filter these out of "live" displays.
+    last_checked_at: m.last_checked_at ?? null,
+    // Last time status was verified against the venue (daily reconcile / sweep).
+    reconciled_at: m.reconciled_at ?? null,
   };
 }
 
@@ -220,6 +239,7 @@ export function marketConcise(m: any) {
     },
     question_id: f.question_id,
     also_on: f.also_on,
+    last_checked_at: f.last_checked_at,
   };
 }
 
@@ -240,6 +260,7 @@ export function eventSummary(e: any, mkts: any[]) {
     rcg_score: num(primary?.rcg_score),
     last_price: num(primary?.last_price),
     price_as_of: primary?.last_updated_at ?? null,
+    last_checked_at: primary?.last_checked_at ?? null,
     status: primary?.status ?? null,   // open / resolved — lets an agent filter without a get_event round-trip
     updated_at: e.updated_at,   // enrichment vintage, NOT price recency (that's price_as_of)
     _provenance: provenance(e.event_id),
@@ -377,7 +398,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
     }
   }
 
-  const limit = Math.min(Number(p.get('limit') ?? 50) || 50, MAX_PAGE);
+  const limit = Math.min(Math.max(Number(p.get('limit') ?? 50) || 50, 1), MAX_PAGE);
   if (Number(p.get('limit')) > MAX_PAGE) notices.limit_notice = `limit capped at ${MAX_PAGE} (page-size ceiling); use offset to page.`;
   const offset = Math.max(Number(p.get('offset') ?? 0) || 0, 0);
   // total = full count under the active filters (count below is just this page) so an agent knows
@@ -394,7 +415,7 @@ async function listEvents(env: Env, url: URL, auth: Auth): Promise<Response> {
   const ids = evs.map((e) => e.event_id);
   const ph = ids.map(() => '?').join(',');
   const { results: mkts } = await env.DB.prepare(
-    `SELECT market_id, event_id, platform, last_price, last_updated_at, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
+    `SELECT market_id, event_id, platform, last_price, last_updated_at, last_checked_at, resolution_clarity_grade, rcg_score, status FROM markets WHERE event_id IN (${ph})`
   ).bind(...ids).all<any>();
   const byEvent = new Map<string, any[]>();
   for (const m of mkts) (byEvent.get(m.event_id) ?? byEvent.set(m.event_id, []).get(m.event_id)!).push(m);
@@ -585,90 +606,156 @@ async function createKey(env: Env, req: Request): Promise<Response> {
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
-// Returns the set of platform_market_ids seen in the live OPEN venue feed this run, so the daily
-// reconcileStatus pass can reuse the exact same snapshot (zero extra open-feed subrequests, and no
-// drift between "what marks saw" and "what reconcile treats as still-listed").
-async function refreshMarks(env: Env): Promise<Set<string>> {
+// ---- run ledger + feed metadata -----------------------------------------
+// Every cron step writes one cron_runs row (run_id = the UTC hour it ran in). This is how a stalled
+// step leaves a trace instead of a console.log nobody reads, and what /v1/status reports under runs[].
+async function recordRun(env: Env, runId: string, step: string, venue: string, startedAt: string,
+                         fetched: number | null, changed: number | null, error: string | null): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO cron_runs (run_id, step, venue, started_at, finished_at, fetched, changed, error)
+       VALUES (?,?,?,?,?,?,?,?)
+       ON CONFLICT(run_id, step, venue) DO UPDATE SET finished_at=excluded.finished_at, fetched=excluded.fetched,
+         changed=excluded.changed, error=excluded.error`
+    ).bind(runId, step, venue, startedAt, new Date().toISOString(), fetched, changed, error).run();
+  } catch (e) { console.error('cron_runs write failed', e); }
+}
+async function setMeta(env: Env, key: string, value: string | null): Promise<void> {
+  try {
+    await env.DB.prepare(
+      `INSERT INTO feed_meta (key, value, updated_at) VALUES (?,?,?)
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at`
+    ).bind(key, value, new Date().toISOString()).run();
+  } catch (e) { console.error('feed_meta write failed', e); }
+}
+const errStr = (e: unknown) => String((e as any)?.message ?? e).slice(0, 500);
+// Retries 429 and 5xx with backoff (venues rate-limit a full 300-page scan now and then); other 4xx throw.
+async function fetchJson(url: string, ua?: string, tries = 4): Promise<any> {
+  let last: Response | null = null;
+  for (let attempt = 0; attempt < tries; attempt++) {
+    if (attempt) await new Promise((res) => setTimeout(res, 1500 * 2 ** (attempt - 1)));   // 1.5s, 3s, 6s
+    const r = await fetch(url, ua ? { headers: { 'User-Agent': ua } } : undefined);
+    if (r.ok) return r.json();
+    last = r;
+    if (r.status !== 429 && r.status < 500) break;
+  }
+  throw new Error(`HTTP ${last?.status} from ${new URL(url).host}`);
+}
+
+// Returns the set of platform_market_ids seen in the live OPEN venue feed this run (so the daily
+// reconcileStatus pass reuses the exact same snapshot) plus a per-venue ok flag: a venue whose fetch
+// FAILED must not be treated as "returned nothing" downstream (that would read as every market delisted).
+// Every market seen in a live feed gets last_checked_at stamped, changed or not — the second clock.
+type VenueOk = { kalshi: boolean; polymarket: boolean };
+async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<string>; venueOk: VenueOk }> {
+  const startedAt = new Date().toISOString();
   const { results } = await env.DB.prepare(
-    `SELECT market_id, platform_market_id, last_price, volume_24h_usd, volume_total_usd FROM markets
+    `SELECT market_id, platform, platform_market_id, last_price, volume_24h_usd, volume_total_usd FROM markets
      WHERE platform_market_id IS NOT NULL AND status = 'open'`
-  ).all<{ market_id: string; platform_market_id: string; last_price: number | null; volume_24h_usd: number | null; volume_total_usd: number | null }>();
-  const want = new Map<string, { mid: string; price: number | null; v24: number | null; vtot: number | null }>();
-  for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, price: r.last_price, v24: r.volume_24h_usd, vtot: r.volume_total_usd });
-  if (!want.size) return new Set();
+  ).all<{ market_id: string; platform: string; platform_market_id: string; last_price: number | null; volume_24h_usd: number | null; volume_total_usd: number | null }>();
+  type Want = { mid: string; platform: string; price: number | null; v24: number | null; vtot: number | null };
+  const want = new Map<string, Want>();
+  for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, platform: r.platform, price: r.last_price, v24: r.volume_24h_usd, vtot: r.volume_total_usd });
+  const venueOk: VenueOk = { kalshi: true, polymarket: true };
+  const venueErr: Record<string, string | null> = { kalshi: null, polymarket: null };
+  if (!want.size) return { seenOpen: new Set(), venueOk };
 
   type Mark = { price: number; v24: number; vtot: number };
   const fresh = new Map<string, Mark>();
   // Every tracked market the live OPEN feed returned this run (priced or not). This — NOT fresh —
-  // is the "still listed" signal handed to reconcileStatus, so an open-but-untraded market (no price,
-  // so absent from `fresh`) is never mistaken for delisted.
+  // is the "still listed" signal: an open-but-untraded market (no price) is never mistaken for delisted.
   const seenOpen = new Set<string>();
 
-  // Kalshi: paginate open events with nested markets. Caps are a safety backstop; the whole open
-  // venue universe must be scanned to cover ~11.5k tracked markets, so log if a cap is hit (tail
-  // would silently get no fresh price). Subrequest budget is fine on Workers Paid.
-  let cursor: string | undefined;
-  let kHitCap = true;
-  for (let i = 0; i < 300; i++) {
-    const u = new URL(`${KALSHI_BASE}/events`);
-    u.searchParams.set('with_nested_markets', 'true');
-    u.searchParams.set('status', 'open');
-    u.searchParams.set('limit', '200');
-    if (cursor) u.searchParams.set('cursor', cursor);
-    const d: any = await (await fetch(u.toString(), { headers: { 'User-Agent': 'clearmarket-marks/0.1' } })).json();
-    for (const ev of d.events ?? [])
-      for (const m of ev.markets ?? [])
-        if (want.has(m.ticker)) {
-          seenOpen.add(m.ticker);
-          if (m.last_price_dollars != null) {
-            const px = Number(m.last_price_dollars);
-            // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
-            fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
+  // Kalshi: paginate open events with nested markets. The whole open universe must be scanned; the cap
+  // is a safety backstop and is reported as an error so the tail cannot go unrefreshed silently.
+  try {
+    let cursor: string | undefined;
+    let hitCap = true;
+    for (let i = 0; i < 300; i++) {
+      const u = new URL(`${KALSHI_BASE}/events`);
+      u.searchParams.set('with_nested_markets', 'true');
+      u.searchParams.set('status', 'open');
+      u.searchParams.set('limit', '200');
+      if (cursor) u.searchParams.set('cursor', cursor);
+      const d: any = await fetchJson(u.toString(), 'clearmarket-marks/0.1');
+      if (!Array.isArray(d?.events)) throw new Error('unexpected body: no events[] (venue schema change?)');
+      for (const ev of d.events)
+        for (const m of ev.markets ?? [])
+          if (want.has(m.ticker)) {
+            seenOpen.add(m.ticker);
+            // A missing price field on a listed market is a schema change, not "no trade": skip the price
+            // write (last_checked_at still stamps) rather than freezing every Kalshi price silently.
+            if (m.last_price_dollars != null) {
+              const px = Number(m.last_price_dollars);
+              // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
+              fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
+            }
           }
-        }
-    cursor = d.cursor;
-    if (!cursor) { kHitCap = false; break; }
-  }
-  if (kHitCap) console.warn('marks refresh: Kalshi pagination cap hit — tail markets may be unrefreshed; raise cap');
+      cursor = d.cursor;
+      if (!cursor) { hitCap = false; break; }
+    }
+    if (hitCap) venueErr.kalshi = 'pagination cap hit — tail markets unrefreshed; raise cap';
+  } catch (e) { venueOk.kalshi = false; venueErr.kalshi = errStr(e); console.error('marks refresh: kalshi failed:', venueErr.kalshi); }
 
-  // Polymarket: paginate open Gamma events
-  let offset = 0;
-  let pHitCap = true;
-  for (let i = 0; i < 300; i++) {
-    const u = new URL(`${POLY_GAMMA}/events`);
-    u.searchParams.set('closed', 'false');
-    u.searchParams.set('limit', '100');
-    u.searchParams.set('offset', String(offset));
-    const b: any = await (await fetch(u.toString())).json();
-    if (!Array.isArray(b)) { pHitCap = false; break; }
-    for (const ev of b)
-      for (const m of ev.markets ?? [])
-        if (want.has(m.conditionId)) {
-          seenOpen.add(m.conditionId);
-          if (m.lastTradePrice != null)
-            // Polymarket volumes are USD-native.
-            fresh.set(m.conditionId, { price: Number(m.lastTradePrice), v24: Number(m.volume24hr ?? 0), vtot: Number(m.volume ?? 0) });
-        }
-    offset += 100;
-    if (b.length < 100) { pHitCap = false; break; }
-  }
-  if (pHitCap) console.warn('marks refresh: Polymarket pagination cap hit — tail markets may be unrefreshed; raise cap');
+  // Polymarket: paginate open Gamma events. A non-array FIRST page is a failure; a non-array later page is end-of-list.
+  try {
+    let offset = 0;
+    let hitCap = true;
+    for (let i = 0; i < 300; i++) {
+      const u = new URL(`${POLY_GAMMA}/events`);
+      u.searchParams.set('closed', 'false');
+      u.searchParams.set('limit', '100');
+      u.searchParams.set('offset', String(offset));
+      let b: any;
+      try { b = await fetchJson(u.toString()); }
+      catch (e) {
+        // Gamma returns 422 when offset passes its ceiling: that is the end of the list, not an outage.
+        if (offset > 0 && /HTTP 422/.test(errStr(e))) { hitCap = false; break; }
+        throw e;
+      }
+      if (!Array.isArray(b)) { if (offset === 0) throw new Error('unexpected body: not an array (venue schema change?)'); hitCap = false; break; }
+      for (const ev of b)
+        for (const m of ev.markets ?? [])
+          if (want.has(m.conditionId)) {
+            seenOpen.add(m.conditionId);
+            if (m.lastTradePrice != null)
+              // Polymarket volumes are USD-native.
+              fresh.set(m.conditionId, { price: Number(m.lastTradePrice), v24: Number(m.volume24hr ?? 0), vtot: Number(m.volume ?? 0) });
+          }
+      offset += 100;
+      if (b.length < 100) { hitCap = false; break; }
+    }
+    if (hitCap) venueErr.polymarket = 'pagination cap hit — tail markets unrefreshed; raise cap';
+  } catch (e) { venueOk.polymarket = false; venueErr.polymarket = errStr(e); console.error('marks refresh: polymarket failed:', venueErr.polymarket); }
 
-  // Write movers: skip only when price AND both volume figures are unchanged (the dead tail stays
-  // cheap), so active markets get fresh price + volume — the latter feeds marks_daily → the /movers
-  // day-over-day signal, which was inert while volume was frozen at the monthly seed value.
+  // Writes. Movers: price+volume+both clocks. Seen-but-unchanged: last_checked_at only (batched IN lists).
   const nowIso = new Date().toISOString();
   const stmts: D1PreparedStatement[] = [];
+  const checkedOnly: string[] = [];
+  const seenBy: Record<string, number> = { kalshi: 0, polymarket: 0 };
+  const changedBy: Record<string, number> = { kalshi: 0, polymarket: 0 };
   for (const [pmid, w] of want) {
+    if (!seenOpen.has(pmid)) continue;
+    seenBy[w.platform] = (seenBy[w.platform] ?? 0) + 1;
     const f = fresh.get(pmid);
-    if (f == null) continue;
-    if (f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot) continue;
-    stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?, last_updated_at = ? WHERE market_id = ?')
-      .bind(f.price, f.v24, f.vtot, nowIso, w.mid));
+    if (f && !(f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot)) {
+      changedBy[w.platform] = (changedBy[w.platform] ?? 0) + 1;
+      stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?, last_updated_at = ?, last_checked_at = ? WHERE market_id = ?')
+        .bind(f.price, f.v24, f.vtot, nowIso, nowIso, w.mid));
+    } else {
+      checkedOnly.push(w.mid);
+    }
+  }
+  const changed = stmts.length;
+  for (let i = 0; i < checkedOnly.length; i += 90) {
+    const ids = checkedOnly.slice(i, i + 90);
+    stmts.push(env.DB.prepare(`UPDATE markets SET last_checked_at = ? WHERE market_id IN (${ids.map(() => '?').join(',')})`).bind(nowIso, ...ids));
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-  console.log(`marks refresh: ${stmts.length} changed / ${want.size} open markets`);
-  return seenOpen;
+  console.log(`marks refresh: ${changed} changed / ${seenOpen.size} seen / ${want.size} open markets (kalshi ${venueOk.kalshi ? 'ok' : 'FAILED'}, polymarket ${venueOk.polymarket ? 'ok' : 'FAILED'})`);
+  await recordRun(env, runId, 'marks', 'kalshi', startedAt, venueOk.kalshi ? seenBy.kalshi : null, venueOk.kalshi ? changedBy.kalshi : null, venueErr.kalshi);
+  await recordRun(env, runId, 'marks', 'polymarket', startedAt, venueOk.polymarket ? seenBy.polymarket : null, venueOk.polymarket ? changedBy.polymarket : null, venueErr.polymarket);
+  return { seenOpen, venueOk };
 }
 
 // ---- crypto spot (free, keyless CoinGecko — underlying context for crypto price markets) ----
@@ -697,21 +784,29 @@ async function refreshSpot(env: Env): Promise<void> {
 // Scoped to all open markets — same set refreshMarks now keeps fresh.
 const EOD_UTC_HOUR = 21; // ~5pm EDT / 4pm EST — end of the US day
 
-async function snapshotDaily(env: Env): Promise<void> {
-  const day = new Date().toISOString().slice(0, 10);
-  const now = new Date().toISOString();
+async function snapshotDaily(env: Env, runId: string): Promise<void> {
+  const startedAt = new Date().toISOString();
+  const day = startedAt.slice(0, 10);
+  // price_as_of = when the stored price last CHANGED. carried_forward = 1 when the market was not seen
+  // in any live venue feed in the last 24h, i.e. the row repeats an old value rather than an observation.
+  // Rows before 2026-09-17 have NULL in both: that history cannot be corrected retroactively.
+  const checkedCutoff = isoAgo(24);
   const res = await env.DB.prepare(
-    `INSERT INTO marks_daily (market_id, day, last_price, volume_24h_usd, volume_total_usd, captured_at)
-     SELECT market_id, ?, last_price, volume_24h_usd, volume_total_usd, ?
+    `INSERT INTO marks_daily (market_id, day, last_price, volume_24h_usd, volume_total_usd, captured_at, price_as_of, carried_forward)
+     SELECT market_id, ?, last_price, volume_24h_usd, volume_total_usd, ?, last_updated_at,
+            CASE WHEN last_checked_at IS NOT NULL AND last_checked_at >= ? THEN 0 ELSE 1 END
        FROM markets
       WHERE last_price IS NOT NULL AND status = 'open'
      ON CONFLICT(market_id, day) DO UPDATE SET
         last_price = excluded.last_price,
         volume_24h_usd = excluded.volume_24h_usd,
         volume_total_usd = excluded.volume_total_usd,
-        captured_at = excluded.captured_at`
-  ).bind(day, now).run();
+        captured_at = excluded.captured_at,
+        price_as_of = excluded.price_as_of,
+        carried_forward = excluded.carried_forward`
+  ).bind(day, startedAt, checkedCutoff).run();
   console.log(`marks_daily snapshot ${day}: ${res.meta?.changes ?? '?'} rows`);
+  await recordRun(env, runId, 'snapshot', '', startedAt, null, res.meta?.changes ?? null, null);
 }
 
 // ---- daily status reconciliation (zombie killer) ----------------------
@@ -728,7 +823,7 @@ const SETTLE_WINDOW_DAYS = 14;  // recently-settled lookback; tolerates a few mi
 type RowLite = { market_id: string; event_id: string; platform: string };
 function resLogRow(env: Env, m: RowLite, eventType: string, fromV: string | null, toV: string,
                    finalPrice: number | null, settleTime: string | null, deadline: string | null,
-                   recordedAt: string): D1PreparedStatement {
+                   recordedAt: string, actor = 'clearmarket-reconcile-cron'): D1PreparedStatement {
   // occurred_at is half the (market_id, occurred_at) PK — never bind NULL (SQLite treats NULLs as
   // distinct, which would let duplicate rows accrue), so fall back deadline -> record time.
   // The basis says which clock occurred_at holds; only a real venue timestamp may claim settlement.
@@ -738,17 +833,18 @@ function resLogRow(env: Env, m: RowLite, eventType: string, fromV: string | null
     `INSERT INTO resolution_log (market_id, event_id, platform, event_type, occurred_at, occurred_basis, recorded_at, from_value, to_value, final_price, source, source_ref, actor)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(market_id, occurred_at) DO NOTHING`
   ).bind(m.market_id, m.event_id, m.platform, eventType, occurredAt, basis, recordedAt,
-         fromV, toV, finalPrice, 'platform_api', null, 'clearmarket-reconcile-cron');
+         fromV, toV, finalPrice, 'platform_api', null, actor);
 }
 
-async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
+async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): Promise<void> {
+  const startedAt = new Date().toISOString();
   const { results } = await env.DB.prepare(
     `SELECT market_id, event_id, platform, platform_market_id, close_at FROM markets
      WHERE platform_market_id IS NOT NULL AND status = 'open'`
   ).all<{ market_id: string; event_id: string; platform: string; platform_market_id: string; close_at: string | null }>();
 
   const unseen = results.filter((r) => !seenOpen.has(r.platform_market_id));
-  if (!unseen.length) { console.log('reconcile: 0 unseen open markets'); return; }
+  if (!unseen.length) { console.log('reconcile: 0 unseen open markets'); await recordRun(env, runId, 'reconcile', '', startedAt, 0, 0, null); return; }
 
   // recently-settled feeds -> platform_market_id -> { resolved, price (settlement, 0..1), closeTime,
   // settleTime }. closeTime is deadline-class metadata (endDate/close_time) used for resolve_at;
@@ -865,6 +961,264 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>): Promise<void> {
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
   console.log(`reconcile: ${unseen.length} unseen / ${results.length} open -> resolved ${counts.resolved}, closed ${counts.closed}, left-open ${counts.left}`);
+  await recordRun(env, runId, 'reconcile', '', startedAt, unseen.length, counts.resolved + counts.closed, null);
+}
+
+// ---- daily site-side results -> D1 ----------------------------------------
+// Two GitHub jobs already fix data every morning but only in the R2 bundle the website renders from:
+// the 06:30 UTC past-due sweep (statuses) and the 08:00 UTC eligibility screen. Until 2026-09-17 D1 —
+// the API TMX pulls — only learned about either at the monthly reload, so site and API disagreed for
+// weeks at a time (6,286 markets the site knew were settled still served as open). The jobs now also
+// publish small JSON files to R2; at APPLY_UTC_HOUR the Worker fetches and applies them. Idempotent:
+// only still-open rows change, resolution_log inserts are ON CONFLICT DO NOTHING, and a file is applied once.
+const DATA_BASE_DEFAULT = 'https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev';
+const APPLY_UTC_HOUR = 9;      // after the 06:30 sweep and the 08:00 screen run have both uploaded
+const SWEEP_FILE = 'status-sweep-latest.json';
+const SCREEN_REGIME = 'ciro-26-0076';
+
+type SweepChange = { market_id: string; status: string; last_price?: number | null; settled_at?: string | null; close_at?: string | null; resolve_at?: string | null };
+type ApplyResult = { step: string; applied: number; total: number; file_generated_at: string | null; skipped?: string; error?: string };
+
+async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<ApplyResult> {
+  const startedAt = new Date().toISOString();
+  const base = env.DATA_BASE ?? DATA_BASE_DEFAULT;
+  try {
+    const f: any = await fetchJson(`${base}/${file}?t=${Date.now()}`);
+    const changes: SweepChange[] = Array.isArray(f?.changes) ? f.changes : [];
+    const generatedAt: string | null = f?.generated_at ?? null;
+    if (!generatedAt || isNaN(Date.parse(generatedAt))) throw new Error('sweep file has no generated_at');
+    if (Date.parse(generatedAt) < Date.now() - 3 * 864e5) throw new Error(`sweep file stale (generated_at=${generatedAt}) — is freshness-daily.yml running?`);
+    const last = await env.DB.prepare(`SELECT value FROM feed_meta WHERE key='sweep_last_applied'`).first<{ value: string }>();
+    if (last?.value === generatedAt && file === SWEEP_FILE) {
+      await recordRun(env, runId, 'sweep_apply', '', startedAt, changes.length, 0, null);
+      return { step: 'sweep_apply', applied: 0, total: changes.length, file_generated_at: generatedAt, skipped: 'already applied' };
+    }
+    // Current D1 truth for the named markets, still-open rows only (chunked: D1 binds cap at 100).
+    const cur = new Map<string, { event_id: string; platform: string; close_at: string | null }>();
+    const ids = changes.map((c) => c.market_id).filter(Boolean);
+    for (let i = 0; i < ids.length; i += 90) {
+      const chunk = ids.slice(i, i + 90);
+      const { results } = await env.DB.prepare(
+        `SELECT market_id, event_id, platform, close_at FROM markets WHERE status='open' AND market_id IN (${chunk.map(() => '?').join(',')})`
+      ).bind(...chunk).all<{ market_id: string; event_id: string; platform: string; close_at: string | null }>();
+      for (const r of results) cur.set(r.market_id, r);
+    }
+    const nowIso = new Date().toISOString();
+    const stmts: D1PreparedStatement[] = [];
+    const logStmts: D1PreparedStatement[] = [];
+    for (const c of changes) {
+      const row = cur.get(c.market_id);
+      if (!row || (c.status !== 'resolved' && c.status !== 'closed')) continue;
+      const price = c.status === 'resolved' && typeof c.last_price === 'number' ? c.last_price : null;
+      stmts.push(env.DB.prepare(`UPDATE markets SET status=?, last_price=COALESCE(?, last_price), reconciled_at=? WHERE market_id=? AND status='open'`)
+        .bind(c.status, price, nowIso, c.market_id));
+      logStmts.push(resLogRow(env, { market_id: c.market_id, event_id: row.event_id, platform: row.platform },
+        c.status === 'resolved' ? 'resolved' : 'status_change', 'open', c.status, price,
+        c.settled_at ?? null, c.close_at ?? c.resolve_at ?? row.close_at, nowIso, 'clearmarket-sweep-apply'));
+    }
+    for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
+    for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
+    if (file === SWEEP_FILE) await setMeta(env, 'sweep_last_applied', generatedAt);
+    await setMeta(env, 'sweep_last_run', nowIso);
+    await recordRun(env, runId, 'sweep_apply', '', startedAt, changes.length, stmts.length, null);
+    console.log(`sweep apply: ${stmts.length} of ${changes.length} changes applied (file ${generatedAt})`);
+    return { step: 'sweep_apply', applied: stmts.length, total: changes.length, file_generated_at: generatedAt };
+  } catch (e) {
+    const msg = errStr(e); console.error('sweep apply failed:', msg);
+    await recordRun(env, runId, 'sweep_apply', '', startedAt, null, null, msg);
+    return { step: 'sweep_apply', applied: 0, total: 0, file_generated_at: null, error: msg };
+  }
+}
+
+// Eligibility screen -> D1. The screen run is deterministic and daily; a record is rewritten only when its
+// status/reasons/category/version differ from what D1 holds, stamped with the run's screened_at. So
+// screened_at on a record = when THAT record's result last changed; the run date lives in feed_meta.
+async function applyScreen(env: Env, runId: string, regime = SCREEN_REGIME): Promise<ApplyResult> {
+  const startedAt = new Date().toISOString();
+  const base = env.DATA_BASE ?? DATA_BASE_DEFAULT;
+  try {
+    const [byMarket, summary]: [Record<string, any>, any] = await Promise.all([
+      fetchJson(`${base}/eligibility-${regime}.json?t=${Date.now()}`),
+      fetchJson(`${base}/eligibility-${regime}-summary.json?t=${Date.now()}`),
+    ]);
+    const version: string | undefined = summary?.screen_version;
+    const screenedAt: string | undefined = summary?.screened_at;
+    if (!version || !screenedAt) throw new Error('screen summary lacks screen_version/screened_at');
+    const ids = Object.keys(byMarket ?? {});
+    if (ids.length < 1000) throw new Error(`screen file suspiciously small (${ids.length} records) — not applied`);
+    const norm = (r: any) => JSON.stringify({ s: r?.status ?? null, r: [...(r?.reasons ?? [])].sort(), c: r?.permitted_category ?? r?.bucket ?? null, v: r?.screen_version ?? null });
+    const stmts: D1PreparedStatement[] = [];
+    for (let i = 0; i < ids.length; i += 90) {
+      const chunk = ids.slice(i, i + 90);
+      const { results } = await env.DB.prepare(
+        `SELECT market_id, eligibility_screens FROM markets WHERE market_id IN (${chunk.map(() => '?').join(',')})`
+      ).bind(...chunk).all<{ market_id: string; eligibility_screens: string | null }>();
+      for (const r of results) {
+        const s = byMarket[r.market_id];
+        const next = { regime: s.regime ?? regime, screen_version: version, status: s.status, reasons: s.reasons ?? [],
+                       permitted_category: s.permitted_category ?? s.bucket ?? null, screened_at: s.screened_at ?? screenedAt };
+        const have = parseJson(r.eligibility_screens, null);
+        const haveRec = Array.isArray(have) ? have.find((x: any) => x?.regime === next.regime) : null;
+        if (haveRec && norm(haveRec) === norm(next)) continue;
+        const others = Array.isArray(have) ? have.filter((x: any) => x?.regime !== next.regime) : [];
+        stmts.push(env.DB.prepare('UPDATE markets SET eligibility_screens = ? WHERE market_id = ?').bind(JSON.stringify([...others, next]), r.market_id));
+      }
+    }
+    for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
+    await setMeta(env, 'screen_last_run', screenedAt);
+    await setMeta(env, 'screen_version', version);
+    await setMeta(env, 'screen_records', String(ids.length));
+    await recordRun(env, runId, 'screen_apply', '', startedAt, ids.length, stmts.length, null);
+    console.log(`screen apply: ${stmts.length} of ${ids.length} records changed (screen ${version} @ ${screenedAt})`);
+    return { step: 'screen_apply', applied: stmts.length, total: ids.length, file_generated_at: screenedAt };
+  } catch (e) {
+    const msg = errStr(e); console.error('screen apply failed:', msg);
+    await recordRun(env, runId, 'screen_apply', '', startedAt, null, null, msg);
+    return { step: 'screen_apply', applied: 0, total: 0, file_generated_at: null, error: msg };
+  }
+}
+
+// ---- /v1/marks — bulk + incremental pull ----------------------------------
+// The way to consume the hourly cadence. Without since= it is the baseline (every market, 1,000 per
+// page); with since=<ISO> it returns only markets whose price/volume or status changed after that
+// instant. Keyset pagination on (changed_at, market_id) so a walk during the hourly refresh never
+// duplicates or drops a row. changed_at = max(price change, status verification); last_checked_at is
+// returned but does not by itself count as a change.
+const CHANGED_EXPR = `MAX(COALESCE(last_updated_at,''), COALESCE(reconciled_at,''))`;
+const b64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
+const unb64 = (s: string) => decodeURIComponent(escape(atob(s)));
+
+async function listMarks(env: Env, url: URL): Promise<Response> {
+  const p = url.searchParams;
+  const limit = Math.min(Math.max(Number(p.get('limit') ?? 500) || 500, 1), 1000);
+  const where: string[] = []; const args: any[] = [];
+  const since = p.get('since');
+  if (since) {
+    if (isNaN(Date.parse(since))) return err(400, 'since must be an ISO-8601 timestamp', 'e.g. since=2026-09-17T13:00:00Z');
+    where.push(`${CHANGED_EXPR} > ?`); args.push(new Date(since).toISOString());
+  }
+  const cursor = p.get('cursor');
+  if (cursor) {
+    let ca = '', mid = '';
+    try { [ca, mid] = unb64(cursor).split('|'); } catch { return err(400, 'bad cursor'); }
+    where.push(`(${CHANGED_EXPR} > ? OR (${CHANGED_EXPR} = ? AND market_id > ?))`); args.push(ca, ca, mid);
+  }
+  const status = p.get('status');
+  if (status) {
+    if (!['open', 'resolved', 'closed'].includes(status)) return err(400, 'status must be open, resolved or closed');
+    where.push('status = ?'); args.push(status);
+  }
+  const platform = p.get('platform');
+  if (platform) {
+    if (!KNOWN_PLATFORMS.includes(platform)) return err(400, `platform must be one of ${KNOWN_PLATFORMS.join(', ')}`);
+    where.push('platform = ?'); args.push(platform);
+  }
+  const sql = `SELECT market_id, event_id, platform, platform_market_id, status, last_price, volume_24h_usd, volume_total_usd,
+                      last_updated_at, last_checked_at, reconciled_at, resolve_at, close_at, ${CHANGED_EXPR} AS changed_at
+                 FROM markets ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+                ORDER BY changed_at, market_id LIMIT ?`;
+  args.push(limit + 1);
+  const { results } = await env.DB.prepare(sql).bind(...args).all<any>();
+  const more = results.length > limit;
+  const rows = more ? results.slice(0, limit) : results;
+  const last = rows[rows.length - 1];
+  const marks = rows.map((r) => ({
+    market_id: r.market_id, event_id: r.event_id, platform: r.platform, platform_market_id: r.platform_market_id,
+    status: r.status,
+    last_price: num(r.last_price), implied_probability: num(r.last_price),
+    volume_24h_usd: num(r.volume_24h_usd), volume_total_usd: num(r.volume_total_usd),
+    price_as_of: r.last_updated_at ?? null,       // last time the price changed
+    last_checked_at: r.last_checked_at ?? null,   // last time seen in a live venue feed (NULL = not since reload)
+    reconciled_at: r.reconciled_at ?? null,       // last time status was verified against the venue
+    changed_at: r.changed_at || null,
+    resolve_at: r.resolve_at ?? null, close_at: r.close_at ?? null,
+  }));
+  return json({
+    as_of: new Date().toISOString(), schema_version: SCHEMA_VERSION, since: since ? new Date(since).toISOString() : null,
+    count: marks.length, next_cursor: more && last ? b64(`${last.changed_at ?? ''}|${last.market_id}`) : null,
+    docs: 'Baseline: GET /v1/marks (page with next_cursor). Incremental: GET /v1/marks?since=<ISO of your last as_of>. Filters: status, platform. Max 1000/page. Timestamps UTC.',
+    _notice: NOTICE, marks,
+  }, 200, { 'Cache-Control': 'no-store' });
+}
+
+// ---- /v1/status — feed integrity ------------------------------------------
+// One object, computed from D1, that says whether each core pipeline is fresh. Same URL serves the
+// hourly GitHub check that emails the operator and any consumer's DevOps poll. Core = prices, daily
+// history, status reconcile, sweep apply, eligibility screen. Signal-side feeds are reported as non_core.
+const THRESHOLDS = { prices_hours: 2, history_days: 1, reconcile_hours: 30, sweep_hours: 30, screen_days: 45 };
+type CheckState = 'ok' | 'stale' | 'degraded';
+type Check = { name: string; state: CheckState; as_of: string | null; age_hours: number | null; threshold: string; detail: Record<string, unknown> };
+
+async function statusReport(env: Env): Promise<Response> {
+  const now = Date.now();
+  const ageH = (iso: string | null | undefined) => (iso && !isNaN(Date.parse(iso)) ? Math.round(((now - Date.parse(iso)) / 3600e3) * 10) / 10 : null);
+  const two = isoAgo(THRESHOLDS.prices_hours);
+  const [byStatus, open, hist, recon, runs, meta, vintage, spot, screenRow] = await Promise.all([
+    env.DB.prepare('SELECT status, COUNT(*) n FROM markets GROUP BY status').all<{ status: string; n: number }>(),
+    env.DB.prepare(`SELECT MAX(last_updated_at) last_change, MAX(last_checked_at) last_checked, SUM(last_checked_at >= ?) checked_recent,
+                           SUM(last_updated_at >= ?) changed_recent, SUM(last_checked_at IS NULL) never_checked, COUNT(*) n
+                      FROM markets WHERE status='open'`).bind(two, two).first<any>(),
+    env.DB.prepare(`SELECT day, COUNT(*) n, SUM(COALESCE(carried_forward,0)) carried, SUM(carried_forward IS NULL) unflagged
+                      FROM marks_daily WHERE day = (SELECT MAX(day) FROM marks_daily)`).first<any>(),
+    env.DB.prepare('SELECT MAX(reconciled_at) last FROM markets').first<{ last: string | null }>(),
+    env.DB.prepare(`SELECT step, venue, started_at, finished_at, fetched, changed, error FROM cron_runs
+                     WHERE (step, venue, started_at) IN (SELECT step, venue, MAX(started_at) FROM cron_runs GROUP BY step, venue)
+                     ORDER BY step, venue`).all<any>().catch(() => ({ results: [] as any[] })),
+    env.DB.prepare('SELECT key, value, updated_at FROM feed_meta').all<{ key: string; value: string | null; updated_at: string }>().catch(() => ({ results: [] as any[] })),
+    env.DB.prepare('SELECT MAX(updated_at) v FROM events').first<{ v: string | null }>(),
+    env.DB.prepare('SELECT MAX(as_of) as_of FROM spot').first<{ as_of: string | null }>().catch(() => null),
+    env.DB.prepare('SELECT eligibility_screens FROM markets WHERE eligibility_screens IS NOT NULL LIMIT 1').first<{ eligibility_screens: string }>(),
+  ]);
+  const metaMap = new Map<string, string | null>((meta.results as any[]).map((r) => [r.key, r.value]));
+  const counts: Record<string, number> = {}; for (const r of byStatus.results) counts[r.status] = r.n;
+
+  const checks: Check[] = [];
+  // 1. prices — the hourly promise
+  const pricesAsOf = open?.last_checked ?? open?.last_change ?? null;
+  const pAge = ageH(pricesAsOf);
+  checks.push({ name: 'prices', state: pAge == null || pAge > THRESHOLDS.prices_hours ? 'stale' : 'ok', as_of: pricesAsOf, age_hours: pAge,
+    threshold: `${THRESHOLDS.prices_hours}h since a live-feed check`,
+    detail: { open_markets: open?.n ?? 0, seen_in_live_feed_last_2h: open?.checked_recent ?? 0, price_changed_last_2h: open?.changed_recent ?? 0,
+              never_seen_since_reload: open?.never_checked ?? 0, last_price_change: open?.last_change ?? null } });
+  // 2. daily history — one snapshot per UTC day at 21:00; by the next day's start yesterday must exist
+  const expectDay = new Date(now - 864e5).toISOString().slice(0, 10);
+  const histOk = !!hist?.day && hist.day >= expectDay;
+  checks.push({ name: 'history', state: histOk ? 'ok' : 'stale', as_of: hist?.day ?? null, age_hours: hist?.day ? ageH(`${hist.day}T21:00:00Z`) : null,
+    threshold: `snapshot for ${expectDay} or later`, detail: { latest_day: hist?.day ?? null, rows: hist?.n ?? 0, carried_forward_rows: hist?.carried ?? null, unflagged_rows: hist?.unflagged ?? null } });
+  // 3. status reconcile (Worker, 06:00 UTC)
+  const rAge = ageH(recon?.last);
+  checks.push({ name: 'reconcile', state: rAge == null || rAge > THRESHOLDS.reconcile_hours ? 'stale' : 'ok', as_of: recon?.last ?? null, age_hours: rAge,
+    threshold: `${THRESHOLDS.reconcile_hours}h`, detail: {} });
+  // 4. sweep apply (site-side sweep results into D1, 09:00 UTC)
+  const sAsOf = metaMap.get('sweep_last_run') ?? null; const sAge = ageH(sAsOf);
+  checks.push({ name: 'sweep_apply', state: sAge == null || sAge > THRESHOLDS.sweep_hours ? 'stale' : 'ok', as_of: sAsOf, age_hours: sAge,
+    threshold: `${THRESHOLDS.sweep_hours}h`, detail: { file_generated_at: metaMap.get('sweep_last_applied') ?? null, ...(sAsOf ? {} : { reason: 'never_run' }) } });
+  // 5. eligibility screen — run date from feed_meta once applyScreen has run; else the record stamp
+  let screenAsOf = metaMap.get('screen_last_run') ?? null, screenVersion = metaMap.get('screen_version') ?? null;
+  if (!screenAsOf && screenRow?.eligibility_screens) {
+    const rec = parseJson(screenRow.eligibility_screens, null); const r0 = Array.isArray(rec) ? rec[0] : null;
+    screenAsOf = r0?.screened_at ?? null; screenVersion = r0?.screen_version ?? null;
+  }
+  const scAge = ageH(screenAsOf ? `${screenAsOf.slice(0, 10)}T00:00:00Z` : null);
+  checks.push({ name: 'screen', state: scAge == null || scAge > THRESHOLDS.screen_days * 24 ? 'stale' : 'ok', as_of: screenAsOf, age_hours: scAge,
+    threshold: `${THRESHOLDS.screen_days}d`, detail: { regime: SCREEN_REGIME, screen_version: screenVersion, records: metaMap.get('screen_records') ?? null } });
+
+  // degraded: data still within threshold but the latest run of a step reported an error
+  const failing = (runs.results as any[]).filter((r) => r.error);
+  const stepFor: Record<string, string> = { prices: 'marks', history: 'snapshot', reconcile: 'reconcile', sweep_apply: 'sweep_apply', screen: 'screen_apply' };
+  for (const c of checks) if (c.state === 'ok' && failing.some((r) => r.step === stepFor[c.name])) c.state = 'degraded';
+  const rank: Record<CheckState, number> = { ok: 0, degraded: 1, stale: 2 };
+  const overall = checks.reduce<CheckState>((w, c) => (rank[c.state] > rank[w] ? c.state : w), 'ok');
+
+  return json({
+    service: 'clearmarket-api', as_of: new Date(now).toISOString(), schema_version: SCHEMA_VERSION,
+    state: overall,
+    checks,
+    dataset: { bundle_vintage: vintage?.v ?? null, markets_by_status: counts, notes: 'bundle_vintage = enrichment reload; grades/links change only then. Prices hourly; statuses daily.' },
+    runs: runs.results,
+    non_core: { spot: { as_of: spot?.as_of ?? null, age_hours: ageH(spot?.as_of), note: 'CM Signal context feed, not part of the reference dataset' } },
+    docs: 'state = worst of checks[]. ok | degraded (fresh, but the latest run of a step reported an error) | stale (a core pipeline is past its threshold). Timestamps UTC.',
+  }, 200, { 'Cache-Control': 'no-store' });
 }
 
 // ---- agent-economy discovery documents ----------------------------------
@@ -948,7 +1302,7 @@ const API_CATALOG = {
 };
 
 // ---- router ------------------------------------------------------------
-export default {
+const worker = {
   async fetch(req: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
@@ -969,7 +1323,9 @@ export default {
       return json({
         service: 'clearmarket-api',
         status: 'ok',
-        schema: 'v0.2.0',
+        schema: SCHEMA_VERSION,
+        status_url: '/v1/status',
+        marks_url: '/v1/marks?since=<ISO>',
         events: ev?.n ?? 0,
         markets: mk?.n ?? 0,
         docs: '/v1/events (filters: category, platform, grade, q, limit, offset). q is token-AND across question+tags. Open access; optional free key (POST /v1/keys) for higher limits. MCP at /mcp.',
@@ -982,6 +1338,25 @@ export default {
           signals_detection_path: ['news_cycle', 'cross_venue_divergence', 'benchmark_drift', 'volume_spike'],
         },
       });
+    }
+
+    if (path === '/v1/status') { logCall(env, ctx, req, 'rest', 'status'); return statusReport(env); }
+    if (path === '/v1/marks') { logCall(env, ctx, req, 'rest', 'list_marks', { since: url.searchParams.get('since') }); return listMarks(env, url); }
+
+    // Operator trigger for a pipeline step (backfills, re-runs after a fix). 404 unless ADMIN_TOKEN is configured.
+    if (path === '/v1/admin/run') {
+      if (!env.ADMIN_TOKEN) return err(404, 'Not found', 'Try /health or /v1/events');
+      if (req.method !== 'POST') return err(405, 'POST only');
+      if (req.headers.get('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) return err(401, 'Unauthorized');
+      const step = url.searchParams.get('step') ?? '';
+      const runId = `manual-${new Date().toISOString()}`;
+      let out: unknown;
+      if (step === 'sweep_apply') out = await applySweep(env, runId, url.searchParams.get('file') ?? undefined);
+      else if (step === 'screen_apply') out = await applyScreen(env, runId);
+      else if (step === 'marks') { const r = await refreshMarks(env, runId); out = { step, seen: r.seenOpen.size, venue_ok: r.venueOk }; }
+      else if (step === 'snapshot') { await snapshotDaily(env, runId); out = { step, done: true }; }
+      else return err(400, 'unknown step', 'sweep_apply | screen_apply | marks | snapshot');
+      return json({ run_id: runId, result: out });
     }
 
     if (path === '/v1/spot') {
@@ -1153,24 +1528,53 @@ export default {
     return err(404, 'Not found', 'Try /health or /v1/events');
   },
 
-  // Hourly cron (0 * * * *) — refresh prices for linked + primary markets + crypto spot.
-  // Once a day at EOD_UTC_HOUR, also append the daily history snapshot (after the refresh).
+  // Hourly cron (0 * * * *). Every hour: refresh prices + stamp last_checked_at. Then by UTC hour:
+  //   06 reconcile statuses (Worker, venue-confirmed) · 09 apply the site-side sweep + screen files · 21 EOD snapshot.
+  // Each step is isolated: one failing never skips the others, and every outcome lands in cron_runs.
   async scheduled(_event: any, env: Env, ctx: any): Promise<void> {
     const hour = new Date().getUTCHours();
-    if (hour === EOD_UTC_HOUR) {
-      ctx.waitUntil((async () => {
-        await refreshMarks(env);
-        await snapshotDaily(env);
-        await refreshSpot(env);
-      })());
-    } else if (hour === RECONCILE_UTC_HOUR) {
-      ctx.waitUntil((async () => {
-        const seen = await refreshMarks(env);
-        await reconcileStatus(env, seen);
-        await refreshSpot(env);
-      })());
-    } else {
-      ctx.waitUntil(Promise.all([refreshMarks(env), refreshSpot(env)]));
+    const runId = new Date().toISOString().slice(0, 13);   // one id per UTC hour
+    ctx.waitUntil((async () => {
+      let seen: Set<string> | null = null;
+      let venueOk: VenueOk = { kalshi: false, polymarket: false };
+      try { const r = await refreshMarks(env, runId); seen = r.seenOpen; venueOk = r.venueOk; }
+      catch (e) { console.error('refreshMarks failed', e); await recordRun(env, runId, 'marks', '', new Date().toISOString(), null, null, errStr(e)); }
+
+      if (hour === EOD_UTC_HOUR) {
+        try { await snapshotDaily(env, runId); }
+        catch (e) { console.error('snapshotDaily failed', e); await recordRun(env, runId, 'snapshot', '', new Date().toISOString(), null, null, errStr(e)); }
+      }
+      if (hour === RECONCILE_UTC_HOUR) {
+        if (seen && venueOk.kalshi && venueOk.polymarket) {
+          try { await reconcileStatus(env, seen, runId); }
+          catch (e) { console.error('reconcileStatus failed', e); await recordRun(env, runId, 'reconcile', '', new Date().toISOString(), null, null, errStr(e)); }
+        } else {
+          // A failed venue fetch would read as "every market delisted" — never reconcile on a partial snapshot.
+          await recordRun(env, runId, 'reconcile', '', new Date().toISOString(), null, null, `skipped: venue fetch failed (kalshi ${venueOk.kalshi}, polymarket ${venueOk.polymarket})`);
+        }
+      }
+      if (hour === APPLY_UTC_HOUR) {
+        await applySweep(env, runId);
+        await applyScreen(env, runId);
+        try { await env.DB.prepare('DELETE FROM cron_runs WHERE started_at < ?').bind(isoAgo(24 * 45)).run(); } catch {}
+      }
+      try { await refreshSpot(env); } catch (e) { console.warn('refreshSpot failed', errStr(e)); }
+    })());
+  },
+};
+
+// Every request goes through one try/catch so a thrown D1/venue error returns JSON with a request id
+// instead of Cloudflare's HTML 1101 page (which a consumer's parser cannot read).
+export default {
+  ...worker,
+  async fetch(req: Request, env: Env, ctx: any): Promise<Response> {
+    try {
+      return await worker.fetch(req, env, ctx);
+    } catch (e) {
+      const rid = crypto.randomUUID();
+      console.error(`request ${rid} ${req.method} ${new URL(req.url).pathname} failed:`, (e as any)?.stack ?? e);
+      return json({ error: 'Internal error', request_id: rid, hint: 'Retry. If it persists, email hello@clearmarket.fyi with this request_id.' }, 500, { 'X-Request-Id': rid });
     }
   },
+  scheduled: worker.scheduled,
 };

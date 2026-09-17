@@ -115,6 +115,29 @@ export const OPENAPI_SPEC = {
         },
       },
     },
+    '/v1/marks': {
+      get: {
+        operationId: 'listMarks',
+        summary: 'Bulk + incremental pull of every market\'s price, volume, status and freshness clocks (the way to consume the hourly cadence)',
+        description: 'Baseline: call without since= and page with next_cursor (1,000/page). Incremental: since=<ISO of your last as_of> returns only markets whose price/volume or status changed after that instant. Each row carries price_as_of (last price change), last_checked_at (last seen in a live venue feed; null = not since the last reload) and reconciled_at (last venue status check). Timestamps UTC.',
+        parameters: [
+          { name: 'since', in: 'query', description: 'ISO-8601 UTC instant; return rows changed after it', schema: { type: 'string', format: 'date-time' } },
+          { name: 'cursor', in: 'query', description: 'Opaque next_cursor from the previous page', schema: { type: 'string' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['open', 'resolved', 'closed'] } },
+          { name: 'platform', in: 'query', schema: { type: 'string', enum: ['kalshi', 'polymarket'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', maximum: 1000, default: 500 } },
+        ],
+        responses: { '200': { description: 'as_of, schema_version, count, next_cursor, marks[]', content: { 'application/json': { schema: { type: 'object' } } } }, '400': { description: 'Bad since/cursor/status/platform' } },
+      },
+    },
+    '/v1/status': {
+      get: {
+        operationId: 'feedStatus',
+        summary: 'Feed integrity: per-pipeline freshness (prices, daily history, status reconcile, sweep apply, eligibility screen) with an overall ok / degraded / stale state',
+        description: 'Poll this to know whether the feed is healthy before trusting a pull. state is the worst of checks[]; each check carries as_of, age_hours and the threshold it is judged against. runs[] is the latest outcome of every cron step, including errors. Cache-Control: no-store.',
+        responses: { '200': { description: 'Status object', content: { 'application/json': { schema: { type: 'object' } } } } },
+      },
+    },
     '/v1/markets/movers': {
       get: {
         operationId: 'listMovers',

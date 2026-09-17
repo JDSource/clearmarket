@@ -54,8 +54,14 @@ jobs:
           curl -fsSL "$BASE/resolution-log.json" -o web/data/resolution-log.json
           echo "bundle: $(du -h web/data/universe-enriched-linked.json | cut -f1)"
 
+      - name: Keep a pre-sweep copy (for the status delta)
+        run: cp web/data/universe-enriched-linked.json web/data/universe-pre-sweep.json
+
       - name: Sweep past-due open markets against their venues
         run: python3 scripts/sweep_past_due.py
+
+      - name: Emit the open->terminal delta the Worker applies to D1 at 09:00 UTC
+        run: python3 scripts/emit_sweep_delta.py web/data/universe-pre-sweep.json web/data/universe-enriched-linked.json web/data/status-sweep-latest.json
 
       - name: Rebuild the resolution log from the reconciled statuses
         run: python3 build_resolution_log.py
@@ -69,3 +75,8 @@ jobs:
             --file=web/data/universe-enriched-linked.json --remote
           npx --yes wrangler@4 r2 object put cm-data/resolution-log.json \
             --file=web/data/resolution-log.json --remote
+          # Status delta: latest (what the Worker applies) + a dated copy (audit trail).
+          npx --yes wrangler@4 r2 object put cm-data/status-sweep-latest.json \
+            --file=web/data/status-sweep-latest.json --remote
+          npx --yes wrangler@4 r2 object put "cm-data/status-sweeps/$(date -u +%F).json" \
+            --file=web/data/status-sweep-latest.json --remote || echo "dated sweep copy failed (non-blocking)"
