@@ -604,6 +604,7 @@ async function createKey(env: Env, req: Request): Promise<Response> {
 // Workers Paid for the D1 write budget; an unchanged-price guard keeps writes to actual movers,
 // so a typical hour is well under the included allowance. UPDATE current last_price only.
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
+const KALSHI_SNAPSHOT_MAX_AGE_MIN = 75;   // kalshi-marks.yml runs at :50; the Worker cron at :00 reads it ~10 min later
 const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
 // ---- run ledger + feed metadata -----------------------------------------
@@ -633,7 +634,10 @@ const errStr = (e: unknown) => String((e as any)?.message ?? e).slice(0, 500);
 async function fetchJson(url: string, ua?: string, tries = 4): Promise<any> {
   let last: Response | null = null;
   for (let attempt = 0; attempt < tries; attempt++) {
-    if (attempt) await new Promise((res) => setTimeout(res, 1500 * 2 ** (attempt - 1)));   // 1.5s, 3s, 6s
+    if (attempt) {
+      const ra = Number(last?.headers.get('Retry-After') ?? 0);
+      await new Promise((res) => setTimeout(res, ra > 0 ? Math.min(ra, 20) * 1000 : 2000 * 2 ** (attempt - 1)));   // 2s, 4s, 8s
+    }
     const r = await fetch(url, ua ? { headers: { 'User-Agent': ua } } : undefined);
     if (r.ok) return r.json();
     last = r;
@@ -666,35 +670,56 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   // is the "still listed" signal: an open-but-untraded market (no price) is never mistaken for delisted.
   const seenOpen = new Set<string>();
 
-  // Kalshi: paginate open events with nested markets. The whole open universe must be scanned; the cap
-  // is a safety backstop and is reported as an error so the tail cannot go unrefreshed silently.
+  // Kalshi. Kalshi rate-limits Cloudflare Workers' shared egress IPs at the FIRST request (HTTP 429), so
+  // the direct scan only ever got through sporadically (the old code read the 429 body as an empty page and
+  // stopped early, silently). Primary source is therefore the hourly snapshot the GitHub job
+  // kalshi-marks.yml publishes to R2 (tracked tickers only, venue field names, with status). The direct
+  // paged scan is the fallback when the snapshot is missing or older than KALSHI_SNAPSHOT_MAX_AGE_MIN.
   try {
-    let cursor: string | undefined;
-    let hitCap = true;
-    for (let i = 0; i < 300; i++) {
-      const u = new URL(`${KALSHI_BASE}/events`);
-      u.searchParams.set('with_nested_markets', 'true');
-      u.searchParams.set('status', 'open');
-      u.searchParams.set('limit', '200');
-      if (cursor) u.searchParams.set('cursor', cursor);
-      const d: any = await fetchJson(u.toString(), 'clearmarket-marks/0.1');
-      if (!Array.isArray(d?.events)) throw new Error('unexpected body: no events[] (venue schema change?)');
-      for (const ev of d.events)
-        for (const m of ev.markets ?? [])
+    let usedSnapshot = false;
+    try {
+      const snap: any = await fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/kalshi-tracked-latest.json?t=${Date.now()}`, undefined, 2);
+      const age = (Date.now() - Date.parse(snap?.generated_at ?? '')) / 60e3;
+      if (!Array.isArray(snap?.markets)) throw new Error('snapshot has no markets[]');
+      if (!(age <= KALSHI_SNAPSHOT_MAX_AGE_MIN)) throw new Error(`snapshot too old (${Math.round(age)} min)`);
+      for (const m of snap.markets)
+        if (want.has(m.t) && (m.s === 'active' || m.s === 'open')) {
+          seenOpen.add(m.t);
+          if (m.p != null) {
+            const px = Number(m.p);
+            fresh.set(m.t, { price: px, v24: Number(m.v24 ?? 0) * px, vtot: Number(m.v ?? 0) * px });
+          }
+        }
+      usedSnapshot = true;
+      console.log(`marks refresh: kalshi via snapshot ${snap.generated_at} (${Math.round(age)} min old, ${snap.returned}/${snap.tracked} returned)`);
+    } catch (e) {
+      console.warn('marks refresh: kalshi snapshot unavailable, falling back to direct scan:', errStr(e));
+    }
+    if (!usedSnapshot) {
+      let cursor: string | undefined;
+      let hitCap = true;
+      for (let i = 0; i < 400; i++) {
+        const u = new URL(`${KALSHI_BASE}/markets`);
+        u.searchParams.set('status', 'open');
+        u.searchParams.set('limit', '1000');
+        if (cursor) u.searchParams.set('cursor', cursor);
+        const d: any = await fetchJson(u.toString(), 'clearmarket-marks/0.1');
+        if (!Array.isArray(d?.markets)) throw new Error('unexpected body: no markets[] (venue schema change?)');
+        for (const m of d.markets)
           if (want.has(m.ticker)) {
             seenOpen.add(m.ticker);
-            // A missing price field on a listed market is a schema change, not "no trade": skip the price
-            // write (last_checked_at still stamps) rather than freezing every Kalshi price silently.
             if (m.last_price_dollars != null) {
               const px = Number(m.last_price_dollars);
               // Kalshi volume is in contracts; approximate USD via current price (matches the generators' live_refresh).
               fresh.set(m.ticker, { price: px, v24: Number(m.volume_24h_fp ?? 0) * px, vtot: Number(m.volume_fp ?? 0) * px });
             }
           }
-      cursor = d.cursor;
-      if (!cursor) { hitCap = false; break; }
+        cursor = d.cursor;
+        if (!cursor || d.markets.length === 0) { hitCap = false; break; }
+        await new Promise((res) => setTimeout(res, 250));
+      }
+      if (hitCap) venueErr.kalshi = 'pagination cap hit — tail markets unrefreshed; raise cap';
     }
-    if (hitCap) venueErr.kalshi = 'pagination cap hit — tail markets unrefreshed; raise cap';
   } catch (e) { venueOk.kalshi = false; venueErr.kalshi = errStr(e); console.error('marks refresh: kalshi failed:', venueErr.kalshi); }
 
   // Polymarket: paginate open Gamma events. A non-array FIRST page is a failure; a non-array later page is end-of-list.
@@ -753,8 +778,8 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   console.log(`marks refresh: ${changed} changed / ${seenOpen.size} seen / ${want.size} open markets (kalshi ${venueOk.kalshi ? 'ok' : 'FAILED'}, polymarket ${venueOk.polymarket ? 'ok' : 'FAILED'})`);
-  await recordRun(env, runId, 'marks', 'kalshi', startedAt, venueOk.kalshi ? seenBy.kalshi : null, venueOk.kalshi ? changedBy.kalshi : null, venueErr.kalshi);
-  await recordRun(env, runId, 'marks', 'polymarket', startedAt, venueOk.polymarket ? seenBy.polymarket : null, venueOk.polymarket ? changedBy.polymarket : null, venueErr.polymarket);
+  await recordRun(env, runId, 'marks', 'kalshi', startedAt, seenBy.kalshi, changedBy.kalshi, venueErr.kalshi);
+  await recordRun(env, runId, 'marks', 'polymarket', startedAt, seenBy.polymarket, changedBy.polymarket, venueErr.polymarket);
   return { seenOpen, venueOk };
 }
 
@@ -1161,7 +1186,7 @@ async function statusReport(env: Env): Promise<Response> {
     env.DB.prepare(`SELECT day, COUNT(*) n, SUM(COALESCE(carried_forward,0)) carried, SUM(carried_forward IS NULL) unflagged
                       FROM marks_daily WHERE day = (SELECT MAX(day) FROM marks_daily)`).first<any>(),
     env.DB.prepare('SELECT MAX(reconciled_at) last FROM markets').first<{ last: string | null }>(),
-    env.DB.prepare(`SELECT step, venue, started_at, finished_at, fetched, changed, error FROM cron_runs
+    env.DB.prepare(`SELECT run_id, step, venue, started_at, finished_at, fetched, changed, error FROM cron_runs
                      WHERE (step, venue, started_at) IN (SELECT step, venue, MAX(started_at) FROM cron_runs GROUP BY step, venue)
                      ORDER BY step, venue`).all<any>().catch(() => ({ results: [] as any[] })),
     env.DB.prepare('SELECT key, value, updated_at FROM feed_meta').all<{ key: string; value: string | null; updated_at: string }>().catch(() => ({ results: [] as any[] })),
