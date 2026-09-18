@@ -40,6 +40,7 @@ const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  'Access-Control-Expose-Headers': 'X-CM-Schema-Version, X-Request-Id',
 };
 
 // Response-contract version. Additive field changes bump the patch digit; renames/removals bump minor
@@ -604,7 +605,7 @@ async function createKey(env: Env, req: Request): Promise<Response> {
 // Workers Paid for the D1 write budget; an unchanged-price guard keeps writes to actual movers,
 // so a typical hour is well under the included allowance. UPDATE current last_price only.
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
-const KALSHI_SNAPSHOT_MAX_AGE_MIN = 75;   // kalshi-marks.yml runs at :50; the Worker cron at :00 reads it ~10 min later
+const KALSHI_SNAPSHOT_MAX_AGE_MIN = 180;  // kalshi-marks.yml is hourly but GitHub schedules lag 20-80 min here; rows are stamped with the snapshot's own time, so the clock stays honest
 const POLY_GAMMA = 'https://gamma-api.polymarket.com';
 
 // ---- run ledger + feed metadata -----------------------------------------
@@ -661,6 +662,8 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   const want = new Map<string, Want>();
   for (const r of results) want.set(r.platform_market_id, { mid: r.market_id, platform: r.platform, price: r.last_price, v24: r.volume_24h_usd, vtot: r.volume_total_usd });
   const venueOk: VenueOk = { kalshi: true, polymarket: true };
+  // When Kalshi comes from the R2 snapshot, its rows are stamped with the snapshot's observation time, not ours.
+  let kalshiStamp: string | null = null;
   const venueErr: Record<string, string | null> = { kalshi: null, polymarket: null };
   if (!want.size) return { seenOpen: new Set(), venueOk };
 
@@ -678,6 +681,7 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   try {
     let usedSnapshot = false;
     try {
+      // eslint-disable-next-line no-var
       const snap: any = await fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/kalshi-tracked-latest.json?t=${Date.now()}`, undefined, 2);
       const age = (Date.now() - Date.parse(snap?.generated_at ?? '')) / 60e3;
       if (!Array.isArray(snap?.markets)) throw new Error('snapshot has no markets[]');
@@ -691,6 +695,7 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
           }
         }
       usedSnapshot = true;
+      kalshiStamp = new Date(Date.parse(snap.generated_at)).toISOString();
       console.log(`marks refresh: kalshi via snapshot ${snap.generated_at} (${Math.round(age)} min old, ${snap.returned}/${snap.tracked} returned)`);
     } catch (e) {
       console.warn('marks refresh: kalshi snapshot unavailable, falling back to direct scan:', errStr(e));
@@ -756,26 +761,28 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   // Writes. Movers: price+volume+both clocks. Seen-but-unchanged: last_checked_at only (batched IN lists).
   const nowIso = new Date().toISOString();
   const stmts: D1PreparedStatement[] = [];
-  const checkedOnly: string[] = [];
+  const checkedOnly = new Map<string, string[]>();   // stamp -> market_ids (Kalshi-via-snapshot rows carry the snapshot time)
   const seenBy: Record<string, number> = { kalshi: 0, polymarket: 0 };
   const changedBy: Record<string, number> = { kalshi: 0, polymarket: 0 };
   for (const [pmid, w] of want) {
     if (!seenOpen.has(pmid)) continue;
     seenBy[w.platform] = (seenBy[w.platform] ?? 0) + 1;
+    const ts = w.platform === 'kalshi' && kalshiStamp ? kalshiStamp : nowIso;
     const f = fresh.get(pmid);
     if (f && !(f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot)) {
       changedBy[w.platform] = (changedBy[w.platform] ?? 0) + 1;
       stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?, last_updated_at = ?, last_checked_at = ? WHERE market_id = ?')
-        .bind(f.price, f.v24, f.vtot, nowIso, nowIso, w.mid));
+        .bind(f.price, f.v24, f.vtot, ts, ts, w.mid));
     } else {
-      checkedOnly.push(w.mid);
+      (checkedOnly.get(ts) ?? checkedOnly.set(ts, []).get(ts)!).push(w.mid);
     }
   }
   const changed = stmts.length;
-  for (let i = 0; i < checkedOnly.length; i += 90) {
-    const ids = checkedOnly.slice(i, i + 90);
-    stmts.push(env.DB.prepare(`UPDATE markets SET last_checked_at = ? WHERE market_id IN (${ids.map(() => '?').join(',')})`).bind(nowIso, ...ids));
-  }
+  for (const [ts, list] of checkedOnly)
+    for (let i = 0; i < list.length; i += 90) {
+      const ids = list.slice(i, i + 90);
+      stmts.push(env.DB.prepare(`UPDATE markets SET last_checked_at = ? WHERE market_id IN (${ids.map(() => '?').join(',')})`).bind(ts, ...ids));
+    }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   console.log(`marks refresh: ${changed} changed / ${seenOpen.size} seen / ${want.size} open markets (kalshi ${venueOk.kalshi ? 'ok' : 'FAILED'}, polymarket ${venueOk.polymarket ? 'ok' : 'FAILED'})`);
   await recordRun(env, runId, 'marks', 'kalshi', startedAt, seenBy.kalshi, changedBy.kalshi, venueErr.kalshi);
@@ -885,17 +892,21 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
   const settled = new Map<string, Settle>();
   const cutoffMs = Date.now() - SETTLE_WINDOW_DAYS * 86_400_000;
 
+  // A venue whose settled feed FAILS must not be read as "nothing settled": its unseen markets are skipped
+  // this run (no reconciled_at stamp) and the failure is recorded on the run.
+  let kalshiFeedOk = true, polyFeedOk = true;
   // Kalshi settled markets (min_close_ts in unix SECONDS)
   let kCursor: string | undefined;
   let kCap = true;
-  for (let i = 0; i < 100; i++) {
+  try { for (let i = 0; i < 100; i++) {
     const u = new URL(`${KALSHI_BASE}/markets`);
     u.searchParams.set('status', 'settled');
     u.searchParams.set('min_close_ts', String(Math.floor(cutoffMs / 1000)));
     u.searchParams.set('limit', '1000');
     if (kCursor) u.searchParams.set('cursor', kCursor);
-    const d: any = await (await fetch(u.toString(), { headers: { 'User-Agent': 'clearmarket-reconcile/0.1' } })).json();
-    for (const m of d.markets ?? []) {
+    const d: any = await fetchJson(u.toString(), 'clearmarket-reconcile/0.1');
+    if (!Array.isArray(d?.markets)) throw new Error('unexpected body: no markets[]');
+    for (const m of d.markets) {
       const result = String(m.result ?? '').toLowerCase();
       const closeTime = m.close_time ?? m.expiration_time ?? null;
       const settleTime = m.settlement_ts ?? m.close_time ?? null;
@@ -906,8 +917,8 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
     }
     kCursor = d.cursor;
     if (!kCursor) { kCap = false; break; }
-  }
-  if (kCap) console.warn('reconcile: Kalshi settled pagination cap hit — raise cap or shorten window');
+  } } catch (e) { kalshiFeedOk = false; console.error('reconcile: kalshi settled feed failed:', errStr(e)); }
+  if (kalshiFeedOk && kCap) console.warn('reconcile: Kalshi settled pagination cap hit — raise cap or shorten window');
 
   // Polymarket closed events, newest-first by EVENT endDate. Record ONLY UMA-resolved markets: a closed
   // event whose UMA outcome isn't final yet may still resolve, so we leave those 'open' to re-check next
@@ -916,14 +927,16 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
   // pagination (that silently truncated the feed ~1800 events short of the genuinely recent settlements).
   let pOffset = 0;
   let pStop = false;
-  for (let i = 0; i < 200 && !pStop; i++) {
+  try { for (let i = 0; i < 200 && !pStop; i++) {
     const u = new URL(`${POLY_GAMMA}/events`);
     u.searchParams.set('closed', 'true');
     u.searchParams.set('limit', '100');
     u.searchParams.set('offset', String(pOffset));
     u.searchParams.set('order', 'endDate');
     u.searchParams.set('ascending', 'false');
-    const b: any = await (await fetch(u.toString())).json();
+    let b: any;
+    try { b = await fetchJson(u.toString()); }
+    catch (e) { if (pOffset > 0 && /HTTP 422/.test(errStr(e))) break; throw e; }   // Gamma 422 past page 1 = end of list
     if (!Array.isArray(b) || !b.length) break;
     let pageMaxEnd = NaN;
     for (const ev of b) {
@@ -944,14 +957,15 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
     }
     pOffset += 100;
     if (Number.isFinite(pageMaxEnd) && pageMaxEnd < cutoffMs) pStop = true; // whole page older than the window
-  }
+  } } catch (e) { polyFeedOk = false; console.error('reconcile: polymarket closed feed failed:', errStr(e)); }
 
   const nowIso = new Date().toISOString();
   const stmts: D1PreparedStatement[] = [];
   const logStmts: D1PreparedStatement[] = [];
-  const counts = { resolved: 0, closed: 0, left: 0 };
+  const counts = { resolved: 0, closed: 0, left: 0, skipped: 0 };
 
   for (const m of unseen) {
+    if ((m.platform === 'kalshi' && !kalshiFeedOk) || (m.platform === 'polymarket' && !polyFeedOk)) { counts.skipped++; continue; }
     const s = settled.get(m.platform_market_id);
     if (s && s.resolved && s.price != null) {
       const outcome = s.price >= 0.5 ? 'YES' : 'NO';
@@ -985,8 +999,9 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
 
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
-  console.log(`reconcile: ${unseen.length} unseen / ${results.length} open -> resolved ${counts.resolved}, closed ${counts.closed}, left-open ${counts.left}`);
-  await recordRun(env, runId, 'reconcile', '', startedAt, unseen.length, counts.resolved + counts.closed, null);
+  console.log(`reconcile: ${unseen.length} unseen / ${results.length} open -> resolved ${counts.resolved}, closed ${counts.closed}, left-open ${counts.left}, skipped ${counts.skipped}`);
+  const feedErr = kalshiFeedOk && polyFeedOk ? null : `settled feed failed (kalshi ${kalshiFeedOk ? 'ok' : 'FAILED'}, polymarket ${polyFeedOk ? 'ok' : 'FAILED'}); ${counts.skipped} unseen markets skipped`;
+  await recordRun(env, runId, 'reconcile', '', startedAt, unseen.length, counts.resolved + counts.closed, feedErr);
 }
 
 // ---- daily site-side results -> D1 ----------------------------------------
@@ -997,7 +1012,7 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
 // publish small JSON files to R2; at APPLY_UTC_HOUR the Worker fetches and applies them. Idempotent:
 // only still-open rows change, resolution_log inserts are ON CONFLICT DO NOTHING, and a file is applied once.
 const DATA_BASE_DEFAULT = 'https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev';
-const APPLY_UTC_HOUR = 9;      // after the 06:30 sweep and the 08:00 screen run have both uploaded
+const APPLY_UTC_HOUR = 15;     // GitHub schedules on this repo start ~5h late (06:30 job ≈ 12:00Z, 08:00 job ≈ 13:00Z); apply after both have landed
 const SWEEP_FILE = 'status-sweep-latest.json';
 const SCREEN_REGIME = 'ciro-26-0076';
 
@@ -1035,10 +1050,13 @@ async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<A
       const row = cur.get(c.market_id);
       if (!row || (c.status !== 'resolved' && c.status !== 'closed')) continue;
       const price = c.status === 'resolved' && typeof c.last_price === 'number' ? c.last_price : null;
-      stmts.push(env.DB.prepare(`UPDATE markets SET status=?, last_price=COALESCE(?, last_price), reconciled_at=? WHERE market_id=? AND status='open'`)
-        .bind(c.status, price, nowIso, c.market_id));
+      // last_updated_at (price_as_of) moves only when a settlement price is actually written.
+      stmts.push(env.DB.prepare(`UPDATE markets SET status=?, last_price=COALESCE(?, last_price), last_updated_at=CASE WHEN ? IS NOT NULL THEN ? ELSE last_updated_at END, reconciled_at=? WHERE market_id=? AND status='open'`)
+        .bind(c.status, price, price, nowIso, nowIso, c.market_id));
+      // to_value follows the existing vocabulary: YES / NO / PENDING for resolved rows, the status word for closes.
+      const outcome = c.status === 'resolved' ? (price == null ? 'PENDING' : price >= 0.5 ? 'YES' : 'NO') : 'closed';
       logStmts.push(resLogRow(env, { market_id: c.market_id, event_id: row.event_id, platform: row.platform },
-        c.status === 'resolved' ? 'resolved' : 'status_change', 'open', c.status, price,
+        c.status === 'resolved' ? 'resolved' : 'status_change', 'open', outcome, price,
         c.settled_at ?? null, c.close_at ?? c.resolve_at ?? row.close_at, nowIso, 'clearmarket-sweep-apply'));
     }
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
@@ -1128,8 +1146,8 @@ async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResul
       const f = fin.get(row.platform_market_id);
       if (!f) continue;
       const price = f.result === 'yes' ? 1 : 0;
-      stmts.push(env.DB.prepare(`UPDATE markets SET status='resolved', last_price=?, reconciled_at=? WHERE market_id=? AND status='open'`).bind(price, nowIso, row.market_id));
-      logStmts.push(resLogRow(env, { market_id: row.market_id, event_id: row.event_id, platform: 'kalshi' }, 'resolved', 'open', 'resolved', price, null, f.ct ?? row.close_at, nowIso, 'clearmarket-kalshi-snapshot'));
+      stmts.push(env.DB.prepare(`UPDATE markets SET status='resolved', last_price=?, last_updated_at=?, reconciled_at=? WHERE market_id=? AND status='open'`).bind(price, nowIso, nowIso, row.market_id));
+      logStmts.push(resLogRow(env, { market_id: row.market_id, event_id: row.event_id, platform: 'kalshi' }, 'resolved', 'open', f.result === 'yes' ? 'YES' : 'NO', price, null, f.ct ?? row.close_at, nowIso, 'clearmarket-kalshi-snapshot'));
     }
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
     for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
@@ -1165,7 +1183,11 @@ async function listMarks(env: Env, url: URL): Promise<Response> {
   const cursor = p.get('cursor');
   if (cursor) {
     let ca = '', mid = '';
-    try { [ca, mid] = unb64(cursor).split('|'); } catch { return err(400, 'bad cursor'); }
+    try {
+      const parts = unb64(cursor).split('|');
+      if (parts.length !== 2 || !parts[1] || (parts[0] && !/^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(parts[0]))) throw new Error('shape');
+      [ca, mid] = parts;
+    } catch { return err(400, 'bad cursor', 'Use the next_cursor value from the previous page unchanged.'); }
     where.push(`(${CHANGED_EXPR} > ? OR (${CHANGED_EXPR} = ? AND market_id > ?))`); args.push(ca, ca, mid);
   }
   const status = p.get('status');
@@ -1201,7 +1223,7 @@ async function listMarks(env: Env, url: URL): Promise<Response> {
   return json({
     as_of: new Date().toISOString(), schema_version: SCHEMA_VERSION, since: since ? new Date(since).toISOString() : null,
     count: marks.length, next_cursor: more && last ? b64(`${last.changed_at ?? ''}|${last.market_id}`) : null,
-    docs: 'Baseline: GET /v1/marks (page with next_cursor). Incremental: GET /v1/marks?since=<ISO of your last as_of>. Filters: status, platform. Max 1000/page. Timestamps UTC.',
+    docs: 'Baseline: GET /v1/marks (page with next_cursor). Incremental: GET /v1/marks?since=<your previous as_of minus ~15 min> (rows are idempotent by market_id; the overlap covers writes that commit after as_of). changed_at moves on price/volume/status changes only — eligibility-screen changes do not move it. Filters: status, platform. Max 1000/page. Timestamps UTC.',
     _notice: NOTICE, marks,
   }, 200, { 'Cache-Control': 'no-store' });
 }
@@ -1218,11 +1240,12 @@ async function statusReport(env: Env): Promise<Response> {
   const now = Date.now();
   const ageH = (iso: string | null | undefined) => (iso && !isNaN(Date.parse(iso)) ? Math.round(((now - Date.parse(iso)) / 3600e3) * 10) / 10 : null);
   const two = isoAgo(THRESHOLDS.prices_hours);
-  const [byStatus, open, hist, recon, runs, meta, vintage, spot, screenRow] = await Promise.all([
+  const [byStatus, openRows, hist, recon, runs, meta, vintage, spot, screenRow] = await Promise.all([
     env.DB.prepare('SELECT status, COUNT(*) n FROM markets GROUP BY status').all<{ status: string; n: number }>(),
-    env.DB.prepare(`SELECT MAX(last_updated_at) last_change, MAX(last_checked_at) last_checked, SUM(last_checked_at >= ?) checked_recent,
+    // Per venue: a venue can go dark while the other keeps the aggregate looking fresh (Kalshi did, for weeks).
+    env.DB.prepare(`SELECT platform, MAX(last_updated_at) last_change, MAX(last_checked_at) last_checked, SUM(last_checked_at >= ?) checked_recent,
                            SUM(last_updated_at >= ?) changed_recent, SUM(last_checked_at IS NULL) never_checked, COUNT(*) n
-                      FROM markets WHERE status='open'`).bind(two, two).first<any>(),
+                      FROM markets WHERE status='open' GROUP BY platform`).bind(two, two).all<any>(),
     env.DB.prepare(`SELECT day, COUNT(*) n, SUM(COALESCE(carried_forward,0)) carried, SUM(carried_forward IS NULL) unflagged
                       FROM marks_daily WHERE day = (SELECT MAX(day) FROM marks_daily)`).first<any>(),
     env.DB.prepare('SELECT MAX(reconciled_at) last FROM markets').first<{ last: string | null }>(),
@@ -1238,22 +1261,35 @@ async function statusReport(env: Env): Promise<Response> {
   const counts: Record<string, number> = {}; for (const r of byStatus.results) counts[r.status] = r.n;
 
   const checks: Check[] = [];
-  // 1. prices — the hourly promise
-  const pricesAsOf = open?.last_checked ?? open?.last_change ?? null;
-  const pAge = ageH(pricesAsOf);
-  checks.push({ name: 'prices', state: pAge == null || pAge > THRESHOLDS.prices_hours ? 'stale' : 'ok', as_of: pricesAsOf, age_hours: pAge,
-    threshold: `${THRESHOLDS.prices_hours}h since a live-feed check`,
-    detail: { open_markets: open?.n ?? 0, seen_in_live_feed_last_2h: open?.checked_recent ?? 0, price_changed_last_2h: open?.changed_recent ?? 0,
-              never_seen_since_reload: open?.never_checked ?? 0, last_price_change: open?.last_change ?? null } });
+  // 1. prices — the hourly promise, judged PER VENUE; the check is as stale as its stalest venue
+  const venues: Record<string, any> = {};
+  let pricesAsOf: string | null = null, pricesState: CheckState = 'ok';
+  const totals = { open_markets: 0, seen_in_live_feed_last_2h: 0, price_changed_last_2h: 0, never_seen_since_reload: 0 };
+  for (const v of openRows.results as any[]) {
+    const asOf = v.last_checked ?? v.last_change ?? null; const age = ageH(asOf);
+    const st: CheckState = age == null || age > THRESHOLDS.prices_hours ? 'stale' : 'ok';
+    venues[v.platform] = { state: st, as_of: asOf, age_hours: age, open_markets: v.n, seen_in_live_feed_last_2h: v.checked_recent ?? 0,
+                           price_changed_last_2h: v.changed_recent ?? 0, never_seen_since_reload: v.never_checked ?? 0, last_price_change: v.last_change ?? null };
+    if (st === 'stale') pricesState = 'stale';
+    if (pricesAsOf == null || (asOf != null && asOf < pricesAsOf)) pricesAsOf = asOf;   // oldest venue clock
+    totals.open_markets += v.n ?? 0; totals.seen_in_live_feed_last_2h += v.checked_recent ?? 0;
+    totals.price_changed_last_2h += v.changed_recent ?? 0; totals.never_seen_since_reload += v.never_checked ?? 0;
+  }
+  if (!Object.keys(venues).length) pricesState = 'stale';
+  checks.push({ name: 'prices', state: pricesState, as_of: pricesAsOf, age_hours: ageH(pricesAsOf),
+    threshold: `${THRESHOLDS.prices_hours}h since a live-feed check, per venue`, detail: { ...totals, venues } });
   // 2. daily history — one snapshot per UTC day at 21:00; by the next day's start yesterday must exist
   const expectDay = new Date(now - 864e5).toISOString().slice(0, 10);
   const histOk = !!hist?.day && hist.day >= expectDay;
   checks.push({ name: 'history', state: histOk ? 'ok' : 'stale', as_of: hist?.day ?? null, age_hours: hist?.day ? ageH(`${hist.day}T21:00:00Z`) : null,
     threshold: `snapshot for ${expectDay} or later`, detail: { latest_day: hist?.day ?? null, rows: hist?.n ?? 0, carried_forward_rows: hist?.carried ?? null, unflagged_rows: hist?.unflagged ?? null } });
-  // 3. status reconcile (Worker, 06:00 UTC)
-  const rAge = ageH(recon?.last);
-  checks.push({ name: 'reconcile', state: rAge == null || rAge > THRESHOLDS.reconcile_hours ? 'stale' : 'ok', as_of: recon?.last ?? null, age_hours: rAge,
-    threshold: `${THRESHOLDS.reconcile_hours}h`, detail: {} });
+  // 3. status reconcile (Worker, 06:00 UTC) — judged from the run ledger (sweep/finalized also stamp reconciled_at, so the
+  //    column alone cannot tell a stalled reconcile step from a healthy one); falls back to the column until the first run exists.
+  const reconRun = (runs.results as any[]).find((r) => r.step === 'reconcile');
+  const reconAsOf = reconRun ? (reconRun.finished_at ?? reconRun.started_at) : (recon?.last ?? null);
+  const rAge = ageH(reconAsOf);
+  checks.push({ name: 'reconcile', state: rAge == null || rAge > THRESHOLDS.reconcile_hours ? 'stale' : 'ok', as_of: reconAsOf, age_hours: rAge,
+    threshold: `${THRESHOLDS.reconcile_hours}h`, detail: { source: reconRun ? 'cron_runs' : 'markets.reconciled_at', last_run_error: reconRun?.error ?? null, last_status_verification: recon?.last ?? null } });
   // 4. sweep apply (site-side sweep results into D1, 09:00 UTC)
   const sAsOf = metaMap.get('sweep_last_run') ?? null; const sAge = ageH(sAsOf);
   checks.push({ name: 'sweep_apply', state: sAge == null || sAge > THRESHOLDS.sweep_hours ? 'stale' : 'ok', as_of: sAsOf, age_hours: sAge,
@@ -1268,10 +1304,11 @@ async function statusReport(env: Env): Promise<Response> {
   checks.push({ name: 'screen', state: scAge == null || scAge > THRESHOLDS.screen_days * 24 ? 'stale' : 'ok', as_of: screenAsOf, age_hours: scAge,
     threshold: `${THRESHOLDS.screen_days}d`, detail: { regime: SCREEN_REGIME, screen_version: screenVersion, records: metaMap.get('screen_records') ?? null } });
 
-  // degraded: data still within threshold but the latest run of a step reported an error
-  const failing = (runs.results as any[]).filter((r) => r.error);
-  const stepFor: Record<string, string> = { prices: 'marks', history: 'snapshot', reconcile: 'reconcile', sweep_apply: 'sweep_apply', screen: 'screen_apply' };
-  for (const c of checks) if (c.state === 'ok' && failing.some((r) => r.step === stepFor[c.name])) c.state = 'degraded';
+  // degraded: data still within threshold but the latest run of a step (within 48h) reported an error
+  const recentCut = isoAgo(48);
+  const failing = (runs.results as any[]).filter((r) => r.error && (r.started_at ?? '') >= recentCut);
+  const stepsFor: Record<string, string[]> = { prices: ['marks'], history: ['snapshot'], reconcile: ['reconcile', 'kalshi_finalized'], sweep_apply: ['sweep_apply'], screen: ['screen_apply'] };
+  for (const c of checks) if (c.state === 'ok' && failing.some((r) => stepsFor[c.name].includes(r.step))) c.state = 'degraded';
   const rank: Record<CheckState, number> = { ok: 0, degraded: 1, stale: 2 };
   const overall = checks.reduce<CheckState>((w, c) => (rank[c.state] > rank[w] ? c.state : w), 'ok');
 

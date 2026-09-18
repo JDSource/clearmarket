@@ -1,7 +1,7 @@
 # Feed integrity check — hourly, 15 minutes after the Worker's marks cron.
 #
 # Reads https://api.clearmarket.fyi/v1/status (the same object a consumer's DevOps polls) and fails
-# the run when any core pipeline is stale or the MCP tool list is not served. A failed run is what
+# the run when any core pipeline is not ok (stale OR degraded), the status object is malformed or 5xx, or the MCP tool list is not served. A failed run is what
 # emails the operator (GitHub → Settings → Notifications → Actions: "failed workflows only").
 # Thresholds live in the Worker (THRESHOLDS in api/src/index.ts), not here: one source of truth.
 #
@@ -29,8 +29,9 @@ jobs:
       - name: Fetch /v1/status and MCP tools/list
         run: |
           set -u
-          curl -sS --max-time 30 -o status.json -w "status HTTP %{http_code}\n" https://api.clearmarket.fyi/v1/status
-          curl -sS --max-time 30 -o mcp.json -w "mcp HTTP %{http_code}\n" -X POST https://api.clearmarket.fyi/mcp \
+          # -f: a 5xx (including the Worker's own JSON 500) fails the step instead of producing a parseable-but-empty body.
+          curl -fsS --max-time 30 -o status.json -w "status HTTP %{http_code}\n" https://api.clearmarket.fyi/v1/status
+          curl -fsS --max-time 30 -o mcp.json -w "mcp HTTP %{http_code}\n" -X POST https://api.clearmarket.fyi/mcp \
             -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
             -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
       - name: Evaluate
@@ -43,11 +44,16 @@ jobs:
           except Exception as e:
               print('status.json unreadable:', e); sys.exit(1)
           print(f"state={s.get('state')} as_of={s.get('as_of')} schema={s.get('schema_version')}")
+          # Shape assertions: a status object with no state or fewer than 5 checks is itself a failure.
+          if s.get('state') not in ('ok', 'degraded', 'stale') or len(s.get('checks', [])) < 5:
+              print('status object malformed:', json.dumps(s)[:400]); sys.exit(1)
           for c in s.get('checks', []):
               flag = '' if c['state'] == 'ok' else '  <-- ' + c['state'].upper()
               print(f"  {c['name']:<12} {c['state']:<9} as_of={c.get('as_of')} age_h={c.get('age_hours')} ({c.get('threshold')}){flag}")
-              if c['state'] == 'stale':
-                  bad.append(f"{c['name']} stale: as_of={c.get('as_of')} age_h={c.get('age_hours')} detail={c.get('detail')}")
+              # Any non-ok state fails the run. 'degraded' means the latest run of a step errored while the data is
+              # still inside its threshold — the Kalshi-goes-quiet case — and that is exactly what must page.
+              if c['state'] != 'ok':
+                  bad.append(f"{c['name']} {c['state']}: as_of={c.get('as_of')} age_h={c.get('age_hours')} detail={json.dumps(c.get('detail'))[:300]}")
           for r in s.get('runs', []):
               if r.get('error'):
                   print(f"  run error: {r['step']}/{r.get('venue') or '-'} @ {r.get('started_at')}: {r['error']}")
