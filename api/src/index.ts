@@ -1160,7 +1160,9 @@ async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResul
 const GH_REPO = 'JDSource/clearmarket';
 async function dispatchWorkflow(env: Env, runId: string, file: string): Promise<void> {
   const startedAt = new Date().toISOString();
-  if (!env.GH_DISPATCH_TOKEN) { await recordRun(env, runId, 'dispatch', file, startedAt, null, null, 'GH_DISPATCH_TOKEN not configured'); return; }
+  // No token yet: record the skip WITHOUT an error (an hourly 'degraded' email for a known, pending setup step is noise).
+  // Kalshi staleness itself still alarms if GitHub's own schedule lags past the 3h window.
+  if (!env.GH_DISPATCH_TOKEN) { await recordRun(env, runId, 'dispatch', file, startedAt, 0, 0, null); return; }
   try {
     const r = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${file}/dispatches`, {
       method: 'POST',
