@@ -60,8 +60,10 @@ jobs:
       - name: Sweep past-due open markets against their venues
         run: python3 scripts/sweep_past_due.py
 
-      - name: Emit the open->terminal delta the Worker applies to D1 at 09:00 UTC
-        run: python3 scripts/emit_sweep_delta.py web/data/universe-pre-sweep.json web/data/universe-enriched-linked.json web/data/status-sweep-latest.json
+      - name: Emit the open->terminal delta the Worker applies to D1 at 15:00 UTC
+        # Self-healing: every bundle-terminal market the API still serves as open/closed, not just today's transitions,
+        # so a day the Worker's 15:00Z apply misses is covered by the next file.
+        run: python3 scripts/emit_sweep_delta.py --from-api web/data/universe-enriched-linked.json web/data/status-sweep-latest.json
 
       - name: Rebuild the resolution log from the reconciled statuses
         run: python3 build_resolution_log.py
@@ -71,12 +73,12 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          npx --yes wrangler@4 r2 object put cm-data/universe-enriched-linked.json \
+          npx --yes wrangler@4.134.0 r2 object put cm-data/universe-enriched-linked.json \
             --file=web/data/universe-enriched-linked.json --remote
-          npx --yes wrangler@4 r2 object put cm-data/resolution-log.json \
+          npx --yes wrangler@4.134.0 r2 object put cm-data/resolution-log.json \
             --file=web/data/resolution-log.json --remote
           # Status delta: latest (what the Worker applies) + a dated copy (audit trail).
-          npx --yes wrangler@4 r2 object put cm-data/status-sweep-latest.json \
+          npx --yes wrangler@4.134.0 r2 object put cm-data/status-sweep-latest.json \
             --file=web/data/status-sweep-latest.json --remote
-          npx --yes wrangler@4 r2 object put "cm-data/status-sweeps/$(date -u +%F).json" \
+          npx --yes wrangler@4.134.0 r2 object put "cm-data/status-sweeps/$(date -u +%F).json" \
             --file=web/data/status-sweep-latest.json --remote || echo "dated sweep copy failed (non-blocking)"

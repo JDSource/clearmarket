@@ -61,14 +61,14 @@ jobs:
         # "unavailable" state (lib/eligibility.ts no-ops). Never blocks the build.
         run: python3 screen_eligibility.py --write || echo "eligibility screen skipped — /screens/ will render unavailable"
 
-      - name: Publish the screen to R2 (the Worker applies it to D1 at 09:00 UTC — the API copy stays daily)
+      - name: Publish the screen to R2 (the Worker applies it to D1 at 15:00 UTC — the API copy stays daily)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -f web/data/eligibility-ciro-26-0076.json ] && [ -f web/data/eligibility-ciro-26-0076-summary.json ]; then
-            npx --yes wrangler@4 r2 object put cm-data/eligibility-ciro-26-0076.json --file=web/data/eligibility-ciro-26-0076.json --remote \
-              && npx --yes wrangler@4 r2 object put cm-data/eligibility-ciro-26-0076-summary.json --file=web/data/eligibility-ciro-26-0076-summary.json --remote \
+            npx --yes wrangler@4.134.0 r2 object put cm-data/eligibility-ciro-26-0076.json --file=web/data/eligibility-ciro-26-0076.json --remote \
+              && npx --yes wrangler@4.134.0 r2 object put cm-data/eligibility-ciro-26-0076-summary.json --file=web/data/eligibility-ciro-26-0076-summary.json --remote \
               || echo "screen upload failed (non-blocking; API screen will not refresh today)"
           else
             echo "screen files absent — nothing to publish"

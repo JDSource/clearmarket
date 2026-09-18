@@ -13,10 +13,11 @@
  * differentiators (graded resolution clarity, cross-venue links, provenance).
  * These are solid drafts pending the copy-optimization pass.
  */
+import { CONTRACT_VERSION } from './openapi';
 import { Env, num, parseJson, marketOut, marketConcise, findMarketRow, eventSummary, loadCalendar, windowCatalysts, logCall, provenance, NOTICE } from './index';
 
 export const PROTOCOL_VERSION = '2025-06-18';
-export const SERVER_INFO = { name: 'clearmarket', version: '0.2.0' };
+export const SERVER_INFO = { name: 'clearmarket', version: CONTRACT_VERSION };
 const CATEGORIES = ['economics', 'financials', 'crypto', 'companies', 'technology', 'politics', 'geopolitics', 'health', 'climate'];
 
 const CORS = {

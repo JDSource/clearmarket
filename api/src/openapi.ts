@@ -1,3 +1,6 @@
+// Single source of truth for the response-contract version (header, OpenAPI info, MCP serverInfo).
+export const CONTRACT_VERSION = '0.2.1';
+
 /**
  * OpenAPI 3.1 spec for the public REST surface, served at /openapi.json (+ probed aliases)
  * so agents and codegen tools can wire themselves in without reading the human docs.
@@ -37,7 +40,7 @@ export const OPENAPI_SPEC = {
   openapi: '3.1.0',
   info: {
     title: 'ClearMarket API',
-    version: '0.2.0',
+    version: CONTRACT_VERSION,
     description:
       'Reference data layer for prediction markets: cross-venue event linking, Resolution Clarity Grades (A/B/C), ' +
       'committed resolution sources with provenance, jurisdiction eligibility screens, live marks, and CM Signal wires ' +

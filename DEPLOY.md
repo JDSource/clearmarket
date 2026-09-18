@@ -94,6 +94,16 @@ Kalshi prices come from `kalshi-marks.yml` (GitHub runner, hourly) via `kalshi-t
 Cloudflare egress; rows are stamped with the snapshot's own time. Operator trigger for any step:
 `POST /v1/admin/run?step=sweep_apply|screen_apply|marks|snapshot` with `Authorization: Bearer $ADMIN_TOKEN` (Worker secret).
 Feed health: `GET /v1/status`; hourly GitHub check `status-check.yml` fails (and emails) when a core pipeline is stale.
+**On-time GitHub jobs (2026-09-18):** the Worker's second cron (`45 * * * *`) dispatches `kalshi-marks.yml` every hour and the two
+daily jobs at 06:45/07:45 UTC via the GitHub API, because GitHub's own scheduler on this repo starts jobs 20 min to 5 h late and
+skips hours. It needs the Worker secret `GH_DISPATCH_TOKEN`: a fine-grained PAT (github.com → Settings → Developer settings →
+Fine-grained tokens) scoped to repository `JDSource/clearmarket` with **Actions: Read and write** (nothing else), 1-year expiry.
+Install: `cd api && wrangler secret put GH_DISPATCH_TOKEN`. Until it exists, /v1/status shows a `dispatch` run error each hour.
+**Incremental pull key:** `markets.row_changed_at` (Worker write time) drives `/v1/marks?since=` and its cursor; `price_as_of` and
+`last_checked_at` are observation clocks (a Kalshi snapshot row carries the snapshot time). Migration `api/commit-clock-migration.sql`.
+**Known edge block:** Cloudflare's Browser Integrity Check returns 403 to stdlib HTTP clients (Python-urllib, Java/…) on
+api.clearmarket.fyi. Fix in the dashboard: Security → Settings → disable Browser Integrity Check for the api hostname (a
+Configuration Rule), or tell consumers to send a descriptive User-Agent.
 
 **ALTER-only deploys: do NOT run `npm run seed:remote`.** A reseed drops+recreates `markets` from the bundle,
 which clobbers the cron-fresh `last_price`/`volume`/`status` in D1 with the (older) bundle snapshot. For a

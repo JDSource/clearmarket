@@ -9,7 +9,7 @@
     { "pattern": "api.clearmarket.fyi", "custom_domain": true }
   ],
   "observability": { "enabled": true },
-  "triggers": { "crons": ["0 * * * *"] },
+  "triggers": { "crons": ["0 * * * *", "45 * * * *"] },
   "vars": { "DATA_BASE": "https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev" },
   "d1_databases": [
     {

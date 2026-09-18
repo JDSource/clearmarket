@@ -24,6 +24,7 @@ CM = "https://api.clearmarket.fyi/v1/marks"
 KALSHI = "https://api.elections.kalshi.com/trade-api/v2/markets"
 UA = "clearmarket-marks/0.2 (+https://clearmarket.fyi)"
 BATCH = 200
+URL_BUDGET = 6000   # bytes of ticker list per request
 
 
 def get(url, tries=5):
@@ -64,8 +65,16 @@ def main(out_path):
         print(f"only {len(tickers)} tracked Kalshi tickers from the API — refusing to publish", file=sys.stderr)
         sys.exit(1)
     markets, requests_made = [], 0
-    for i in range(0, len(tickers), BATCH):
-        chunk = tickers[i:i + BATCH]
+    # Pack each request to a URL byte budget (not a fixed count): long tickers would otherwise push
+    # tickers= past ~8 KB and 414 every hour.
+    batches, cur, cur_len = [], [], 0
+    for t in tickers:
+        if cur and (len(cur) >= BATCH or cur_len + len(t) + 1 > URL_BUDGET):
+            batches.append(cur); cur, cur_len = [], 0
+        cur.append(t); cur_len += len(t) + 1
+    if cur:
+        batches.append(cur)
+    for chunk in batches:
         d = get(f"{KALSHI}?{urllib.parse.urlencode({'tickers': ','.join(chunk), 'limit': '1000'})}")
         requests_made += 1
         for m in d.get("markets") or []:

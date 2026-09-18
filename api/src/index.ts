@@ -16,7 +16,7 @@
 
 import { handleMcp, TOOLS, SERVER_INFO, PROTOCOL_VERSION } from './mcp';
 import { AGENT_CARD, handleA2A } from './a2a';
-import { OPENAPI_SPEC, AGENTS_MANIFEST } from './openapi';
+import { OPENAPI_SPEC, AGENTS_MANIFEST, CONTRACT_VERSION } from './openapi';
 
 // agents.json probe variants observed as 404s in call_log (AgenstryBot walks all of these daily).
 const AGENTS_JSON_PATHS = new Set([
@@ -34,6 +34,8 @@ export interface Env {
   DATA_BASE?: string;
   // Secret. When set, POST /v1/admin/run?step=… (Bearer) triggers a pipeline step on demand.
   ADMIN_TOKEN?: string;
+  // Secret. Fine-grained GitHub PAT (repo JDSource/clearmarket, Actions: read+write) used to dispatch workflows on time.
+  GH_DISPATCH_TOKEN?: string;
 }
 
 const CORS = {
@@ -46,7 +48,7 @@ const CORS = {
 // Response-contract version. Additive field changes bump the patch digit; renames/removals bump minor
 // and are announced to keyed users first. Emitted as a header on every JSON response so a consumer can
 // detect a contract change programmatically.
-const SCHEMA_VERSION = 'v0.2.1';
+const SCHEMA_VERSION = `v${CONTRACT_VERSION}`;
 
 const json = (data: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(data, null, 2), {
@@ -771,8 +773,13 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
     const f = fresh.get(pmid);
     if (f && !(f.price === w.price && f.v24 === w.v24 && f.vtot === w.vtot)) {
       changedBy[w.platform] = (changedBy[w.platform] ?? 0) + 1;
-      stmts.push(env.DB.prepare('UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?, last_updated_at = ?, last_checked_at = ? WHERE market_id = ?')
-        .bind(f.price, f.v24, f.vtot, ts, ts, w.mid));
+      // row_changed_at = OUR write time (the since= key). last_updated_at/last_checked_at = observation time, only
+      // ever moved forward; an observation older than the last price write is ignored (a late snapshot must not
+      // roll a newer direct-scan price backwards).
+      stmts.push(env.DB.prepare(`UPDATE markets SET last_price = ?, volume_24h_usd = ?, volume_total_usd = ?,
+          last_updated_at = ?, last_checked_at = MAX(COALESCE(last_checked_at,''), ?), row_changed_at = ?
+        WHERE market_id = ? AND (last_updated_at IS NULL OR last_updated_at <= ?)`)
+        .bind(f.price, f.v24, f.vtot, ts, ts, nowIso, w.mid, ts));
     } else {
       (checkedOnly.get(ts) ?? checkedOnly.set(ts, []).get(ts)!).push(w.mid);
     }
@@ -781,7 +788,7 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
   for (const [ts, list] of checkedOnly)
     for (let i = 0; i < list.length; i += 90) {
       const ids = list.slice(i, i + 90);
-      stmts.push(env.DB.prepare(`UPDATE markets SET last_checked_at = ? WHERE market_id IN (${ids.map(() => '?').join(',')})`).bind(ts, ...ids));
+      stmts.push(env.DB.prepare(`UPDATE markets SET last_checked_at = MAX(COALESCE(last_checked_at,''), ?) WHERE market_id IN (${ids.map(() => '?').join(',')})`).bind(ts, ...ids));
     }
   for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
   console.log(`marks refresh: ${changed} changed / ${seenOpen.size} seen / ${want.size} open markets (kalshi ${venueOk.kalshi ? 'ok' : 'FAILED'}, polymarket ${venueOk.polymarket ? 'ok' : 'FAILED'})`);
@@ -875,7 +882,9 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
      WHERE platform_market_id IS NOT NULL AND status = 'open'`
   ).all<{ market_id: string; event_id: string; platform: string; platform_market_id: string; close_at: string | null }>();
 
-  const unseen = results.filter((r) => !seenOpen.has(r.platform_market_id));
+  // Kalshi is reconciled from the hourly R2 snapshot (applyKalshiFinalized) because its settled feed 429s Cloudflare
+  // egress; only Polymarket goes through the venue feeds here.
+  const unseen = results.filter((r) => r.platform !== 'kalshi' && !seenOpen.has(r.platform_market_id));
   if (!unseen.length) { console.log('reconcile: 0 unseen open markets'); await recordRun(env, runId, 'reconcile', '', startedAt, 0, 0, null); return; }
 
   // recently-settled feeds -> platform_market_id -> { resolved, price (settlement, 0..1), closeTime,
@@ -894,31 +903,8 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
 
   // A venue whose settled feed FAILS must not be read as "nothing settled": its unseen markets are skipped
   // this run (no reconciled_at stamp) and the failure is recorded on the run.
-  let kalshiFeedOk = true, polyFeedOk = true;
-  // Kalshi settled markets (min_close_ts in unix SECONDS)
-  let kCursor: string | undefined;
-  let kCap = true;
-  try { for (let i = 0; i < 100; i++) {
-    const u = new URL(`${KALSHI_BASE}/markets`);
-    u.searchParams.set('status', 'settled');
-    u.searchParams.set('min_close_ts', String(Math.floor(cutoffMs / 1000)));
-    u.searchParams.set('limit', '1000');
-    if (kCursor) u.searchParams.set('cursor', kCursor);
-    const d: any = await fetchJson(u.toString(), 'clearmarket-reconcile/0.1');
-    if (!Array.isArray(d?.markets)) throw new Error('unexpected body: no markets[]');
-    for (const m of d.markets) {
-      const result = String(m.result ?? '').toLowerCase();
-      const closeTime = m.close_time ?? m.expiration_time ?? null;
-      const settleTime = m.settlement_ts ?? m.close_time ?? null;
-      if (result === 'yes' || result === 'no')
-        settled.set(m.ticker, { resolved: true, price: result === 'yes' ? 1.0 : 0.0, closeTime, settleTime });
-      else
-        settled.set(m.ticker, { resolved: false, price: null, closeTime, settleTime }); // settled w/o yes/no -> closed
-    }
-    kCursor = d.cursor;
-    if (!kCursor) { kCap = false; break; }
-  } } catch (e) { kalshiFeedOk = false; console.error('reconcile: kalshi settled feed failed:', errStr(e)); }
-  if (kalshiFeedOk && kCap) console.warn('reconcile: Kalshi settled pagination cap hit — raise cap or shorten window');
+  const kalshiFeedOk = true; let polyFeedOk = true;
+  // (Kalshi settled-feed pull removed 2026-09-18: unreachable from Workers, and Kalshi unseen markets are excluded above.)
 
   // Polymarket closed events, newest-first by EVENT endDate. Record ONLY UMA-resolved markets: a closed
   // event whose UMA outcome isn't final yet may still resolve, so we leave those 'open' to re-check next
@@ -969,21 +955,21 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
     const s = settled.get(m.platform_market_id);
     if (s && s.resolved && s.price != null) {
       const outcome = s.price >= 0.5 ? 'YES' : 'NO';
-      stmts.push(env.DB.prepare('UPDATE markets SET status=?, last_price=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
-        .bind('resolved', s.price, s.closeTime, nowIso, m.market_id));
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, last_price=?, last_updated_at=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=?, row_changed_at=? WHERE market_id=?')
+        .bind('resolved', s.price, nowIso, s.closeTime, nowIso, nowIso, m.market_id));
       logStmts.push(resLogRow(env, m, 'resolved', 'open', outcome, s.price, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.resolved++;
     } else if (s && s.resolved) {
       // venue says resolved but no parseable settlement price — flip status, keep price, outcome PENDING (no guess)
-      stmts.push(env.DB.prepare('UPDATE markets SET status=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=? WHERE market_id=?')
-        .bind('resolved', s.closeTime, nowIso, m.market_id));
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, resolve_at=COALESCE(?, resolve_at), reconciled_at=?, row_changed_at=? WHERE market_id=?')
+        .bind('resolved', s.closeTime, nowIso, nowIso, m.market_id));
       logStmts.push(resLogRow(env, m, 'resolved', 'open', 'PENDING', null, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.resolved++;
     } else if (s) {
       // Kalshi affirmatively SETTLED with no determinable yes/no outcome (void/cancelled) -> terminal 'closed'.
       // (Polymarket never lands here: the Poly pull only records UMA-resolved markets above.)
-      stmts.push(env.DB.prepare('UPDATE markets SET status=?, reconciled_at=? WHERE market_id=?')
-        .bind('closed', nowIso, m.market_id));
+      stmts.push(env.DB.prepare('UPDATE markets SET status=?, reconciled_at=?, row_changed_at=? WHERE market_id=?')
+        .bind('closed', nowIso, nowIso, m.market_id));
       logStmts.push(resLogRow(env, m, 'status_change', 'open', 'closed', null, s.settleTime, s.closeTime ?? m.close_at, nowIso));
       counts.closed++;
     } else {
@@ -1012,6 +998,7 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
 // publish small JSON files to R2; at APPLY_UTC_HOUR the Worker fetches and applies them. Idempotent:
 // only still-open rows change, resolution_log inserts are ON CONFLICT DO NOTHING, and a file is applied once.
 const DATA_BASE_DEFAULT = 'https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev';
+const DISPATCH_CRON = '45 * * * *';
 const APPLY_UTC_HOUR = 15;     // GitHub schedules on this repo start ~5h late (06:30 job ≈ 12:00Z, 08:00 job ≈ 13:00Z); apply after both have landed
 const SWEEP_FILE = 'status-sweep-latest.json';
 const SCREEN_REGIME = 'ciro-26-0076';
@@ -1034,13 +1021,13 @@ async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<A
       return { step: 'sweep_apply', applied: 0, total: changes.length, file_generated_at: generatedAt, skipped: 'already applied' };
     }
     // Current D1 truth for the named markets, still-open rows only (chunked: D1 binds cap at 100).
-    const cur = new Map<string, { event_id: string; platform: string; close_at: string | null }>();
+    const cur = new Map<string, { event_id: string; platform: string; status: string; close_at: string | null }>();
     const ids = changes.map((c) => c.market_id).filter(Boolean);
     for (let i = 0; i < ids.length; i += 90) {
       const chunk = ids.slice(i, i + 90);
       const { results } = await env.DB.prepare(
-        `SELECT market_id, event_id, platform, close_at FROM markets WHERE status='open' AND market_id IN (${chunk.map(() => '?').join(',')})`
-      ).bind(...chunk).all<{ market_id: string; event_id: string; platform: string; close_at: string | null }>();
+        `SELECT market_id, event_id, platform, status, close_at FROM markets WHERE status IN ('open','closed') AND market_id IN (${chunk.map(() => '?').join(',')})`
+      ).bind(...chunk).all<{ market_id: string; event_id: string; platform: string; status: string; close_at: string | null }>();
       for (const r of results) cur.set(r.market_id, r);
     }
     const nowIso = new Date().toISOString();
@@ -1049,23 +1036,27 @@ async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<A
     for (const c of changes) {
       const row = cur.get(c.market_id);
       if (!row || (c.status !== 'resolved' && c.status !== 'closed')) continue;
+      if (row.status === 'closed' && c.status === 'closed') continue;   // already closed; only a resolution may move it
       const price = c.status === 'resolved' && typeof c.last_price === 'number' ? c.last_price : null;
       // last_updated_at (price_as_of) moves only when a settlement price is actually written.
-      stmts.push(env.DB.prepare(`UPDATE markets SET status=?, last_price=COALESCE(?, last_price), last_updated_at=CASE WHEN ? IS NOT NULL THEN ? ELSE last_updated_at END, reconciled_at=? WHERE market_id=? AND status='open'`)
-        .bind(c.status, price, price, nowIso, nowIso, c.market_id));
+      // UPDATE and its resolution_log row go into the SAME batch (a D1 batch is one transaction), so a mid-run failure
+      // can never leave a resolved market without its outcome row.
+      stmts.push(env.DB.prepare(`UPDATE markets SET status=?, last_price=COALESCE(?, last_price), last_updated_at=CASE WHEN ? IS NOT NULL THEN ? ELSE last_updated_at END, reconciled_at=?, row_changed_at=? WHERE market_id=? AND status=?`)
+        .bind(c.status, price, price, nowIso, nowIso, nowIso, c.market_id, row.status));
       // to_value follows the existing vocabulary: YES / NO / PENDING for resolved rows, the status word for closes.
       const outcome = c.status === 'resolved' ? (price == null ? 'PENDING' : price >= 0.5 ? 'YES' : 'NO') : 'closed';
-      logStmts.push(resLogRow(env, { market_id: c.market_id, event_id: row.event_id, platform: row.platform },
-        c.status === 'resolved' ? 'resolved' : 'status_change', 'open', outcome, price,
+      stmts.push(resLogRow(env, { market_id: c.market_id, event_id: row.event_id, platform: row.platform },
+        c.status === 'resolved' ? 'resolved' : 'status_change', row.status, outcome, price,
         c.settled_at ?? null, c.close_at ?? c.resolve_at ?? row.close_at, nowIso, 'clearmarket-sweep-apply'));
     }
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-    for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
+    logStmts.length = 0;
     if (file === SWEEP_FILE) await setMeta(env, 'sweep_last_applied', generatedAt);
     await setMeta(env, 'sweep_last_run', nowIso);
-    await recordRun(env, runId, 'sweep_apply', '', startedAt, changes.length, stmts.length, null);
-    console.log(`sweep apply: ${stmts.length} of ${changes.length} changes applied (file ${generatedAt})`);
-    return { step: 'sweep_apply', applied: stmts.length, total: changes.length, file_generated_at: generatedAt };
+    const applied = stmts.length / 2;
+    await recordRun(env, runId, 'sweep_apply', '', startedAt, changes.length, applied, null);
+    console.log(`sweep apply: ${applied} of ${changes.length} changes applied (file ${generatedAt})`);
+    return { step: 'sweep_apply', applied, total: changes.length, file_generated_at: generatedAt };
   } catch (e) {
     const msg = errStr(e); console.error('sweep apply failed:', msg);
     await recordRun(env, runId, 'sweep_apply', '', startedAt, null, null, msg);
@@ -1104,7 +1095,7 @@ async function applyScreen(env: Env, runId: string, regime = SCREEN_REGIME): Pro
         const haveRec = Array.isArray(have) ? have.find((x: any) => x?.regime === next.regime) : null;
         if (haveRec && norm(haveRec) === norm(next)) continue;
         const others = Array.isArray(have) ? have.filter((x: any) => x?.regime !== next.regime) : [];
-        stmts.push(env.DB.prepare('UPDATE markets SET eligibility_screens = ? WHERE market_id = ?').bind(JSON.stringify([...others, next]), r.market_id));
+        stmts.push(env.DB.prepare('UPDATE markets SET eligibility_screens = ?, row_changed_at = ? WHERE market_id = ?').bind(JSON.stringify([...others, next]), new Date().toISOString(), r.market_id));
       }
     }
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
@@ -1138,27 +1129,47 @@ async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResul
       if (m.s === 'finalized' && (r === 'yes' || r === 'no')) fin.set(m.t, { result: r, ct: m.ct ?? null });
     }
     const { results } = await env.DB.prepare(
-      `SELECT market_id, event_id, platform_market_id, close_at FROM markets WHERE platform='kalshi' AND status='open' AND platform_market_id IS NOT NULL`
-    ).all<{ market_id: string; event_id: string; platform_market_id: string; close_at: string | null }>();
+      `SELECT market_id, event_id, platform_market_id, status, close_at FROM markets WHERE platform='kalshi' AND status IN ('open','closed') AND platform_market_id IS NOT NULL`
+    ).all<{ market_id: string; event_id: string; platform_market_id: string; status: string; close_at: string | null }>();
     const nowIso = new Date().toISOString();
     const stmts: D1PreparedStatement[] = []; const logStmts: D1PreparedStatement[] = [];
     for (const row of results) {
       const f = fin.get(row.platform_market_id);
       if (!f) continue;
       const price = f.result === 'yes' ? 1 : 0;
-      stmts.push(env.DB.prepare(`UPDATE markets SET status='resolved', last_price=?, last_updated_at=?, reconciled_at=? WHERE market_id=? AND status='open'`).bind(price, nowIso, nowIso, row.market_id));
-      logStmts.push(resLogRow(env, { market_id: row.market_id, event_id: row.event_id, platform: 'kalshi' }, 'resolved', 'open', f.result === 'yes' ? 'YES' : 'NO', price, null, f.ct ?? row.close_at, nowIso, 'clearmarket-kalshi-snapshot'));
+      stmts.push(env.DB.prepare(`UPDATE markets SET status='resolved', last_price=?, last_updated_at=?, reconciled_at=?, row_changed_at=? WHERE market_id=? AND status=?`).bind(price, nowIso, nowIso, nowIso, row.market_id, row.status));
+      stmts.push(resLogRow(env, { market_id: row.market_id, event_id: row.event_id, platform: 'kalshi' }, 'resolved', row.status, f.result === 'yes' ? 'YES' : 'NO', price, null, f.ct ?? row.close_at, nowIso, 'clearmarket-kalshi-snapshot'));
     }
     for (let i = 0; i < stmts.length; i += 100) await env.DB.batch(stmts.slice(i, i + 100));
-    for (let i = 0; i < logStmts.length; i += 100) await env.DB.batch(logStmts.slice(i, i + 100));
-    await recordRun(env, runId, 'kalshi_finalized', '', startedAt, fin.size, stmts.length, null);
-    if (stmts.length) console.log(`kalshi finalized: ${stmts.length} open markets -> resolved (snapshot ${snap.generated_at})`);
-    return { step: 'kalshi_finalized', applied: stmts.length, total: fin.size, file_generated_at: snap.generated_at ?? null };
+    logStmts.length = 0;
+    const applied = stmts.length / 2;
+    await recordRun(env, runId, 'kalshi_finalized', '', startedAt, fin.size, applied, null);
+    if (applied) console.log(`kalshi finalized: ${applied} markets -> resolved (snapshot ${snap.generated_at})`);
+    return { step: 'kalshi_finalized', applied, total: fin.size, file_generated_at: snap.generated_at ?? null };
   } catch (e) {
     const msg = errStr(e); console.error('kalshi finalized failed:', msg);
     await recordRun(env, runId, 'kalshi_finalized', '', startedAt, null, null, msg);
     return { step: 'kalshi_finalized', applied: 0, total: 0, file_generated_at: null, error: msg };
   }
+}
+
+// ---- on-time GitHub workflow dispatch --------------------------------------
+// GitHub's cron scheduler on this repo starts jobs 20 min to 5 h late and skips hours outright; workflow_dispatch
+// events start within seconds. The Worker's second cron (:45) fires the hourly Kalshi snapshot job so the :00
+// marks pass finds a fresh file, plus the two daily jobs at their intended hours. The GitHub schedules stay as backup.
+const GH_REPO = 'JDSource/clearmarket';
+async function dispatchWorkflow(env: Env, runId: string, file: string): Promise<void> {
+  const startedAt = new Date().toISOString();
+  if (!env.GH_DISPATCH_TOKEN) { await recordRun(env, runId, 'dispatch', file, startedAt, null, null, 'GH_DISPATCH_TOKEN not configured'); return; }
+  try {
+    const r = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${file}/dispatches`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'clearmarket-dispatch/0.1', 'X-GitHub-Api-Version': '2022-11-28' },
+      body: JSON.stringify({ ref: 'main' }),
+    });
+    if (r.status !== 204) throw new Error(`HTTP ${r.status}: ${(await r.text()).slice(0, 120)}`);
+    await recordRun(env, runId, 'dispatch', file, startedAt, 1, 1, null);
+  } catch (e) { await recordRun(env, runId, 'dispatch', file, startedAt, null, null, errStr(e)); }
 }
 
 // ---- /v1/marks — bulk + incremental pull ----------------------------------
@@ -1167,7 +1178,9 @@ async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResul
 // instant. Keyset pagination on (changed_at, market_id) so a walk during the hourly refresh never
 // duplicates or drops a row. changed_at = max(price change, status verification); last_checked_at is
 // returned but does not by itself count as a change.
-const CHANGED_EXPR = `MAX(COALESCE(last_updated_at,''), COALESCE(reconciled_at,''))`;
+// The since=/cursor key is the Worker's own commit clock (row_changed_at), never an observation clock: a Kalshi row
+// from the R2 snapshot carries the snapshot's time, which can trail the commit by up to 180 min.
+const CHANGED_EXPR = `COALESCE(row_changed_at,'')`;
 const b64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
 const unb64 = (s: string) => decodeURIComponent(escape(atob(s)));
 
@@ -1217,13 +1230,13 @@ async function listMarks(env: Env, url: URL): Promise<Response> {
     price_as_of: r.last_updated_at ?? null,       // last time the price changed
     last_checked_at: r.last_checked_at ?? null,   // last time seen in a live venue feed (NULL = not since reload)
     reconciled_at: r.reconciled_at ?? null,       // last time status was verified against the venue
-    changed_at: r.changed_at || null,
+    changed_at: r.changed_at || null,             // when ClearMarket wrote the change (the since= key)
     resolve_at: r.resolve_at ?? null, close_at: r.close_at ?? null,
   }));
   return json({
     as_of: new Date().toISOString(), schema_version: SCHEMA_VERSION, since: since ? new Date(since).toISOString() : null,
     count: marks.length, next_cursor: more && last ? b64(`${last.changed_at ?? ''}|${last.market_id}`) : null,
-    docs: 'Baseline: GET /v1/marks (page with next_cursor). Incremental: GET /v1/marks?since=<your previous as_of minus ~15 min> (rows are idempotent by market_id; the overlap covers writes that commit after as_of). changed_at moves on price/volume/status changes only — eligibility-screen changes do not move it. Filters: status, platform. Max 1000/page. Timestamps UTC.',
+    docs: 'Baseline: GET /v1/marks (page with next_cursor). Incremental: GET /v1/marks?since=<your previous as_of minus ~15 min> (rows are idempotent by market_id; the overlap covers writes still committing at as_of). changed_at = the ClearMarket write time and moves on price/volume, status and eligibility-screen changes. Filters: status, platform. Max 1000/page. Timestamps UTC.',
     _notice: NOTICE, marks,
   }, 200, { 'Cache-Control': 'no-store' });
 }
@@ -1267,8 +1280,10 @@ async function statusReport(env: Env): Promise<Response> {
   const totals = { open_markets: 0, seen_in_live_feed_last_2h: 0, price_changed_last_2h: 0, never_seen_since_reload: 0 };
   for (const v of openRows.results as any[]) {
     const asOf = v.last_checked ?? v.last_change ?? null; const age = ageH(asOf);
-    const st: CheckState = age == null || age > THRESHOLDS.prices_hours ? 'stale' : 'ok';
-    venues[v.platform] = { state: st, as_of: asOf, age_hours: age, open_markets: v.n, seen_in_live_feed_last_2h: v.checked_recent ?? 0,
+    // Kalshi arrives via the hourly R2 snapshot (observation clock = snapshot time), so its budget is that pipeline's window.
+    const limitH = v.platform === 'kalshi' ? KALSHI_SNAPSHOT_MAX_AGE_MIN / 60 : THRESHOLDS.prices_hours;
+    const st: CheckState = age == null || age > limitH ? 'stale' : 'ok';
+    venues[v.platform] = { state: st, as_of: asOf, age_hours: age, threshold_hours: limitH, open_markets: v.n, seen_in_live_feed_last_2h: v.checked_recent ?? 0,
                            price_changed_last_2h: v.changed_recent ?? 0, never_seen_since_reload: v.never_checked ?? 0, last_price_change: v.last_change ?? null };
     if (st === 'stale') pricesState = 'stale';
     if (pricesAsOf == null || (asOf != null && asOf < pricesAsOf)) pricesAsOf = asOf;   // oldest venue clock
@@ -1277,7 +1292,7 @@ async function statusReport(env: Env): Promise<Response> {
   }
   if (!Object.keys(venues).length) pricesState = 'stale';
   checks.push({ name: 'prices', state: pricesState, as_of: pricesAsOf, age_hours: ageH(pricesAsOf),
-    threshold: `${THRESHOLDS.prices_hours}h since a live-feed check, per venue`, detail: { ...totals, venues } });
+    threshold: `per venue: polymarket ${THRESHOLDS.prices_hours}h (live feed), kalshi ${KALSHI_SNAPSHOT_MAX_AGE_MIN / 60}h (hourly snapshot window)`, detail: { ...totals, venues } });
   // 2. daily history — one snapshot per UTC day at 21:00; by the next day's start yesterday must exist
   const expectDay = new Date(now - 864e5).toISOString().slice(0, 10);
   const histOk = !!hist?.day && hist.day >= expectDay;
@@ -1306,8 +1321,10 @@ async function statusReport(env: Env): Promise<Response> {
 
   // degraded: data still within threshold but the latest run of a step (within 48h) reported an error
   const recentCut = isoAgo(48);
-  const failing = (runs.results as any[]).filter((r) => r.error && (r.started_at ?? '') >= recentCut);
-  const stepsFor: Record<string, string[]> = { prices: ['marks'], history: ['snapshot'], reconcile: ['reconcile', 'kalshi_finalized'], sweep_apply: ['sweep_apply'], screen: ['screen_apply'] };
+  const latestStart: Record<string, string> = {};
+  for (const r of runs.results as any[]) if ((r.started_at ?? '') > (latestStart[r.step] ?? '')) latestStart[r.step] = r.started_at;
+  const failing = (runs.results as any[]).filter((r) => r.error && (r.started_at ?? '') >= recentCut && r.started_at === latestStart[r.step]);
+  const stepsFor: Record<string, string[]> = { prices: ['marks', 'dispatch'], history: ['snapshot'], reconcile: ['reconcile', 'kalshi_finalized'], sweep_apply: ['sweep_apply'], screen: ['screen_apply'] };
   for (const c of checks) if (c.state === 'ok' && failing.some((r) => stepsFor[c.name].includes(r.step))) c.state = 'degraded';
   const rank: Record<CheckState, number> = { ok: 0, degraded: 1, stale: 2 };
   const overall = checks.reduce<CheckState>((w, c) => (rank[c.state] > rank[w] ? c.state : w), 'ok');
@@ -1447,6 +1464,7 @@ const worker = {
 
     // Operator trigger for a pipeline step (backfills, re-runs after a fix). 404 unless ADMIN_TOKEN is configured.
     if (path === '/v1/admin/run') {
+      logCall(env, ctx, req, 'rest', 'admin', { step: url.searchParams.get('step'), authed: req.headers.get('Authorization') === `Bearer ${env.ADMIN_TOKEN ?? ''}` });
       if (!env.ADMIN_TOKEN) return err(404, 'Not found', 'Try /health or /v1/events');
       if (req.method !== 'POST') return err(405, 'POST only');
       if (req.headers.get('Authorization') !== `Bearer ${env.ADMIN_TOKEN}`) return err(401, 'Unauthorized');
@@ -1634,9 +1652,18 @@ const worker = {
   // Hourly cron (0 * * * *). Every hour: refresh prices + stamp last_checked_at. Then by UTC hour:
   //   06 reconcile statuses (Worker, venue-confirmed) · 09 apply the site-side sweep + screen files · 21 EOD snapshot.
   // Each step is isolated: one failing never skips the others, and every outcome lands in cron_runs.
-  async scheduled(_event: any, env: Env, ctx: any): Promise<void> {
-    const hour = new Date().getUTCHours();
-    const runId = new Date().toISOString().slice(0, 13);   // one id per UTC hour
+  async scheduled(event: any, env: Env, ctx: any): Promise<void> {
+    const when = new Date(event?.scheduledTime ?? Date.now());   // the slot this run is FOR, even if it fired late
+    const hour = when.getUTCHours();
+    const runId = when.toISOString().slice(0, 13);   // one id per UTC hour
+    if (event?.cron === DISPATCH_CRON) {
+      ctx.waitUntil((async () => {
+        await dispatchWorkflow(env, runId, 'kalshi-marks.yml');
+        if (hour === 6) await dispatchWorkflow(env, runId, 'freshness-daily.yml');
+        if (hour === 7) await dispatchWorkflow(env, runId, 'cm-signal-daily.yml');
+      })());
+      return;
+    }
     ctx.waitUntil((async () => {
       let seen: Set<string> | null = null;
       let venueOk: VenueOk = { kalshi: false, polymarket: false };
@@ -1648,12 +1675,12 @@ const worker = {
         catch (e) { console.error('snapshotDaily failed', e); await recordRun(env, runId, 'snapshot', '', new Date().toISOString(), null, null, errStr(e)); }
       }
       if (hour === RECONCILE_UTC_HOUR) {
-        if (seen && venueOk.kalshi && venueOk.polymarket) {
+        if (seen && venueOk.polymarket) {   // Kalshi is excluded inside reconcileStatus (snapshot-reconciled)
           try { await reconcileStatus(env, seen, runId); }
           catch (e) { console.error('reconcileStatus failed', e); await recordRun(env, runId, 'reconcile', '', new Date().toISOString(), null, null, errStr(e)); }
         } else {
           // A failed venue fetch would read as "every market delisted" — never reconcile on a partial snapshot.
-          await recordRun(env, runId, 'reconcile', '', new Date().toISOString(), null, null, `skipped: venue fetch failed (kalshi ${venueOk.kalshi}, polymarket ${venueOk.polymarket})`);
+          await recordRun(env, runId, 'reconcile', '', new Date().toISOString(), null, null, `skipped: polymarket live feed failed this hour`);
         }
       }
       if (hour === APPLY_UTC_HOUR) {
