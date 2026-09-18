@@ -1474,9 +1474,14 @@ const worker = {
       if (step === 'sweep_apply') out = await applySweep(env, runId, url.searchParams.get('file') ?? undefined);
       else if (step === 'screen_apply') out = await applyScreen(env, runId);
       else if (step === 'kalshi_finalized') out = await applyKalshiFinalized(env, runId);
+      else if (step === 'reconcile') {
+        const r = await refreshMarks(env, runId);
+        if (r.venueOk.polymarket) { await reconcileStatus(env, r.seenOpen, runId); out = { step, done: true, seen: r.seenOpen.size }; }
+        else out = { step, done: false, reason: 'polymarket live feed failed this run' };
+      }
       else if (step === 'marks') { const r = await refreshMarks(env, runId); out = { step, seen: r.seenOpen.size, venue_ok: r.venueOk }; }
       else if (step === 'snapshot') { await snapshotDaily(env, runId); out = { step, done: true }; }
-      else return err(400, 'unknown step', 'sweep_apply | screen_apply | kalshi_finalized | marks | snapshot');
+      else return err(400, 'unknown step', 'sweep_apply | screen_apply | kalshi_finalized | reconcile | marks | snapshot');
       return json({ run_id: runId, result: out });
     }
 
