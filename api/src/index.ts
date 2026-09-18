@@ -1666,6 +1666,7 @@ const worker = {
     if (event?.cron === DISPATCH_CRON) {
       ctx.waitUntil((async () => {
         await dispatchWorkflow(env, runId, 'kalshi-marks.yml');
+        await dispatchWorkflow(env, runId, 'status-check.yml');   // the alarm itself must not depend on GitHub's lagging scheduler
         if (hour === 6) await dispatchWorkflow(env, runId, 'freshness-daily.yml');
         if (hour === 7) await dispatchWorkflow(env, runId, 'cm-signal-daily.yml');
       })());
