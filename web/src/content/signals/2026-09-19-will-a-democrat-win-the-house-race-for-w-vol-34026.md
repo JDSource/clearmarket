@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20260919VS02"
 signal_slug: "will-a-democrat-win-the-house-race-for-w-vol-34026"
-headline: "Democrat wins WI-3 House: 72% on $34K volume"
-semantic_title: "Democrats stay favored in WI-3 House race as trading picks up"
+headline: "Democrat wins WI-3: 72% on $34K inflow"
+semantic_title: "Democrats back in the WI-3 House race at 72%"
 telemetry: "72% · $34K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-09-19T07:47:59+00:00"
+published_at: "2026-09-19T12:15:36+00:00"
 event_id: "CM-EVT-6C7CNWJ6R7"
 event_slug: "housewi3-26"
 event_question: "WI-03 House winner?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-01-04T15:00:00Z"
 bullets:
-  - "Kalshi prices Democrats at 72%, a meaningful but not commanding lead in a swing-district contest."
-  - "41% of all-time volume hitting in 24 hours suggests new polling, a candidate event, or ad-spend data moved the market."
-  - "WI-3 is a bellwether rural-suburban district; fresh volume here reflects heightened House-majority-margin sensitivity."
-  - "Resolution tied to November 2026 general election results."
+  - "Kalshi prices a Democratic win in Wisconsin's 3rd congressional district at 72%, moderate-to-strong lean."
+  - "24h volume of $34K is 41% of all-time, signaling a decisive session relative to the contract's history."
+  - "WI-3 is a competitive swing seat; fresh volume at this level implies new polling or candidate news driving re-evaluation."
+  - "Resolves on 2026 general election results."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: WI-03 House winner?"
     url: "https://clearmarket.fyi/events/housewi3-26"
-    retrieved_at: "2026-09-19T07:47:59+00:00"
+    retrieved_at: "2026-09-19T12:15:36+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A 72% price with 41% of lifetime volume in one session tells a desk that new district-level information is circulating, worth cross-referencing against any fresh internal poll releases or FEC filing deadlines.
+A 41% all-time share in a single session on a competitive House race signals that new district-level information is moving desks to reprice the Democratic edge meaningfully.
