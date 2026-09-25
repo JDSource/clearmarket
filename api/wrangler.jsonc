@@ -11,6 +11,9 @@
   "observability": { "enabled": true },
   "triggers": { "crons": ["0 * * * *", "45 * * * *"] },
   "vars": { "DATA_BASE": "https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev" },
+  "r2_buckets": [
+    { "binding": "CM_DATA", "bucket_name": "cm-data" }
+  ],
   "d1_databases": [
     {
       "binding": "DB",

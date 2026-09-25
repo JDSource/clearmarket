@@ -30,7 +30,9 @@ export interface Env {
   // (/signals.json, /signals/<slug>.json). MCP signal tools fetch from here so
   // wires stay single-sourced as static content (no D1 duplication). Defaults to prod.
   SIGNALS_BASE?: string;
-  // Public R2 base that serves the bundle + the daily sweep/screen files the Worker applies to D1.
+  // R2 bucket cm-data (bundle, hourly Kalshi snapshot, daily sweep/screen files). Primary read path.
+  CM_DATA?: R2Bucket;
+  // Public r2.dev base for the same bucket. Fallback only: rate-limited and not for production per Cloudflare.
   DATA_BASE?: string;
   // Secret. When set, POST /v1/admin/run?step=… (Bearer) triggers a pipeline step on demand.
   ADMIN_TOKEN?: string;
@@ -684,7 +686,7 @@ async function refreshMarks(env: Env, runId: string): Promise<{ seenOpen: Set<st
     let usedSnapshot = false;
     try {
       // eslint-disable-next-line no-var
-      const snap: any = await fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/kalshi-tracked-latest.json?t=${Date.now()}`, undefined, 2);
+      const snap: any = await readData(env, 'kalshi-tracked-latest.json', 2);
       const age = (Date.now() - Date.parse(snap?.generated_at ?? '')) / 60e3;
       if (!Array.isArray(snap?.markets)) throw new Error('snapshot has no markets[]');
       if (!(age <= KALSHI_SNAPSHOT_MAX_AGE_MIN)) throw new Error(`snapshot too old (${Math.round(age)} min)`);
@@ -998,6 +1000,18 @@ async function reconcileStatus(env: Env, seenOpen: Set<string>, runId: string): 
 // publish small JSON files to R2; at APPLY_UTC_HOUR the Worker fetches and applies them. Idempotent:
 // only still-open rows change, resolution_log inserts are ON CONFLICT DO NOTHING, and a file is applied once.
 const DATA_BASE_DEFAULT = 'https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev';
+// Reads a JSON object from cm-data through the bucket binding; falls back to the public r2.dev URL only if the
+// binding is absent or the read fails (2026-09-21: an r2.dev fetch failure sent Kalshi to the direct scan, which 429s).
+async function readData(env: Env, key: string, tries = 4): Promise<any> {
+  if (env.CM_DATA) {
+    try {
+      const obj = await env.CM_DATA.get(key);
+      if (obj) return await obj.json();
+      console.error(`R2 binding: ${key} not found; trying public URL`);
+    } catch (e) { console.error(`R2 binding read ${key} failed; trying public URL:`, errStr(e)); }
+  }
+  return fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/${key}?t=${Date.now()}`, undefined, tries);
+}
 const DISPATCH_CRON = '45 * * * *';
 const APPLY_UTC_HOUR = 15;     // GitHub schedules on this repo start ~5h late (06:30 job ≈ 12:00Z, 08:00 job ≈ 13:00Z); apply after both have landed
 const SWEEP_FILE = 'status-sweep-latest.json';
@@ -1008,9 +1022,8 @@ type ApplyResult = { step: string; applied: number; total: number; file_generate
 
 async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<ApplyResult> {
   const startedAt = new Date().toISOString();
-  const base = env.DATA_BASE ?? DATA_BASE_DEFAULT;
   try {
-    const f: any = await fetchJson(`${base}/${file}?t=${Date.now()}`);
+    const f: any = await readData(env, file);
     const changes: SweepChange[] = Array.isArray(f?.changes) ? f.changes : [];
     const generatedAt: string | null = f?.generated_at ?? null;
     if (!generatedAt || isNaN(Date.parse(generatedAt))) throw new Error('sweep file has no generated_at');
@@ -1069,11 +1082,10 @@ async function applySweep(env: Env, runId: string, file = SWEEP_FILE): Promise<A
 // screened_at on a record = when THAT record's result last changed; the run date lives in feed_meta.
 async function applyScreen(env: Env, runId: string, regime = SCREEN_REGIME): Promise<ApplyResult> {
   const startedAt = new Date().toISOString();
-  const base = env.DATA_BASE ?? DATA_BASE_DEFAULT;
   try {
     const [byMarket, summary]: [Record<string, any>, any] = await Promise.all([
-      fetchJson(`${base}/eligibility-${regime}.json?t=${Date.now()}`),
-      fetchJson(`${base}/eligibility-${regime}-summary.json?t=${Date.now()}`),
+      readData(env, `eligibility-${regime}.json`),
+      readData(env, `eligibility-${regime}-summary.json`),
     ]);
     const version: string | undefined = summary?.screen_version;
     const screenedAt: string | undefined = summary?.screened_at;
@@ -1119,7 +1131,7 @@ async function applyScreen(env: Env, runId: string, regime = SCREEN_REGIME): Pro
 async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResult> {
   const startedAt = new Date().toISOString();
   try {
-    const snap: any = await fetchJson(`${env.DATA_BASE ?? DATA_BASE_DEFAULT}/kalshi-tracked-latest.json?t=${Date.now()}`, undefined, 2);
+    const snap: any = await readData(env, 'kalshi-tracked-latest.json', 2);
     if (!Array.isArray(snap?.markets)) throw new Error('snapshot has no markets[]');
     const age = (Date.now() - Date.parse(snap?.generated_at ?? '')) / 60e3;
     if (!(age <= 24 * 60)) throw new Error(`snapshot too old (${Math.round(age)} min)`);
