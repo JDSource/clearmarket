@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261001DV00"
+signal_id: "CMSIG20261001DV01"
 signal_slug: "us-economy-soft-landing-k33-p27"
-headline: "Economy in recession by end-2026: Kalshi 33% vs Polymarket 27%"
-semantic_title: "End-2026 economy outlook carries a premium across venues"
+headline: "Economy rated 'good' end of 2026: Kalshi 33% vs Polymarket 27%"
+semantic_title: "End-of-2026 economy outlook builds a gap across major desks"
 telemetry: "Polymarket 27% vs Kalshi 33%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-01T07:48:45+00:00"
+published_at: "2026-10-01T15:04:26+00:00"
 event_id: "CM-EVT-ZRG5DFDMZ8"
 event_slug: "kxeconpath-26"
 event_question: "State of the economy at the end of 2026?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "State of the economy at the end of 2026?"
     current_price: 0.33
 bullets:
-  - "Kalshi prices recession risk at 33%, Polymarket at 27%, a 6pp spread."
-  - "Kalshi is higher; Polymarket carries roughly five times the cumulative liquidity."
-  - "Deeper Polymarket volume may reflect a broader, less doom-leaning crowd; Kalshi's smaller pool could skew toward more pessimistic participants."
-  - "Resolution hinges on an official recession call (likely NBER or equivalent) before January 1, 2027."
+  - "Kalshi prices a positive economy outcome at 33%, Polymarket at 27%, a 6pp spread heading into Q4 2026."
+  - "Kalshi is the higher venue; Polymarket carries the larger book at roughly five times Kalshi's cumulative volume."
+  - "Divergence likely reflects ambiguous resolution criteria, 'state of the economy' leaves room for interpretation, widening venue-to-venue disagreement."
+  - "Resolution mechanic: outcome determined by a defined economic indicator or survey benchmark at year-end 2026."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-534611296D); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: State of the economy at the end of 2026?"
     url: "https://clearmarket.fyi/compare/us-economy-soft-landing-y-2026"
-    retrieved_at: "2026-10-01T07:48:45+00:00"
+    retrieved_at: "2026-10-01T15:04:26+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 6pp gap, with the higher price sitting on the thinner book, suggests a desk should treat Polymarket's 27% as the better-anchored signal and view Kalshi's 33% as a liquidity-discount artifact rather than genuine informational edge.
+Soft resolution language on a macro claim is a known driver of cross-venue spreads, a desk should treat the 6pp gap as a signal to scrutinize the resolution rules before taking a position on either side.
