@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261002VS05"
+signal_id: "CMSIG20261002VS01"
 signal_slug: "will-the-republican-party-win-the-oh-13-vol-14352"
-headline: "GOP wins OH-13: 1% on $14K surge"
-semantic_title: "Republicans priced out of OH-13 as fresh volume returns"
+headline: "GOP OH-13 House seat: 1% on $14K volume spike"
+semantic_title: "Republican win in OH-13 stays a long shot at 1% through heavy trading"
 telemetry: "1% · $14K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-02T07:48:52+00:00"
+published_at: "2026-10-02T14:26:08+00:00"
 event_id: "CM-EVT-WMKKZW90K3"
 event_slug: "oh-13-house-election-winner"
 event_question: "OH-13 House Election Winner"
@@ -17,14 +17,14 @@ primary_market:
   question_raw: "Will the Republican Party win the OH-13 House seat?"
   current_price: 0.013
   volume_24h_usd: 14352.917167
-  volume_cumulative_usd: 27870.538192999993
+  volume_cumulative_usd: 27870.538192999997
   arbitration_model: "uma_oracle"
   resolves_at: "2026-11-04T00:00:00Z"
 bullets:
-  - "1% price is effectively a no-contest, the market assigns near-zero probability to a Republican pickup in OH-13."
-  - "$14K in 24h is 51% of all-time volume, reflecting a fresh burst of attention with election season approaching."
-  - "Volume at near-zero odds typically signals late position-closing or speculative long shots being tested and rejected."
-  - "Resolves on the OH-13 House race result."
+  - "Price of 1% on Polymarket leaves virtually no probability of a Republican flip in OH-13."
+  - "24h volume of $14.4K is 51% of all-time handle, meaning half the contract's lifetime liquidity arrived today."
+  - "Surge at near-zero odds suggests either late arbitrage activity or a final positioning flush ahead of race resolution."
+  - "Resolves on certified Ohio 13th District House race outcome."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: OH-13 House Election Winner"
     url: "https://clearmarket.fyi/events/oh-13-house-election-winner"
-    retrieved_at: "2026-10-02T07:48:52+00:00"
+    retrieved_at: "2026-10-02T14:26:08+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-For a desk tracking House control probabilities, OH-13 at 1% is a settled outcome, the volume spike flags cleanup trading rather than any genuine reassessment of the seat's competitiveness.
+Heavy volume into a 1% contract signals the desk should watch for a resolution trigger, this is likely late-stage settlement flow rather than genuine directional disagreement.
