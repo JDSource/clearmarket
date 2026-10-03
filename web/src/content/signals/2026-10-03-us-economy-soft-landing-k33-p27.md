@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261003DV01"
 signal_slug: "us-economy-soft-landing-k33-p27"
-headline: "Economy 'good/great' end of 2026: Kalshi 34% vs Polymarket 27%"
-semantic_title: "End-of-2026 economy outlook carries a premium on Kalshi"
+headline: "U.S. economy strong at end-2026: Kalshi 34% vs Polymarket 27%"
+semantic_title: "End-of-2026 economy outlook carries a premium on one venue"
 telemetry: "Polymarket 27% vs Kalshi 34%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-03T07:48:42+00:00"
+published_at: "2026-10-03T13:00:57+00:00"
 event_id: "CM-EVT-ZRG5DFDMZ8"
 event_slug: "kxeconpath-26"
 event_question: "State of the economy at the end of 2026?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "State of the economy at the end of 2026?"
     current_price: 0.339
 bullets:
-  - "Kalshi prices a positive economy outcome at 34%, Polymarket at 27%, a 7pp gap"
-  - "Kalshi is the higher venue; Polymarket holds roughly 5x the liquidity at $47K vs Kalshi's $10K"
-  - "Divergence may reflect differing resolution criteria or question wording between platforms, not genuine disagreement on macro conditions"
-  - "Resolution tied to an end-of-2026 economic assessment benchmark, definition ambiguity is a key risk"
+  - "Kalshi prices a strong-economy outcome at 34%, Polymarket at 27%, a 7pp spread with the horizon roughly 90 days out."
+  - "Kalshi is the higher-priced venue; Polymarket holds the larger book at $47K cumulative volume vs Kalshi's $10K."
+  - "Divergence may reflect differing resolution criteria or question framing between venues, as the underlying 'state of economy' claim is inherently subjective."
+  - "Resolution hinges on the specific adjudication source each venue uses, desks should verify whether both contracts resolve against the same economic indicator or poll."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-534611296D); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: State of the economy at the end of 2026?"
     url: "https://clearmarket.fyi/compare/us-economy-soft-landing-y-2026"
-    retrieved_at: "2026-10-03T07:48:42+00:00"
+    retrieved_at: "2026-10-03T13:00:57+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 7pp spread likely reflects semantic differences in how each venue defines a 'good' economic outcome rather than a pure arbitrage opportunity, so a desk should reconcile resolution rules before treating this as actionable.
+A 7pp gap on a macro sentiment claim with mismatched resolution language across venues is a red flag for apparent arbitrage, desks should confirm identical resolution mechanics before treating this as a tradeable spread.
