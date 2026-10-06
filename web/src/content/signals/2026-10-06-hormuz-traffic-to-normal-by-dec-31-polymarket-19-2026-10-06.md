@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026100604"
-signal_slug: "hormuz-traffic-normal-by-dec-31-polymarket-19-2026-10-06"
-headline: "Hormuz traffic normal by Dec 31: Polymarket 19%"
-semantic_title: "Strait of Hormuz reopening by year-end stays below 25%"
+signal_id: "CMSIG2026100608"
+signal_slug: "hormuz-traffic-to-normal-by-dec-31-polymarket-19-2026-10-06"
+headline: "Hormuz traffic to normal by Dec 31: Polymarket 19%"
+semantic_title: "Hormuz normalization by year-end stays a long shot at 19%"
 telemetry: "Polymarket 19%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -20,10 +20,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "The Polymarket contract on Strait of Hormuz traffic returning to normal by December 31 sits at 19%, a long-shot read."
-  - "Trump's rejection of Iran's seven-day reopening plan is consistent with the market's low probability; diplomatic resolution looks unlikely near-term."
-  - "A companion Kalshi contract (CM-EVT-34SYT4T2T1) prices only 4% on the US reopening its embassy in Iran, reinforcing the depth of the diplomatic impasse."
-  - "Resolves via Polymarket's UMA oracle; 'normal' traffic definition and verification methodology are key settlement edge cases."
+  - "The Polymarket contract on Strait of Hormuz traffic returning to normal by December 31 prices at 19%, well below an even-money read."
+  - "The Saudi-led coalition's military escalation in Yemen and Houthi strikes on Riyadh's King Khalid International Airport and Aramco facilities signal the conflict is broadening, not resolving."
+  - "Iran's rejection of US diplomatic talks (Story 26) reinforces the low probability of a near-term Hormuz normalization."
+  - "Resolves via Polymarket's UMA oracle; the definition of 'normal' Hormuz traffic and the verification source are critical settlement considerations."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,26 +31,26 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "President Donald Trump rejected Iran's proposal to reopen the Strait of Hormuz within seven days, while Iran called US talks meaningless."
-    publisher: "WORLD"
+    story: "Yemen government forces recaptured the Red Sea port of Mokha from Houthis as Saudi Arabia, Turkey, and Pakistan agreed to deploy forces and activate deterrence measures, keeping oil markets on edge."
+    publisher: "Sam Meredith"
     published_at: "2026-10-06T00:00:00.000Z"
-    source_url: "https://ilkha.com/english/world/trump-rejects-iran-s-seven-day-hormuz-plan-as-tehran-pushes-for-diplomatic-resolution-565164"
+    source_url: "https://www.cnbc.com/2026/10/06/iran-war-yemen-saudi-arabia-mokha-oil.html"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "WORLD"
-        source_url: "https://ilkha.com/english/world/trump-rejects-iran-s-seven-day-hormuz-plan-as-tehran-pushes-for-diplomatic-resolution-565164"
+        source: "Sam Meredith"
+        source_url: "https://www.cnbc.com/2026/10/06/iran-war-yemen-saudi-arabia-mokha-oil.html"
         retrieved_at: "2026-10-06T14:42:27+00:00"
   - type: "pm_response"
-    notes: "Polymarket puts long odds against a Hormuz resolution by year-end, consistent with Trump's public rejection of Iran's proposal."
+    notes: "Polymarket's 19% reflects the market's consistent view that Hormuz normalization by year-end is unlikely amid active regional escalation."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "WORLD: Trump rejects Iran’s seven-day Hormuz plan as Tehran pushes for diplom"
-    url: "https://ilkha.com/english/world/trump-rejects-iran-s-seven-day-hormuz-plan-as-tehran-pushes-for-diplomatic-resolution-565164"
+  - label: "Sam Meredith: Iran war: Yemen forces reclaim Red Sea port city of Mokha from Houthis"
+    url: "https://www.cnbc.com/2026/10/06/iran-war-yemen-saudi-arabia-mokha-oil.html"
     published_at: "2026-10-06T00:00:00.000Z"
     retrieved_at: "2026-10-06T14:42:27+00:00"
 field_provenance:
