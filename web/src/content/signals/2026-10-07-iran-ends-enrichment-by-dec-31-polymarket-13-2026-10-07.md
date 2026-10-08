@@ -1,5 +1,5 @@
 ---
-signal_id: "CMSIG2026100706"
+signal_id: "CMSIG2026100705"
 signal_slug: "iran-ends-enrichment-by-dec-31-polymarket-13-2026-10-07"
 headline: "Iran ends enrichment by Dec 31: Polymarket 13%"
 semantic_title: "Iran ending uranium enrichment by year-end stays a long shot"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0xff68b32e6543ae8b44ccb520604b6ea224a1bac071a186fb65f6f40949a758df"
   question_raw: " Iran agrees to end enrichment of uranium by December 31?"
   current_price: 0.13
-  volume_24h_usd: 6.84
+  volume_24h_usd: 5146.522309
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "Polymarket puts 13% odds on Iran agreeing to end uranium enrichment by December 31, 2026, resolving via UMA oracle."
-  - "Vance's demand for enrichment cuts is a public negotiating position; at 13%, Polymarket is firmly fading any near-term deal, consistent with Iran's simultaneous pre-emptive strike threats."
-  - "The companion Kalshi contract (CM-EVT-34SYT4T2T1) prices only 2% on the US reopening its embassy in Iran, reinforcing that markets see normalization as remote."
-  - "Resolves via UMA oracle assessment of whether Iran formally agrees to cease enrichment before December 31, 2026."
+  - "Polymarket prices only a 13% chance Iran agrees to end uranium enrichment by December 31, 2026."
+  - "New US demands and Vance's compromise signals suggest diplomacy is alive, but Polymarket's pricing reflects deep skepticism a deal closes this year."
+  - "The US military preparing Iran strike options (Story 10, 12) and deadlocked diplomacy (Story 24) are consistent with the low probability the market assigns to a nuclear agreement."
+  - "Resolves via UMA oracle; the contract requires Iran to formally agree to end enrichment, not merely reduce it."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,7 +31,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "US Vice President JD Vance called for reduced Iranian nuclear enrichment as a condition to end the conflict, while Iran threatened pre-emptive strikes."
+    story: "The US set new demands on Iran including reduced nuclear enrichment, with Vice President JD Vance signaling room for compromise but major obstacles remaining."
     publisher: "Caolán Magee"
     published_at: "2026-10-07T00:00:00.000Z"
     source_url: "https://www.aljazeera.com/news/2026/10/7/us-sets-new-demands-for-iran-deal-what-are-they"
@@ -41,18 +41,18 @@ atomic_claims:
         method: "exa_search"
         source: "Caolán Magee"
         source_url: "https://www.aljazeera.com/news/2026/10/7/us-sets-new-demands-for-iran-deal-what-are-they"
-        retrieved_at: "2026-10-07T15:02:04+00:00"
+        retrieved_at: "2026-10-08T15:10:10+00:00"
   - type: "pm_response"
-    notes: "Polymarket at 13% reflects a market that treats US-Iran nuclear deal talks as a long shot despite public diplomatic signaling from both sides."
+    notes: "Polymarket at 13% on a year-end enrichment halt suggests participants see the US-Iran deadlock as more likely to persist than resolve within this calendar year."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "Caolán Magee: US sets new demands for Iran deal: What are they? | US-Israel war on I"
+  - label: "Caolán Magee: US sets new demands for Iran deal: What are they?"
     url: "https://www.aljazeera.com/news/2026/10/7/us-sets-new-demands-for-iran-deal-what-are-they"
     published_at: "2026-10-07T00:00:00.000Z"
-    retrieved_at: "2026-10-07T15:02:04+00:00"
+    retrieved_at: "2026-10-08T15:10:10+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
