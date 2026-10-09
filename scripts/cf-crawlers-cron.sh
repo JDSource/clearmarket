@@ -14,8 +14,12 @@ if [ -z "${CLOUDFLARE_ZONE_TOKEN:-}" ]; then
   npx -y wrangler@latest whoami >/dev/null 2>&1 || echo "warn: wrangler OAuth refresh failed ($(date -u +%FT%TZ)); snapshots may auth-fail"
 fi
 # Snapshot the last 7 complete UTC days (today-7 .. yesterday). Recorded days are skipped cheaply.
+# Pace the queries: CF GraphQL rate-limits bursts (code 10429), which is what the Sept 28 – Oct 7
+# "FAILED" days were. Already-recorded days exit before querying, so the sleep only costs on real work.
 for i in 7 6 5 4 3 2 1; do
   d="$(python3 -c "import datetime;print((datetime.datetime.utcnow()-datetime.timedelta(days=$i)).strftime('%Y-%m-%d'))")"
   "$DIR/cf-crawlers-snapshot.sh" "$d"   # zone AI/agent layer (8-day retention — must archive)
+  sleep 5
   "$DIR/rum-snapshot.sh" "$d"           # human RUM layer (CF keeps it, but we keep our own copy too)
+  sleep 5
 done
