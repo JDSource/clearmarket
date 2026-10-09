@@ -34,10 +34,10 @@ from the enriched bundle. To refresh after a new enrichment run:
 
 ```sh
 cd api
-node scripts/export-d1.mjs            # regenerates seed/{schema,seed,meta}.sql from web/data/universe-enriched-full.json
+node scripts/export-d1.mjs            # regenerates seed/{schema,seed}.sql + meta.json from web/data/universe-enriched-linked.json (add --with-resolution-log ONLY for a from-scratch DB)
 export PATH="/usr/local/opt/node@22/bin:$PATH"
-npx wrangler d1 execute clearmarket --remote --file=seed/schema.sql   # drops + recreates events/markets, keeps api_keys/usage
-npx wrangler d1 execute clearmarket --remote --file=seed/seed.sql     # bulk load (statements byte-bounded < 60KB for D1's 100KB cap)
+npx wrangler d1 execute clearmarket --remote --file=seed/schema.sql   # CREATE IF NOT EXISTS only — never drops (first time: apply reload-upsert-migration.sql to the live tables)
+npx wrangler d1 execute clearmarket --remote --file=seed/seed.sql     # UPSERT: new rows inserted, description columns refreshed, absent open markets delisted; state/ledger untouched (statements < 60KB for D1's 100KB cap)
 ```
 
 Seed SQL (`seed/*.sql`, ~32MB) is gitignored — regenerable from the bundle.
