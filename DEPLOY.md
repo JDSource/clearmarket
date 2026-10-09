@@ -8,7 +8,7 @@ Practical procedures for shipping changes live. Read this before any deploy from
 |---|---|---|
 | **Site** `clearmarket.fyi` | Cloudflare **Pages** project `clearmarket` | **Direct-upload — NOT git-connected.** `wrangler pages deploy web/dist`. A git push does **not** update it. |
 | **API** `api.clearmarket.fyi/v1/*` + **MCP** `/mcp` | Cloudflare **Worker** `clearmarket-api` | `cd api && npx wrangler deploy` |
-| **DB** | Cloudflare **D1** | reseed via `cd api && npm run seed:remote` (drops+recreates events/markets/resolution_log from the bundle; api_keys/usage/call_log/marks_daily persist) |
+| **DB** | Cloudflare **D1** | reload via `cd api && npm run seed:remote` — an UPSERT since 2026-10-08: inserts new events/markets, refreshes DESCRIPTION columns on existing ones, retires absent open markets (`status='delisted'`), never drops a table. Production-owned state (status/prices/clocks/screens), resolution_log, marks_daily and the ops tables are untouched. First reload on this path needs `api/reload-upsert-migration.sql` applied once. |
 | **Data bundle** | Cloudflare **R2** bucket `cm-data` | `wrangler r2 object put cm-data/<file> --file web/data/<file> --remote`. Public base: `https://pub-44522f32bfd047a386a961f5a624fd6f.r2.dev` |
 
 **Prereqs:** Node 22 — `export PATH="/usr/local/opt/node@22/bin:$PATH"` (default node is 20; wrangler needs 22). Cloudflare creds live in repo `.env` (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `ANTHROPIC_API_KEY`, …): `set -a; . ./.env; set +a`.
@@ -76,7 +76,7 @@ Rollback: re-`put` the `.R2-ORIG.bak.json` copy.
 cd ~/Git/clearmarket/api
 export PATH="/usr/local/opt/node@22/bin:$PATH"; set -a; . ../.env; set +a
 npm run export            # regenerate seed.sql/schema.sql from web/data bundle (use the LIVE bundle)
-npm run seed:remote       # reseed D1 (drops+recreates events/markets/resolution_log; ops tables persist)
+npm run seed:remote       # reload D1 (UPSERT of description columns + retire absent markets; nothing dropped; ledger/marks/ops persist)
 npx wrangler deploy       # deploy the Worker
 ```
 
@@ -105,10 +105,13 @@ Install: `cd api && wrangler secret put GH_DISPATCH_TOKEN`. Until it exists, /v1
 api.clearmarket.fyi. Fix in the dashboard: Security → Settings → disable Browser Integrity Check for the api hostname (a
 Configuration Rule), or tell consumers to send a descriptive User-Agent.
 
-**ALTER-only deploys: do NOT run `npm run seed:remote`.** A reseed drops+recreates `markets` from the bundle,
-which clobbers the cron-fresh `last_price`/`volume`/`status` in D1 with the (older) bundle snapshot. For a
-Worker-logic + new-column change (like the zombie fix), the steps are just: apply the migration, then
-`wrangler deploy`. Reseed only when you have a genuinely newer bundle to ship.
+**ALTER-only deploys: do NOT run `npm run seed:remote`.** Since 2026-10-08 a reload is an upsert that leaves
+cron-owned `status`/`last_price`/`volume`/clocks/screens alone, so it no longer clobbers live state — but it still
+rewrites descriptions, bumps `row_changed_at` wherever a description differs (visible to `/v1/marks?since=`
+consumers) and retires open markets the bundle doesn't carry. For a Worker-logic + new-column change the steps
+are just: apply the migration, then `wrangler deploy`. Reload only when you have a genuinely newer bundle to ship,
+and rehearse it first against a sqlite copy (`sqlite3 x.sqlite < seed/schema.sql; sqlite3 x.sqlite < seed/seed.sql`).
+Back up the ledger before any reload: `wrangler d1 export clearmarket --remote --table=resolution_log --output=…`.
 
 Worker code is defensive where it reads not-yet-seeded tables (e.g. `resolution_log` returns `[]` until the reseed), so the Worker can ship ahead of the reseed without 500-ing.
 
