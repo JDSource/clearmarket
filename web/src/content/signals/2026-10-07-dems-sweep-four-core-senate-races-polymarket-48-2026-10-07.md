@@ -1,5 +1,5 @@
 ---
-signal_id: "CMSIG2026100707"
+signal_id: "CMSIG2026100706"
 signal_slug: "dems-sweep-four-core-senate-races-polymarket-48-2026-10-07"
 headline: "Dems sweep four core Senate races: Polymarket 48%"
 semantic_title: "Democrats winning all four core Senate races sits near 50 percent"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0x096f26b2abcfde3ee7863e7916ca17682522715f7631debd4878a43ee6c797a9"
   question_raw: "Will Democrats win all \"core four\" senate races?"
   current_price: 0.48
-  volume_24h_usd: 477.002686
+  volume_24h_usd: 2.716982
   arbitration_model: "uma_oracle"
   resolves_at: "2026-11-03T00:00:00Z"
 bullets:
-  - "Polymarket prices a 48% chance Democrats win all four core Senate races, reflecting a near-even contest with a month to go."
-  - "Republican spending anxiety reported in the story aligns with Polymarket's near-50% pricing, suggesting the market sees no clear GOP advantage in these seats."
-  - "A companion Kalshi contract (CM-EVT-T5VXKJT451) prices Republicans controlling at least one chamber at 61%, implying the Senate sweep odds and overall chamber control are pricing in different scenarios."
-  - "Resolves via UMA oracle on Polymarket; 'core four' Senate races likely refers to the most competitive contested seats as defined at contract inception."
+  - "The Polymarket prediction market prices Democrats winning all four core Senate races at 48%, essentially a coin flip."
+  - "The AP story on Republican anxiety about their spending advantage is consistent with the market sitting just below 50%; no strong consensus has formed either way."
+  - "Nonpartisan forecasters have shifted several congressional contests toward Democrats in recent days, which aligns with the near-50% Democratic Senate pricing."
+  - "Resolution via uma_oracle; all four named core Senate races must be won by Democratic candidates for a YES settlement."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,7 +31,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Republicans are entering the final month of the midterm campaign increasingly anxious despite over $1 billion in spending, fearing it may not be enough to hold key seats."
+    story: "Republicans are entering the final month of midterm campaigns increasingly anxious that one billion dollars in spending may not be enough to hold the House and Senate."
     publisher: "STEVEN SLOAN, THOMAS BEAUMONT Associated Press"
     published_at: "2026-10-07T00:00:00.000Z"
     source_url: "https://triblive.com/news/politics-election/can-1-billion-buy-victory-in-the-midterm-elections-some-republicans-fear-the-answer-is-no/"
@@ -41,9 +41,9 @@ atomic_claims:
         method: "exa_search"
         source: "STEVEN SLOAN, THOMAS BEAUMONT Associated Press"
         source_url: "https://triblive.com/news/politics-election/can-1-billion-buy-victory-in-the-midterm-elections-some-republicans-fear-the-answer-is-no/"
-        retrieved_at: "2026-10-08T15:10:10+00:00"
+        retrieved_at: "2026-10-10T07:47:51+00:00"
   - type: "pm_response"
-    notes: "Polymarket's 48% on a Democratic Senate sweep versus Kalshi's 61% on Republicans holding at least one chamber reveals meaningful cross-contract divergence on the overall midterm outcome."
+    notes: "Polymarket at 48%; resolves via uma_oracle on the outcome of all four designated core Senate races."
     field_provenance:
       notes:
         tier: "editorial"
@@ -52,7 +52,7 @@ sources:
   - label: "STEVEN SLOAN, THOMAS BEAUMONT Associated Press: Can $1 billion buy victory in the midterm elections? Some Republicans"
     url: "https://triblive.com/news/politics-election/can-1-billion-buy-victory-in-the-midterm-elections-some-republicans-fear-the-answer-is-no/"
     published_at: "2026-10-07T00:00:00.000Z"
-    retrieved_at: "2026-10-08T15:10:10+00:00"
+    retrieved_at: "2026-10-10T07:47:51+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
