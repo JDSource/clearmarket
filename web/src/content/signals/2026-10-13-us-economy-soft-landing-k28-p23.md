@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261013DV02"
 signal_slug: "us-economy-soft-landing-k28-p23"
-headline: "U.S. economy in recession end-2026: Kalshi 29% vs Polymarket 23%"
-semantic_title: "Economy-in-recession odds stay apart across venues"
+headline: "U.S. economy 'good' at end of 2026: Kalshi 29% vs Polymarket 23%"
+semantic_title: "U.S. economy end-of-2026 outlook carries a premium on one venue"
 telemetry: "Polymarket 23% vs Kalshi 29%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-13T07:49:40+00:00"
+published_at: "2026-10-13T15:33:55+00:00"
 event_id: "CM-EVT-ZRG5DFDMZ8"
 event_slug: "kxeconpath-26"
 event_question: "State of the economy at the end of 2026?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "State of the economy at the end of 2026?"
     current_price: 0.29
 bullets:
-  - "Kalshi prices a recessionary economy at end of 2026 at 29%; Polymarket prices it at 23%, a 6pp gap."
-  - "Kalshi is higher on roughly $8.6K volume; Polymarket's lower price is backed by approximately $48K in cumulative volume."
-  - "Resolution ambiguity may explain part of the gap, the two venues may use different economic indicators or definition thresholds to judge 'state of economy.'"
-  - "Resolves based on official or designated economic condition readings at or before end of 2026."
+  - "Kalshi prices a positive economic outcome at 29%, Polymarket at 23%, a 6pp divergence on the same year-end claim."
+  - "Kalshi is the higher-priced venue; Polymarket leads on liquidity with $48K vs Kalshi's $8K cumulative volume."
+  - "Kalshi's higher read may reflect a more optimistic user base or looser resolution framing; Polymarket's definition of 'good' may be more stringent."
+  - "Resolution hinges on how each platform operationalizes the economy's state, differing source criteria could independently justify the spread."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-534611296D); prices direct from venue APIs"
@@ -44,15 +44,15 @@ atomic_claims:
         method: "arithmetic"
         inputs: ["kalshi_price", "poly_price"]
     liquidity_context:
-      kalshi_vol_24h_usd: 31.04
-      poly_vol_24h_usd: 929.038483
+      kalshi_vol_24h_usd: 11.6
+      poly_vol_24h_usd: 100.73
 sources:
   - label: "ClearMarket cross-venue record: State of the economy at the end of 2026?"
     url: "https://clearmarket.fyi/compare/us-economy-soft-landing-y-2026"
-    retrieved_at: "2026-10-13T07:49:40+00:00"
+    retrieved_at: "2026-10-13T15:33:55+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 6pp divergence on a macro claim with differing resolution criteria across venues means a desk should scrutinize each contract's exact resolution rules before treating the spread as a clean arbitrage opportunity.
+This divergence is notable because resolution-definition ambiguity, not just liquidity imbalance, is a credible driver of the 6pp gap, meaning a desk should closely compare each platform's stated resolution criteria before treating either price as the cleaner signal.
