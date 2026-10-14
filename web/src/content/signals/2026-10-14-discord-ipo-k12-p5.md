@@ -2,12 +2,12 @@
 signal_id: "CMSIG20261014DV01"
 signal_slug: "discord-ipo-k12-p5"
 headline: "Discord IPO before 2027: Kalshi 12% vs Polymarket 6%"
-semantic_title: "Discord IPO before 2027 trades far apart on the major prediction desks"
+semantic_title: "Discord IPO odds trade far apart across venues heading into year-end"
 telemetry: "Polymarket 6% vs Kalshi 12%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-14T07:49:05+00:00"
+published_at: "2026-10-14T13:18:28+00:00"
 event_id: "CM-EVT-858NYLKF97"
 event_slug: "kxipo-26"
 event_question: "Discord IPO before 2027?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "Who will IPO before 2027?"
     current_price: 0.12
 bullets:
-  - "Kalshi prices a Discord IPO at 12%, Polymarket at 6%, a 6pp spread on an already low-probability claim."
-  - "Kalshi is higher; Polymarket holds roughly 30 times the cumulative volume, making it the more liquid reference."
-  - "Kalshi's thinner book is more susceptible to drift; Polymarket's 6% likely reflects a well-informed crowd with little new IPO-window catalyst."
-  - "Resolution requires a completed Discord IPO listing on a public exchange before January 1, 2027."
+  - "Kalshi prices a Discord IPO before 2027 at 12%, Polymarket at 6%, a 6pp spread on an identical claim."
+  - "Kalshi's 12% rests on ~$16K volume; Polymarket's 6% is underpinned by ~$491K, roughly 30x more liquidity."
+  - "With Polymarket's book orders of magnitude deeper, its 6% is the stronger price-discovery signal; Kalshi's higher reading looks thin."
+  - "Resolution requires a completed public offering or confirmed first trading day before January 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-26DA00133D); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Discord IPO before 2027?"
     url: "https://clearmarket.fyi/compare/discord-ipo-y-2026"
-    retrieved_at: "2026-10-14T07:49:05+00:00"
+    retrieved_at: "2026-10-14T13:18:28+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-With Polymarket running 30x the volume at half the probability, a desk should treat the 6% Polymarket print as the anchor and view Kalshi's 12% as a thin-book artifact rather than genuine signal.
+A 2:1 price ratio on the same near-term IPO claim, with the higher reading on the much thinner venue, is a clear liquidity-driven artifact, Polymarket's 6% is the defensible anchor, and any desk pricing Discord IPO risk should weight it heavily over Kalshi's outlier figure.
