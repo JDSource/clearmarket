@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261015DV00"
 signal_slug: "us-economy-soft-landing-k28-p22"
-headline: "U.S. economy 'good/great' by end-2026: Kalshi 29% vs Polymarket 22%"
-semantic_title: "Economy-state claim carries a premium on the low-volume desk"
+headline: "U.S. economy strong by end-2026: Kalshi 29% vs Polymarket 22%"
+semantic_title: "2026 economy outlook carries a premium across venues"
 telemetry: "Polymarket 22% vs Kalshi 29%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-15T07:49:06+00:00"
+published_at: "2026-10-15T13:04:31+00:00"
 event_id: "CM-EVT-ZRG5DFDMZ8"
 event_slug: "kxeconpath-26"
 event_question: "State of the economy at the end of 2026?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "State of the economy at the end of 2026?"
     current_price: 0.288
 bullets:
-  - "Kalshi prices the positive-economy outcome at 29%, Polymarket at 22%, a 7pp gap."
-  - "Kalshi is higher on thin volume; Polymarket holds the lower price with roughly six times the liquidity."
-  - "Kalshi's vaguer resolution criteria may be drawing optimistic pricing; Polymarket's deeper pool likely reflects broader sentiment."
-  - "Resolution hinges on the specific grading rubric each platform applies to 'state of the economy', definitions may differ materially."
+  - "Kalshi prices the strong-economy outcome at 29%, Polymarket at 22%, a 7pp gap."
+  - "Kalshi is the higher-priced venue; Polymarket holds deeper liquidity at roughly $49K cumulative vs Kalshi's $9K."
+  - "Shallow volume on Kalshi may reflect a less representative sample, giving the Polymarket read more weight on a desk."
+  - "Resolution likely turns on a designated economic scorecard or index reading before Jan 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-534611296D); prices direct from venue APIs"
@@ -44,15 +44,15 @@ atomic_claims:
         method: "arithmetic"
         inputs: ["kalshi_price", "poly_price"]
     liquidity_context:
-      kalshi_vol_24h_usd: 228.88
-      poly_vol_24h_usd: 266.711819
+      kalshi_vol_24h_usd: 75.95
+      poly_vol_24h_usd: 260.711819
 sources:
   - label: "ClearMarket cross-venue record: State of the economy at the end of 2026?"
     url: "https://clearmarket.fyi/compare/us-economy-soft-landing-y-2026"
-    retrieved_at: "2026-10-15T07:49:06+00:00"
+    retrieved_at: "2026-10-15T13:04:31+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 7pp spread likely reflects definitional ambiguity in the claim's resolution criteria rather than a pure arbitrage opportunity, and the lopsided liquidity makes closing the gap costly in practice.
+The 7pp spread, with the higher price sitting on the thinner book, suggests a desk should treat Polymarket's 22% as the more liquid consensus and watch whether Kalshi's elevated print closes toward it as volume builds.

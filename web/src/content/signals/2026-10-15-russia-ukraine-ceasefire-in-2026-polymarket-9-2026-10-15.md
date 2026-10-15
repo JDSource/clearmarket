@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026101506"
+signal_id: "CMSIG2026101507"
 signal_slug: "russia-ukraine-ceasefire-in-2026-polymarket-9-2026-10-15"
 headline: "Russia-Ukraine ceasefire in 2026: Polymarket 9%"
-semantic_title: "Russia-Ukraine ceasefire in 2026 stays a long shot at 9%"
+semantic_title: "Russia-Ukraine 2026 ceasefire remains a long shot at 9 percent"
 telemetry: "Polymarket 9%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0x84c625fdccf5c5246a15e476361e4563033906ee225800e1136c0d737596a72f"
   question_raw: "Russia x Ukraine ceasefire by December 31, 2026?"
   current_price: 0.09
-  volume_24h_usd: 4173.44
+  volume_24h_usd: 3223.44
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "The Polymarket prediction market prices only a 9% chance Russia and Ukraine reach a ceasefire in 2026."
-  - "Zelensky's public frustration with Trump and continued battlefield activity are consistent with the market's deep skepticism; the 9% is not in conflict with the news."
-  - "The companion Polymarket contract on Trump, Putin, and Zelensky meeting together (CM-EVT-FNBRJ6KY59) sits at just 6%, reinforcing that a diplomatic breakthrough remains extremely unlikely."
-  - "Resolves via Polymarket's UMA oracle; a formal ceasefire announcement from both governments would be required, not a unilateral pause or temporary halt."
+  - "Polymarket prices a Russia-Ukraine ceasefire in 2026 at just 9%, consistent with the collapse of US-led energy truce efforts."
+  - "The failed energy ceasefire and resumed infrastructure strikes directly undercut the diplomatic pathway that ceasefire optimists had cited."
+  - "The companion Polymarket contract on Nord Stream pipeline restarting before 2027 (CM-EVT-ZXVZRRJFH4) sits at 3%, reinforcing a broad no-normalization consensus."
+  - "Resolves via UMA oracle; with under 11 weeks left in 2026, the 9% probability implies the market sees near-certain continuation of active conflict through year-end."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,28 +31,28 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Ukrainian President Volodymyr Zelensky expressed feeling betrayed by President Donald Trump as Starlink restrictions drew scrutiny and peace talks remained stalled."
-    publisher: "Daniel Keane"
+    story: "The US-brokered energy ceasefire between Russia and Ukraine collapsed as both sides resumed strikes on energy infrastructure despite Trump warnings."
+    publisher: "Andrew Roth"
     published_at: "2026-10-15T00:00:00.000Z"
-    source_url: "https://www.independent.co.uk/news/world/europe/ukraine-russia-war-live-trump-putin-zelensky-strikes-black-sea-b3066326.html"
+    source_url: "https://www.theguardian.com/world/2026/oct/15/us-effort-to-get-russia-ukraine-energy-ceasefire-collapses"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "Daniel Keane"
-        source_url: "https://www.independent.co.uk/news/world/europe/ukraine-russia-war-live-trump-putin-zelensky-strikes-black-sea-b3066326.html"
-        retrieved_at: "2026-10-15T07:47:47+00:00"
+        source: "Andrew Roth"
+        source_url: "https://www.theguardian.com/world/2026/oct/15/us-effort-to-get-russia-ukraine-energy-ceasefire-collapses"
+        retrieved_at: "2026-10-15T13:02:56+00:00"
   - type: "pm_response"
-    notes: "Polymarket contract resolving via UMA oracle holds at 9%, with the trilateral meeting contract at 6% forming a coherent low-probability cluster on Ukraine peace."
+    notes: "Polymarket contract at 9% resolves via UMA oracle; ceasefire collapse is consistent with current pricing and corroborated by companion energy-infrastructure contracts."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "Daniel Keane: Ukraine war latest: Zelensky ‘betrayed’ by Trump as Musk claims Starli"
-    url: "https://www.independent.co.uk/news/world/europe/ukraine-russia-war-live-trump-putin-zelensky-strikes-black-sea-b3066326.html"
+  - label: "Andrew Roth: US effort to get Russia-Ukraine energy ceasefire collapses | Ukraine |"
+    url: "https://www.theguardian.com/world/2026/oct/15/us-effort-to-get-russia-ukraine-energy-ceasefire-collapses"
     published_at: "2026-10-15T00:00:00.000Z"
-    retrieved_at: "2026-10-15T07:47:47+00:00"
+    retrieved_at: "2026-10-15T13:02:56+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"

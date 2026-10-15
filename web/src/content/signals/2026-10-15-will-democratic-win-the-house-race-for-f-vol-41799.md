@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261015VS03"
+signal_id: "CMSIG20261015VS05"
 signal_slug: "will-democratic-win-the-house-race-for-f-vol-41799"
-headline: "FL-25 (D): 79% on $42K, 27% of all-time vol"
-semantic_title: "FL-25 Democratic odds hold above 75% through a volume wave"
+headline: "FL-25 Dem win: 79% on $41.8K Kalshi activity"
+semantic_title: "FL-25 Democratic odds hold firm through a volume push"
 telemetry: "79% · $42K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-15T07:48:38+00:00"
+published_at: "2026-10-15T13:03:58+00:00"
 event_id: "CM-EVT-Q8F4815M66"
 event_slug: "kxhouserace-fl25-26"
 event_question: "Will the Florida 25th House seat be won in the next election?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-01-04T17:00:00Z"
 bullets:
-  - "At 79%, Kalshi traders favor Democrats to take FL-25, a contested Florida district drawing real capital."
-  - "$42K in 24h is 27% of all-time volume, meaningful for a down-ballot House race."
-  - "Florida congressional seats rarely see this liquidity; fresh attention may precede a poll, fundraising filing, or candidate event."
-  - "Contract resolves on FL-25 House election result."
+  - "Democrats at 79% in FL-25, market leans clearly blue but retains meaningful Republican tail risk."
+  - "$41.8K in 24h is 27% of all-time, steady rather than extreme but still the contract's busiest recent stretch."
+  - "A Florida seat with residual uncertainty at 79% flags either a credible Republican challenger or shifting local fundamentals."
+  - "Resolves on 2026 FL-25 House election result."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will the Florida 25th House seat be won in the next ele"
     url: "https://clearmarket.fyi/events/kxhouserace-fl25-26"
-    retrieved_at: "2026-10-15T07:48:38+00:00"
+    retrieved_at: "2026-10-15T13:03:58+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Sustained odds above 75% with a fresh volume wave flags FL-25 as a credible Democratic pickup on desk scorecards, worth monitoring alongside broader Florida swing signals.
+Sustained volume at a 79% Democratic price in a Florida district is worth monitoring, that level of uncertainty in a nominally blue seat could reflect a competitive challenger narrative not yet fully reflected in polling.
