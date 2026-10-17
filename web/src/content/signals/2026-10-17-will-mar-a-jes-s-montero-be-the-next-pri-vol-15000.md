@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261017VS06"
+signal_id: "CMSIG20261017VS05"
 signal_slug: "will-mar-a-jes-s-montero-be-the-next-pri-vol-15000"
-headline: "Montero Spain PM: 0% on $15K Polymarket surge"
-semantic_title: "Montero as Spain's next PM trades at zero on fresh volume"
+headline: "Montero Spain PM: 0% on $15K Polymarket flow"
+semantic_title: "Montero as Spain PM priced at zero; volume tests the floor"
 telemetry: "0% · $15K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-17T07:48:43+00:00"
+published_at: "2026-10-17T11:58:01+00:00"
 event_id: "CM-EVT-D9KHM803Y2"
 event_slug: "next-prime-minister-of-spain-20260625005215443"
 event_question: "Who will be the next Prime Minister of Spain?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2028-03-31T23:59:00Z"
 bullets:
-  - "Polymarket prices María Jesús Montero becoming Spain's next Prime Minister at effectively 0%."
-  - "$15K in 24h is 43% of all-time volume, significant activity for a market priced at zero."
-  - "Volume at 0% likely reflects position cleanup, final arbitrage, or traders closing residual longs after a political development ruled out her path."
-  - "Resolves upon Spain's next Prime Minister taking office."
+  - "Polymarket prices María Jesús Montero's path to Prime Minister at 0%, a hard rejection of the scenario."
+  - "24h volume of $15K is 43% of all-time, substantial flow arriving to confirm or probe the zero-price floor."
+  - "Flow into a zero-priced contract typically reflects new entrants confirming consensus or seeking edge on a tail scenario."
+  - "Resolves contingent on Spanish government formation or leadership transition events."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Who will be the next Prime Minister of Spain?"
     url: "https://clearmarket.fyi/events/next-prime-minister-of-spain-20260625005215443"
-    retrieved_at: "2026-10-17T07:48:43+00:00"
+    retrieved_at: "2026-10-17T11:58:01+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Fresh volume into a zero-priced contract signals the market has reached consensus closure, desks can treat this as a resolved directional call and focus on who the remaining PM candidates are.
+Significant volume into a zero-priced political contract is a geopolitical signal worth flagging, desks covering European sovereign risk should verify whether any Spanish coalition dynamics have shifted.
