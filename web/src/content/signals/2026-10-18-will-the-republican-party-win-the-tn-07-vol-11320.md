@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261018VS03"
 signal_slug: "will-the-republican-party-win-the-tn-07-vol-11320"
-headline: "TN-07 Republican seat: 97% on $11K volume pop"
-semantic_title: "TN-07 GOP hold backed by fresh volume at 97%"
+headline: "TN-07 GOP seat: 97% on $11K volume rise"
+semantic_title: "TN-07 Republican hold draws fresh trading at 97%"
 telemetry: "97% · $11K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-18T07:48:11+00:00"
+published_at: "2026-10-18T12:26:25+00:00"
 event_id: "CM-EVT-N1Q1LN0697"
 event_slug: "tn-07-house-election-winner"
 event_question: "Will the winner of the TN-07 House election be determined by November 3, 2026?"
@@ -17,14 +17,14 @@ primary_market:
   question_raw: "Will the Republican Party win the TN-07 House seat?"
   current_price: 0.968
   volume_24h_usd: 11320.900761
-  volume_cumulative_usd: 37620.78909399999
+  volume_cumulative_usd: 37620.789094
   arbitration_model: "uma_oracle"
   resolves_at: "2026-11-03T00:00:00Z"
 bullets:
-  - "Polymarket has the Republican TN-07 candidate at 97%, near the ceiling of contract certainty."
-  - "24h volume of $11K is 30% of all-time contract volume, a notable single-day share for a presumed safe seat."
-  - "Renewed activity on a near-locked contract may reflect late arbitrage or structured positioning ahead of resolution."
-  - "Resolves on the TN-07 House race outcome; 3% residual is the only priced risk remaining."
+  - "Polymarket prices Republican TN-07 win at 97%, leaving minimal probability for any other outcome."
+  - "24h volume of $11K represents 30% of all-time handle, meaningful but below the NC-11 intensity, suggesting routine late-cycle flow."
+  - "Fresh activity in a near-locked contract typically reflects resolution-proximity positioning rather than competitive uncertainty."
+  - "Contract resolves on Nov 3 general election results for TN-07."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will the winner of the TN-07 House election be determin"
     url: "https://clearmarket.fyi/events/tn-07-house-election-winner"
-    retrieved_at: "2026-10-18T07:48:11+00:00"
+    retrieved_at: "2026-10-18T12:26:25+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A desk should treat this as cleanup and arb traffic on a deeply Republican-favored seat, the volume is operationally interesting but carries no meaningful directional signal.
+At 97% with 30% of lifetime volume in one day, TN-07 is attracting resolution arb traffic ahead of election night, a desk can treat this as a liquidity footnote rather than a signal of competitive risk.
