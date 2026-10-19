@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261019VS02"
+signal_id: "CMSIG20261019VS03"
 signal_slug: "will-the-democrats-win-the-most-seats-in-vol-11000"
-headline: "Israel Dems most seats: 0% on $11K spike"
-semantic_title: "Democrats win most seats in Israeli vote: odds at zero"
+headline: "Israel Democrats most seats 2026: 0% on $11K spike"
+semantic_title: "Fresh volume returns to Democrats leading the 2026 Knesset race"
 telemetry: "0% · $11K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-19T07:48:06+00:00"
+published_at: "2026-10-19T15:15:12+00:00"
 event_id: "CM-EVT-SV1SCXFSY0"
 event_slug: "israeli-legislative-election-winner"
 event_question: "Will the Israeli legislative election result in a clear winner by the next scheduled election date?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-10-27T00:00:00Z"
 bullets:
-  - "Polymarket prices the Israeli Democrats winning the most seats in the 2026 Knesset election at 0%."
-  - "$11K traded in 24h represents 48% of all-time contract volume, nearly half the market's lifetime liquidity in one session."
-  - "A near-majority of lifetime volume arriving at zero price suggests the contract is approaching formal resolution or final arbitrage."
-  - "Resolves on official 2026 Israeli Knesset seat totals; current polling gives the Democrats no plausible path to first place."
+  - "Price at 0% reflects market consensus that the Israeli Democrats will not finish first in seat count in 2026."
+  - "Today's $11K represents 48% of all-time volume, nearly half of all trading occurred in this single session."
+  - "A nearly 50% single-day concentration is a strong signal that a discrete news event triggered final position closing."
+  - "Contract resolves on the official 2026 Israeli legislative election seat totals."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will the Israeli legislative election result in a clear"
     url: "https://clearmarket.fyi/events/israeli-legislative-election-winner"
-    retrieved_at: "2026-10-19T07:48:06+00:00"
+    retrieved_at: "2026-10-19T15:15:12+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Concentration of almost half of lifetime volume in a single session at zero odds signals traders closing out positions ahead of a fully anticipated negative resolution.
+Nearly half of all-time volume printing in one day on a zero-priced contract strongly implies a definitive political development, such as a polling collapse or coalition announcement, has prompted traders to close the book on this scenario.
