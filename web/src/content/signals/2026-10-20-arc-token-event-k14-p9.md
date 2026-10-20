@@ -2,12 +2,12 @@
 signal_id: "CMSIG20261020DV01"
 signal_slug: "arc-token-event-k14-p9"
 headline: "Arc token launch before Jan 1 2027: Kalshi 14% vs Polymarket 9%"
-semantic_title: "Arc token launch trades far apart on the major desks"
+semantic_title: "Arc token launch prices carry a premium on one venue"
 telemetry: "Polymarket 9% vs Kalshi 14%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-20T07:49:00+00:00"
+published_at: "2026-10-20T13:16:32+00:00"
 event_id: "CM-EVT-K7DR5FCFM0"
 event_slug: "kxtokenlaunch-27jan01"
 event_question: "Will Arc launch a token before Jan 1, 2027?"
@@ -26,9 +26,9 @@ related_markets:
     current_price: 0.14
 bullets:
   - "Kalshi prices an Arc token launch before Jan 1, 2027 at 14%; Polymarket at 9%, a 5pp spread."
-  - "Kalshi sits higher with ~$3K cumulative volume; Polymarket carries the deeper book at ~$180K."
-  - "Kalshi's very thin volume makes its 14% price easily skewed; Polymarket's deeper pool represents a more stress-tested market."
-  - "Resolves YES on any confirmed Arc token launch before Jan 1, 2027."
+  - "Kalshi is higher with negligible volume; Polymarket holds lower odds backed by roughly 59x more cumulative activity."
+  - "Thin Kalshi volume makes its price susceptible to a handful of trades; Polymarket's depth gives its 9% figure stronger claim to fair value."
+  - "Resolves YES on any confirmed Arc token public launch before January 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-F36B8880EB); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will Arc launch a token before Jan 1, 2027?"
     url: "https://clearmarket.fyi/compare/arc-token-event-y-2026"
-    retrieved_at: "2026-10-20T07:49:00+00:00"
+    retrieved_at: "2026-10-20T13:16:32+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-With Polymarket running roughly 59x Kalshi's volume on this contract, the 5pp gap almost certainly reflects Kalshi's illiquidity rather than a genuine information difference, desks should treat Polymarket's 9% as the operative probability.
+With Polymarket's volume advantage so pronounced, the 5pp Kalshi premium looks like a liquidity artifact rather than genuine disagreement, a desk would anchor to Polymarket's 9% and monitor for any late-cycle Arc announcement.
