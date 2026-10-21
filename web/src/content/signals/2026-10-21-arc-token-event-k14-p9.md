@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261021DV00"
+signal_id: "CMSIG20261021DV02"
 signal_slug: "arc-token-event-k14-p9"
-headline: "Arc token before Jan 1 2027: Kalshi 14% vs Polymarket 9%"
-semantic_title: "Arc token launch odds run higher on one venue"
+headline: "Arc token before 2027: Kalshi 14% vs Polymarket 9%"
+semantic_title: "Arc token launch carries a premium on one venue"
 telemetry: "Polymarket 9% vs Kalshi 14%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-21T07:49:13+00:00"
+published_at: "2026-10-21T13:25:45+00:00"
 event_id: "CM-EVT-K7DR5FCFM0"
 event_slug: "kxtokenlaunch-27jan01"
 event_question: "Will Arc launch a token before Jan 1, 2027?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "Will Arc launch a token before Jan 1, 2027?"
     current_price: 0.14
 bullets:
-  - "Kalshi prices Arc token launch at 14%, Polymarket at 9%, a 5pp gap with under 10 weeks left."
-  - "Kalshi is higher; Polymarket carries the deeper book at $184K cumulative volume vs Kalshi's $3K."
-  - "Thin Kalshi liquidity makes its 14% print fragile, the well-traded Polymarket line likely reflects broader informed consensus."
-  - "Resolution hinges on a publicly announced Arc token launch before January 1, 2027."
+  - "Kalshi prices the Arc token launch at 14%, Polymarket at 9%, a 5pp gap."
+  - "Kalshi is the higher venue; Polymarket's liquidity dwarfs Kalshi's by roughly 60x."
+  - "The gap likely reflects Kalshi's thin book amplifying small order impact rather than genuine informational disagreement."
+  - "Resolves YES if Arc publicly launches a token before Jan 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-F36B8880EB); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will Arc launch a token before Jan 1, 2027?"
     url: "https://clearmarket.fyi/compare/arc-token-event-y-2026"
-    retrieved_at: "2026-10-21T07:49:13+00:00"
+    retrieved_at: "2026-10-21T13:25:45+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-With Polymarket holding 98% of the combined volume, its 9% print is the more reliable anchor, and the Kalshi premium likely reflects thin-market noise rather than a genuine information edge.
+With Polymarket carrying 60x the volume, the 5pp premium on Kalshi is best read as a liquidity artifact, desks should anchor to Polymarket's 9% and treat the spread as a structural inefficiency rather than a signal.
