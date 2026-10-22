@@ -46,6 +46,24 @@ Every URL also ships a parallel `.json`, embedded JSON-LD, and a row in [`/llms.
 
 ---
 
+## Does the grade predict resolution risk? A 7,166-contract backtest
+
+A prediction-market contract can be right about the event and still settle on the fine print. The Resolution Clarity Grade scores that resolution risk from the rules text alone, before a market resolves, on every Kalshi and Polymarket contract. Tested against Polymarket's public on-chain dispute record (data as of 2026-07-23):
+
+| Grade | Challenged at resolution | Contracts | Rate |
+|---|---|---|---|
+| A | 3 | 2,587 | 0.12% |
+| B | 0 | 1,302 | 0.00% |
+| C | 52 | 3,277 | 1.59% |
+
+**52 of the 55 disputed contracts had been graded C before they resolved.** C-rated contracts were challenged at about 20 times the rate of A and B combined (relative risk 20.6x, 95% CI 6.4x to 65.8x). The separation holds within trading-volume quartiles (top quartile: A+B 0.22% vs C 4.94%), so the grade is not a proxy for market size. All three challenges to A-rated contracts failed. Pre-registered dispute definition, Wilson intervals, the volume control and the source-commitment cut are in [`docs/BACKTEST.md`](docs/BACKTEST.md); the dataset is committed at [`data/backtest/`](data/backtest/) and every number reproduces with one command and no API key:
+
+```bash
+python3 scripts/backtest_stats.py data/backtest/dispute-labels-2026-07-23.csv
+```
+
+---
+
 ## The problem
 
 Polymarket and Kalshi publish market data that is useful for retail trading but not ingestion-ready for institutional research or risk. Three gaps a buyer hits immediately:
@@ -305,7 +323,7 @@ Four tables. Full definitions in `schema/`.
 |---|---|---|
 | v0.1 | Schema + Enhancement Script + reference specimens | Shipped Apr 2026 |
 | v0.2 | Live site + REST API + MCP, RCG grading, cross-venue linking, CM Signal wire feed, hourly prices | **Shipped Jun 2026** |
-| v0.3 | `resolution_log` via UMA subgraph reader, dispute-risk `Rate` surface, full-book depth, Polymarket open interest | Planned |
+| v0.3 | `resolution_log` via UMA subgraph reader, tier-2 (overturned) dispute labels for [`docs/BACKTEST.md`](docs/BACKTEST.md), full-book depth, Polymarket open interest | Planned |
 
 ---
 
