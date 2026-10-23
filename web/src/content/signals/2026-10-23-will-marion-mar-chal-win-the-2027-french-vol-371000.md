@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261023VS00"
 signal_slug: "will-marion-mar-chal-win-the-2027-french-vol-371000"
-headline: "Maréchal French presidency: 0% on $371K surge"
-semantic_title: "Maréchal 2027 stays a no-go at zero odds"
+headline: "Maréchal France 2027: 0% on $371K volume spike"
+semantic_title: "Maréchal 2027 presidential odds stay at zero on a surge"
 telemetry: "0% · $371K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-23T07:49:03+00:00"
+published_at: "2026-10-23T13:04:13+00:00"
 event_id: "CM-EVT-GD1GGR4710"
 event_slug: "next-french-presidential-election"
 event_question: "Will a new French president be elected in the next French Presidential Election?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2027-04-30T00:00:00Z"
 bullets:
-  - "Price sits at 0%, polymarket traders see no viable path to the Élysée for Maréchal."
-  - "24h volume of $371K equals 43% of all-time handle, a massive single-session spike."
-  - "Fresh attention likely tied to French right-wing coalition chatter or polling developments in early 2027 race coverage."
-  - "Resolves on 2027 French presidential election result."
+  - "Kalshi prices Maréchal at 0%, market reads her as a non-viable presidential contender for 2027."
+  - "24h volume of $371K is 43% of all-time on Polymarket, a sharp burst of fresh attention on a near-zero contract."
+  - "Surge likely reflects political news flow around the French right; attention precedes developments in candidate positioning."
+  - "Resolves on 2027 French presidential election outcome."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from polymarket API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will a new French president be elected in the next Fren"
     url: "https://clearmarket.fyi/events/next-french-presidential-election"
-    retrieved_at: "2026-10-23T07:49:03+00:00"
+    retrieved_at: "2026-10-23T13:04:13+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A market priced at zero drawing 43% of its lifetime volume in one day signals a desk-relevant political event in France, traders are not buying the odds but the activity itself warrants monitoring for sentiment shifts.
+Heavy volume against a 0% price signals desks are actively confirming, not reconsidering, Maréchal's elimination from viable 2027 contention, possibly hedging RN scenario risk.
