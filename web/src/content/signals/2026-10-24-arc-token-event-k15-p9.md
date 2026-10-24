@@ -2,12 +2,12 @@
 signal_id: "CMSIG20261024DV01"
 signal_slug: "arc-token-event-k15-p9"
 headline: "Arc token launch before Jan 1, 2027: Kalshi 15% vs Polymarket 9%"
-semantic_title: "Arc token launch prices far apart on the major prediction desks"
+semantic_title: "Arc token launch odds carry a premium on Kalshi heading into year-end"
 telemetry: "Polymarket 9% vs Kalshi 15%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-24T07:49:28+00:00"
+published_at: "2026-10-24T12:27:18+00:00"
 event_id: "CM-EVT-K7DR5FCFM0"
 event_slug: "kxtokenlaunch-27jan01"
 event_question: "Will Arc launch a token before Jan 1, 2027?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "Will Arc launch a token before Jan 1, 2027?"
     current_price: 0.15
 bullets:
-  - "Kalshi prices an Arc token launch at 15%, Polymarket at 9%, a 6pp spread with under 10 weeks to resolution."
-  - "Kalshi carries $3.3K in cumulative volume versus Polymarket's $184.6K, making Polymarket the far more liquid market."
-  - "Polymarket's deeper book and lower price is the stronger signal here; Kalshi's higher read likely reflects thin volume and limited price discipline rather than informed conviction."
-  - "Resolution requires a publicly confirmed Arc token launch on-chain or via official announcement before Jan 1, 2027."
+  - "Kalshi prices an Arc token launch before 2027 at 15%, Polymarket at 9%, a 6pp spread."
+  - "Kalshi is higher on $3.3K cumulative volume; Polymarket's 9% is supported by roughly 56x more trading activity."
+  - "Polymarket's substantially deeper market makes its 9% the more stress-tested price; Kalshi's premium likely reflects thin-market noise rather than an informed edge."
+  - "Resolution requires a confirmed, publicly announced Arc token launch on or before Dec 31, 2026."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-F36B8880EB); prices direct from venue APIs"
@@ -44,15 +44,15 @@ atomic_claims:
         method: "arithmetic"
         inputs: ["kalshi_price", "poly_price"]
     liquidity_context:
-      kalshi_vol_24h_usd: 10.15
+      kalshi_vol_24h_usd: 20.05
       poly_vol_24h_usd: 0.0
 sources:
   - label: "ClearMarket cross-venue record: Will Arc launch a token before Jan 1, 2027?"
     url: "https://clearmarket.fyi/compare/arc-token-event-y-2026"
-    retrieved_at: "2026-10-24T07:49:28+00:00"
+    retrieved_at: "2026-10-24T12:27:18+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-With Polymarket holding nearly 56x more volume, the 9% read is the more credible anchor, and Kalshi's 15% looks like a thin-market artifact a desk can lean against rather than a genuine information signal.
+With Polymarket carrying nearly all the liquidity, the 6pp gap looks like a thin-market artifact on Kalshi rather than genuine information asymmetry, desks should weight Polymarket's 9% as the reference price.

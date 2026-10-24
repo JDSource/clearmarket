@@ -2,12 +2,12 @@
 signal_id: "CMSIG20261024DV00"
 signal_slug: "us-economy-soft-landing-k17-p9"
 headline: "U.S. economy in recession by end-2026: Kalshi 17% vs Polymarket 9%"
-semantic_title: "Economy-in-recession odds build a wide spread across venues"
+semantic_title: "Economy-in-recession call trades far apart across venues"
 telemetry: "Polymarket 9% vs Kalshi 17%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-24T07:49:28+00:00"
+published_at: "2026-10-24T12:27:18+00:00"
 event_id: "CM-EVT-ZRG5DFDMZ8"
 event_slug: "kxeconpath-26"
 event_question: "State of the economy at the end of 2026?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "State of the economy at the end of 2026?"
     current_price: 0.174
 bullets:
-  - "Kalshi prices recession risk at 17%, Polymarket at 9%, an 8pp gap on the same end-of-year claim."
-  - "Kalshi sits higher with roughly $6.6K cumulative volume; Polymarket carries the deeper pool at $52.1K."
-  - "Polymarket's larger liquidity typically reflects broader price discovery; Kalshi's premium may stem from a narrower, more pessimistic user base or looser resolution language."
-  - "Resolution hinges on how 'recession' is officially defined or declared before Jan 1, 2027, ambiguity in that mechanic likely amplifies the spread."
+  - "Kalshi prices recession by end-2026 at 17%, Polymarket at 9%, an 8pp gap."
+  - "Kalshi sits higher on thin volume; Polymarket holds the lower read with roughly 8x more cumulative activity."
+  - "Polymarket's deeper pool likely reflects broader crowd input; Kalshi's premium may stem from a smaller, more pessimistic participant base or differing resolution criteria."
+  - "Resolution hinges on an official or widely accepted recession determination before Jan 1, 2027, definitional ambiguity may itself explain part of the spread."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-534611296D); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: State of the economy at the end of 2026?"
     url: "https://clearmarket.fyi/compare/us-economy-soft-landing-y-2026"
-    retrieved_at: "2026-10-24T07:49:28+00:00"
+    retrieved_at: "2026-10-24T12:27:18+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 8pp gap on a claim this close to resolution is wide enough that a desk with a clear view on the definition mechanic could find a straightforward arbitrage entry between the two venues.
+The 8pp gap on a thin-vs-deep liquidity split suggests Polymarket's 9% is the more crowd-vetted read, but desks should check whether the two contracts resolve against the same recession definition before treating this as clean arbitrage.

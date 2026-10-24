@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026102206"
+signal_id: "CMSIG2026102208"
 signal_slug: "hormuz-traffic-normal-by-dec-31-polymarket-12-2026-10-22"
 headline: "Hormuz traffic normal by Dec 31: Polymarket 12%"
-semantic_title: "Hormuz traffic return to normal by year-end stays a long shot"
+semantic_title: "Strait of Hormuz traffic returning to normal by year-end stays a long shot"
 telemetry: "Polymarket 12%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc"
   question_raw: "Strait of Hormuz traffic returns to normal by December 31?"
   current_price: 0.12
-  volume_24h_usd: 17925.777383
+  volume_24h_usd: 14117.232248999999
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "Polymarket prediction market prices only 12% odds on Strait of Hormuz traffic returning to normal by December 31, 2026."
-  - "Seven tankers damaged in a single overnight period directly supports the market's heavy discounting of a near-term normalization."
-  - "Treasury yields fell and oil-linked risk assets moved Thursday partly on Hormuz escalation, the 12% contract price reflects that geopolitical premium."
-  - "Polymarket resolves via uma_oracle; with roughly 10 weeks to year-end and no ceasefire signal, the low probability appears consistent with ground conditions."
+  - "The Polymarket contract on Strait of Hormuz traffic returning to normal by December 31 sits at 12%, a strong long-shot read."
+  - "With a US naval blockade now in effect and Iran threatening wider strikes on economic targets, the market at 12% is consistent with an escalating, not de-escalating, scenario."
+  - "Oil near $100-116 per barrel (Stories 33, 35) corroborates the market's pricing of prolonged disruption rather than imminent normalization."
+  - "Resolution via Polymarket's uma_oracle; the contract likely requires a return to pre-blockade transit volumes, making partial resumption insufficient for settlement."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,28 +31,28 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Iran's state television reported seven oil tankers were struck or hit mines in the Strait of Hormuz overnight, possibly the largest single-day incident count since the Iran war."
-    publisher: "The Associated Press"
+    story: "Trump accused Iran of fabricating ship strikes to drive up oil prices, while a US naval blockade on Iranian port traffic in the Strait of Hormuz took effect."
+    publisher: "Duarte Dias Digital Journalist"
     published_at: "2026-10-22T00:00:00.000Z"
-    source_url: "https://apnews.com/article/mideast-yemen-saudi-israel-october-22-2026-dde5b98a8bf961224514994b02babce9"
+    source_url: "https://www.cbsnews.com/live-updates/iran-war-trump-us-ceasefire-talks-ongoing/"
     field_provenance:
       story:
         tier: "mediated"
         method: "exa_search"
-        source: "The Associated Press"
-        source_url: "https://apnews.com/article/mideast-yemen-saudi-israel-october-22-2026-dde5b98a8bf961224514994b02babce9"
-        retrieved_at: "2026-10-22T13:24:33+00:00"
+        source: "Duarte Dias Digital Journalist"
+        source_url: "https://www.cbsnews.com/live-updates/iran-war-trump-us-ceasefire-talks-ongoing/"
+        retrieved_at: "2026-10-24T12:26:12+00:00"
   - type: "pm_response"
-    notes: "Polymarket contract resolves via uma_oracle; the 12% price implies markets see Hormuz disruption as likely to persist through 2026."
+    notes: "Polymarket at 12% on Hormuz normalization by year-end reflects the active US blockade and Iranian escalation rhetoric, with the price level consistent with a market that sees the disruption persisting well into 2027."
     field_provenance:
       notes:
         tier: "editorial"
         method: "llm_judge_cm_signal_v1"
 sources:
-  - label: "The Associated Press: Iran says 7 tankers were damaged in the Strait of Hormuz, and other Mi"
-    url: "https://apnews.com/article/mideast-yemen-saudi-israel-october-22-2026-dde5b98a8bf961224514994b02babce9"
+  - label: "Duarte Dias Digital Journalist: Trump accuses Iran of making up fake strikes on ships to drive up oil"
+    url: "https://www.cbsnews.com/live-updates/iran-war-trump-us-ceasefire-talks-ongoing/"
     published_at: "2026-10-22T00:00:00.000Z"
-    retrieved_at: "2026-10-22T13:24:33+00:00"
+    retrieved_at: "2026-10-24T12:26:12+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
