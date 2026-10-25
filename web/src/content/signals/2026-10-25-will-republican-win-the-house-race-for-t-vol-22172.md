@@ -1,13 +1,13 @@
 ---
-signal_id: "CMSIG20261025VS02"
+signal_id: "CMSIG20261025VS04"
 signal_slug: "will-republican-win-the-house-race-for-t-vol-22172"
-headline: "GOP wins TX-09: 76% on $22K surge"
-semantic_title: "Republican hold in TX-09 draws heavy backing at strong odds"
+headline: "GOP wins TX-09: 76% on $22K Kalshi surge"
+semantic_title: "Republican hold in TX-09 trades as heavy favorite at 76%"
 telemetry: "76% · $22K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-10-25T07:48:52+00:00"
+published_at: "2026-10-25T12:57:02+00:00"
 event_id: "CM-EVT-D0QN4YG685"
 event_slug: "kxhousetx9-26"
 event_question: "TX-09 House winner?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2027-01-04T15:00:00Z"
 bullets:
-  - "Kalshi prices a Republican win in TX-09 at 76%, reflecting a solid but not certain incumbent-party advantage."
-  - "24h volume of $22K is 63% of all-time handle, the majority of total contract activity landed in a single day."
-  - "Concentrated single-day flow into a district race suggests a catalyst: redistricting news, candidate filing, or new poll release."
-  - "Contract resolves on the certified TX-09 House race result from the 2026 midterm election."
+  - "76% reflects a confident Republican lean, market treats TX-09 as likely but not certain GOP retention."
+  - "Kalshi logged $22K in 24h, 63% of all-time volume, the bulk of lifetime activity concentrated in one day."
+  - "TX-09 is majority-minority Houston district historically held by Democrats; GOP pricing at 76% implies a notable shift."
+  - "Resolves on official 2026 midterm TX-09 House race result."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: TX-09 House winner?"
     url: "https://clearmarket.fyi/events/kxhousetx9-26"
-    retrieved_at: "2026-10-25T07:48:52+00:00"
+    retrieved_at: "2026-10-25T12:57:02+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-Sixty-three percent of lifetime volume arriving in one session on a district-level contract is a sharp attention signal; desks covering House control models should flag TX-09 as a newly live data point for seat-flip probability grids.
+Over three-fifths of lifetime volume landing in one session on a historically Democratic Houston seat priced as a GOP favorite demands desk attention, either redistricting data or candidate dynamics are driving a sharp conviction trade.
