@@ -1,0 +1,63 @@
+---
+signal_id: "CMSIG2026102504"
+signal_slug: "gop-holds-at-least-one-chamber-kalshi-64-2026-10-25"
+headline: "GOP holds at least one chamber: Kalshi 64%"
+semantic_title: "Republicans holding at least one chamber stays near 2-to-1 favorite"
+telemetry: "Kalshi 64%"
+category_tag: "MOMENTUM_REPRICING"
+detection_path: "news_cycle"
+pre_news_classification: "concurrent"
+published_at: "2026-10-25T11:00:00.000Z"
+event_id: "CM-EVT-T5VXKJT451"
+event_slug: "kxbalancepowercombo-27feb"
+event_question: "Will Republicans control at least one chamber of Congress after the 2026 midterm elections?"
+primary_market:
+  platform: "kalshi"
+  platform_market_id: "KXBALANCEPOWERCOMBO-27FEB-DD"
+  question_raw: "Will House Control be Democratic AND Senate Control be Democratic for Feb 2027?"
+  current_price: 0.64
+  volume_24h_usd: 81197.09
+  arbitration_model: "kalshi_staff"
+  resolution_source: "Bureau of Labor Statistics"
+  resolves_at: "2027-02-01T15:00:00Z"
+bullets:
+  - "Kalshi puts 64% on Republicans controlling at least one chamber of Congress after the 2026 midterms."
+  - "Voter fear of Democratic-controlled policy is the dominant concern per CNBC polling, consistent with a market leaning Republican but not decisive."
+  - "A 64% probability reflects a real but contested outcome, not a runaway, Democrats retain meaningful implied odds of a sweep at 36%."
+  - "Resolves via Bureau of Labor Statistics as the named resolution source, which is atypical for an electoral outcome, resolution mechanics warrant close monitoring."
+atomic_claims:
+  - type: "news_event"
+    significance:
+      threshold: 5
+      threshold_unit: "rank"
+      passed: true
+      reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active kalshi market"
+    story: "A CNBC survey shows voters most fear DSA-aligned policies if Democrats control Congress and authoritarian overreach if Republicans do, with midterms nine days away."
+    publisher: "Justin Papp"
+    published_at: "2026-10-25T11:00:00.000Z"
+    source_url: "https://www.cnbc.com/2026/10/25/cnbc-survey-midterm-election-voter-fears.html"
+    field_provenance:
+      story:
+        tier: "mediated"
+        method: "exa_search"
+        source: "Justin Papp"
+        source_url: "https://www.cnbc.com/2026/10/25/cnbc-survey-midterm-election-voter-fears.html"
+        retrieved_at: "2026-10-26T07:47:50+00:00"
+  - type: "pm_response"
+    notes: "Kalshi contract at 64%; resolution source is cited as the Bureau of Labor Statistics, which may indicate a data-feed quirk rather than the actual certifying authority."
+    field_provenance:
+      notes:
+        tier: "editorial"
+        method: "llm_judge_cm_signal_v1"
+sources:
+  - label: "Justin Papp: What Democrats and Republicans fear most about each other: CNBC survey"
+    url: "https://www.cnbc.com/2026/10/25/cnbc-survey-midterm-election-voter-fears.html"
+    published_at: "2026-10-25T11:00:00.000Z"
+    retrieved_at: "2026-10-26T07:47:50+00:00"
+field_provenance:
+  pm_data: "kalshi_api"
+  news_context: "exa_search"
+  editorial_judgment: "cm_signal_llm_judge"
+---
+
+Surfaced by the daily news-cycle scan (Exa retrieval, Claude ranking): one of the day's significant stories, matched to the ClearMarket event pricing it. News-cycle wires publish on coverage, not editorial selection.
