@@ -20,7 +20,8 @@ import os, re, json, sys, hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import requests
+import re
+from urllib.parse import urlparsequests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent
@@ -182,7 +183,10 @@ def exa_news(query, days=3, n=10):
     r.raise_for_status()
     out = []
     for x in r.json().get("results", []):
-        if not x.get("url"):
+        # Deep links only: the site schema rejects a domain-root source (provenance theater,
+        # enforced 2026-07-14), and one that slips through breaks every site build until it
+        # is removed (Axios homepage, 2026-10-27 — three failed deploys). Drop it here.
+        if not x.get("url") or not _is_deep_link(x["url"]):
             continue
         out.append({
             "title": x.get("title") or "",
@@ -197,6 +201,15 @@ def exa_news(query, days=3, n=10):
 def _domain(url):
     m = re.search(r"https?://(?:www\.)?([^/]+)", url or "")
     return m.group(1) if m else ""
+
+
+def _is_deep_link(url):
+    """Same predicate as web/src/content/config.ts: a path beyond '/' or a query string."""
+    try:
+        p = urlparse(url or "")
+    except ValueError:
+        return False
+    return (p.path not in ("", "/")) or bool(p.query)
 
 
 def fetch_movers(min_mult=2.0):
