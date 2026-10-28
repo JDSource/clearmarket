@@ -3,7 +3,8 @@
 lint_wire_voice.py — deterministic register lint for CM Signal wires.
 
 Scans the reader-facing frontmatter fields (headline, semantic_title, bullets, interp)
-of wire markdown files for banned vocabulary. The bar: a wire headline must read like
+of wire markdown files for banned vocabulary, and every source url for a domain root
+(the Astro schema rejects those; one committed wire breaks every site build). The bar: a wire headline must read like
 CNBC/terminal copy. Prompt-level bans have failed twice (2026-07-01, 2026-07-13 —
 "Capital fades…"); this enforces the ban in CI, deterministically, before commit.
 
@@ -18,6 +19,7 @@ Exit 0 = clean (in --quarantine mode: always 0; violators removed + listed on st
 Exit 1 = violations found (non-quarantine mode).
 """
 import re, sys, os, subprocess
+from urllib.parse import urlparse
 
 # Banned in reader-facing copy. Tuple = (pattern, why). Keep patterns tight — every
 # entry here was a real shipped violation or flagged by Jeremy; don't grow it casually.
@@ -83,15 +85,35 @@ def reader_text(md_text):
         parts.append(a or b)
     return " ".join(parts)
 
+URL_RX = re.compile(r'^\s*(?:source_)?url:\s*"([^"]+)"', re.M)
+
+def domain_root_urls(md_text):
+    """Source URLs that are a bare domain — the site schema rejects them (deep link required,
+    2026-07-14) and one such wire breaks every build until removed (2026-10-27, Axios root)."""
+    m = re.match(r"^---\n(.*?)\n---", md_text, re.S)
+    if not m: return []
+    bad = []
+    for u in URL_RX.findall(m.group(1)):
+        try:
+            p = urlparse(u)
+        except ValueError:
+            bad.append(u); continue
+        if p.path in ("", "/") and not p.query:
+            bad.append(u)
+    return bad
+
 def lint(path):
     try:
-        text = reader_text(open(path, encoding="utf-8").read())
+        raw = open(path, encoding="utf-8").read()
     except OSError:
         return []
+    text = reader_text(raw)
     hits = []
     for pat, why in BANNED:
         mt = re.search(pat, text, re.I)
         if mt: hits.append((mt.group(0), why))
+    for u in domain_root_urls(raw):
+        hits.append((u, "source url is a domain root — schema requires a deep link (2026-10-28)"))
     return hits
 
 def staged_files():
