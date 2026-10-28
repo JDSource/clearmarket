@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261028DV00"
 signal_slug: "exponent-token-event-k24-p10"
-headline: "Exponent token before 2027: Kalshi 24% vs Polymarket 10%"
-semantic_title: "Exponent token launch odds split sharply across venues"
+headline: "Exponent token launch before 2027: Kalshi 24% vs Polymarket 10%"
+semantic_title: "Exponent token-before-2027 prices far apart across venues"
 telemetry: "Polymarket 10% vs Kalshi 24%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-28T07:50:33+00:00"
+published_at: "2026-10-28T14:50:58+00:00"
 event_id: "CM-EVT-K7DR5FCFM0"
 event_slug: "kxtokenlaunch-27jan01"
 event_question: "Will Exponent launch a token before Jan 1, 2027?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "Will Exponent launch a token before Jan 1, 2027?"
     current_price: 0.24
 bullets:
-  - "Kalshi prices the launch at 24%, Polymarket at 10%, a 14pp gap with under 65 days to resolution."
-  - "Kalshi is higher; Polymarket carries the dominant liquidity with cumulative volume far exceeding Kalshi's thin book."
-  - "Thin Kalshi volume makes the 24% print fragile, a handful of contracts can skew a low-liquidity market; Polymarket's deeper book likely reflects broader consensus."
-  - "Resolves YES only if Exponent publicly launches a token before Jan 1, 2027."
+  - "Kalshi prices the launch at 24%, Polymarket at 10%, a 14pp gap with under nine weeks to resolution."
+  - "Kalshi is the higher venue; Polymarket carries vastly deeper liquidity at over $359K cumulative volume vs roughly $2K on Kalshi."
+  - "Thin Kalshi volume likely inflates its price; Polymarket's deep book makes its 10% the more credible signal here."
+  - "Resolves YES if Exponent publicly launches a token on any chain before Jan 1, 2027."
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-B8681B67DA); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will Exponent launch a token before Jan 1, 2027?"
     url: "https://clearmarket.fyi/compare/exponent-token-event-y-2026"
-    retrieved_at: "2026-10-28T07:50:33+00:00"
+    retrieved_at: "2026-10-28T14:50:58+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-The 14pp gap is most likely a liquidity artifact on Kalshi rather than a genuine information edge, the desk should treat Polymarket's 10% as the more reliable anchor given its volume depth.
+The 14pp spread almost certainly reflects a liquidity-thin Kalshi book rather than genuine belief asymmetry, a desk should weight Polymarket's 10% as the more reliable estimate and treat Kalshi's 24% as noise.
