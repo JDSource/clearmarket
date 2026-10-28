@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261028DV01"
 signal_slug: "arc-token-event-k11-p6"
-headline: "Arc token launch before 2027: Kalshi 11% vs Polymarket 6%"
-semantic_title: "Arc token-before-2027 odds diverge across major prediction desks"
+headline: "Arc token before 2027: Kalshi 11% vs Polymarket 6%"
+semantic_title: "Arc token-launch odds carry a premium on one major desk"
 telemetry: "Polymarket 6% vs Kalshi 11%"
 category_tag: "CROSS_VENUE_DIVERGENCE"
 detection_path: "cross_venue_divergence"
 pre_news_classification: "concurrent"
-published_at: "2026-10-28T14:50:58+00:00"
+published_at: "2026-10-28T15:35:41+00:00"
 event_id: "CM-EVT-K7DR5FCFM0"
 event_slug: "kxtokenlaunch-27jan01"
 event_question: "Will Arc launch a token before Jan 1, 2027?"
@@ -25,10 +25,10 @@ related_markets:
     question_raw: "Will Arc launch a token before Jan 1, 2027?"
     current_price: 0.11
 bullets:
-  - "Kalshi sits at 11% vs Polymarket's 6%, a 5pp spread with the horizon closing in roughly nine weeks."
-  - "Kalshi is the higher venue; Polymarket holds far greater liquidity at over $186K vs about $2.5K on Kalshi."
-  - "As with low-liquidity crypto-launch markets, the shallow Kalshi book likely exaggerates probability; Polymarket's 6% is better anchored."
-  - "Resolves YES if Arc publicly launches a token on any chain before Jan 1, 2027."
+  - "Kalshi prices Arc token launch at 11%, Polymarket at 6%, a 5pp gap"
+  - "Kalshi is the higher venue; Polymarket holds $186K cumulative volume against Kalshi's $2.5K"
+  - "With under 65 days to resolution and both venues pricing this below 15%, the spread likely reflects thin Kalshi order flow rather than a differing view on Arc's launch timeline"
+  - "Resolves YES if Arc publicly launches a token before Jan 1, 2027"
 atomic_claims:
   - type: "cross_venue_spread"
     provenance: "CM cross-venue link (question_id CMX-F36B8880EB); prices direct from venue APIs"
@@ -49,10 +49,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket cross-venue record: Will Arc launch a token before Jan 1, 2027?"
     url: "https://clearmarket.fyi/compare/arc-token-event-y-2026"
-    retrieved_at: "2026-10-28T14:50:58+00:00"
+    retrieved_at: "2026-10-28T15:35:41+00:00"
 field_provenance:
   pm_data: "kalshi_api, polymarket_clob_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A 5pp spread is modest in absolute terms but meaningful relative to Polymarket's 6% base, the gap is consistent with a thin Kalshi market mispricing a low-probability event, so desks should lean on Polymarket's figure for any exposure decision.
+A 5pp gap is notable in absolute terms but both venues agree this is a low-probability event; the Kalshi premium is most plausibly a liquidity artifact, and a desk would anchor to Polymarket's 6% as the more informed price.

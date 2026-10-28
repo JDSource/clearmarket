@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026102804"
+signal_id: "CMSIG2026102805"
 signal_slug: "hormuz-traffic-normal-by-dec-31-polymarket-12-2026-10-28"
 headline: "Hormuz traffic normal by Dec 31: Polymarket 12%"
-semantic_title: "Strait of Hormuz return to normal by year-end stays a long shot"
+semantic_title: "Strait of Hormuz returning to normal by year-end stays a long shot"
 telemetry: "Polymarket 12%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -16,14 +16,14 @@ primary_market:
   platform_market_id: "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc"
   question_raw: "Strait of Hormuz traffic returns to normal by December 31?"
   current_price: 0.12
-  volume_24h_usd: 38113.847034
+  volume_24h_usd: 38113.84703399999
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "The Polymarket contract on Hormuz traffic returning to normal by December 31 sits at 12%, resolving via uma_oracle."
-  - "The Guardian reports Iran wants firm sanctions relief guarantees before reopening the strait; the 12% probability reflects the market treating a year-end resolution as unlikely."
-  - "Despite active Gulf-state diplomacy, Polymarket is not pricing in a near-term breakthrough, keeping the contract deep in long-shot territory."
-  - "The Kalshi contract on the US reopening its embassy in Iran (CM-EVT-CM-EVT-34SYT4T2T1) is at 2%, signaling the market sees no comprehensive normalization in sight either."
+  - "The Polymarket contract puts only 12% odds on Strait of Hormuz traffic returning to normal by December 31, 2026."
+  - "News of active Gulf mediation efforts has not moved the market above a long-shot read, the Polymarket price implies skepticism that diplomacy can close in weeks."
+  - "Iran's rejection of Qatar's seven-day peace plan (Story 25) reinforces the market's low probability; the two data points are directionally consistent."
+  - "Companion Polymarket contract CM-EVT-V6DP4NW6X0 puts just 4% on Israel reopening its embassy in Iran by 2026, suggesting the market sees no near-term normalization on any Iran-related track."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,7 +31,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Gulf states are working on a multipart peace deal with Iran, which is seeking sanctions relief in exchange for reopening the Strait of Hormuz."
+    story: "Gulf states are working on a multipart peace deal to avert renewed US-Iran conflict, with Iran seeking sanctions relief in exchange for reopening the Strait of Hormuz."
     publisher: "Patrick Wintour"
     published_at: "2026-10-28T00:00:00.000Z"
     source_url: "https://www.theguardian.com/world/2026/oct/28/gulf-states-multipart-peace-deal-avert-renewal-us-iran-war"
@@ -41,9 +41,9 @@ atomic_claims:
         method: "exa_search"
         source: "Patrick Wintour"
         source_url: "https://www.theguardian.com/world/2026/oct/28/gulf-states-multipart-peace-deal-avert-renewal-us-iran-war"
-        retrieved_at: "2026-10-28T14:49:33+00:00"
+        retrieved_at: "2026-10-28T15:33:55+00:00"
   - type: "pm_response"
-    notes: "Polymarket at 12% on Hormuz normalization by year-end reflects skepticism that ongoing Gulf-state mediation will produce a binding deal within the 2026 calendar year."
+    notes: "Polymarket contract resolves via UMA oracle; at 12%, the market is fading the optimism implied by Gulf mediation headlines."
     field_provenance:
       notes:
         tier: "editorial"
@@ -52,7 +52,7 @@ sources:
   - label: "Patrick Wintour: Gulf states working on multipart peace deal to avert renewal of US-Ira"
     url: "https://www.theguardian.com/world/2026/oct/28/gulf-states-multipart-peace-deal-avert-renewal-us-iran-war"
     published_at: "2026-10-28T00:00:00.000Z"
-    retrieved_at: "2026-10-28T14:49:33+00:00"
+    retrieved_at: "2026-10-28T15:33:55+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
