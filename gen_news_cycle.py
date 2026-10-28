@@ -21,7 +21,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import re
-from urllib.parse import urlparsequests
+from urllib.parse import urlparse
+import requests
 from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent
