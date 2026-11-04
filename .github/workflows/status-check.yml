@@ -3,6 +3,9 @@
 # Reads https://api.clearmarket.fyi/v1/status (the same object a consumer's DevOps polls) and fails
 # the run when any core pipeline is not ok (stale OR degraded), the status object is malformed or 5xx, or the MCP tool list is not served. A failed run is what
 # emails the operator (GitHub → Settings → Notifications → Actions: "failed workflows only").
+# The fetch is tried twice, 45s apart: a transient D1 error surfaces as the Worker's own JSON 500 and clears within
+# minutes (Nov 3-4, 2026: two 500s in a two-hour window, both runs green again by the next slot). One retry keeps that
+# from paging; a 500 that survives 45s still fails the run.
 # Thresholds live in the Worker (THRESHOLDS in api/src/index.ts), not here: one source of truth.
 #
 # Manual: gh workflow run status-check.yml
@@ -26,14 +29,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Fetch /v1/status and MCP tools/list
+      - name: Fetch /v1/status and MCP tools/list (one retry after 45s)
         run: |
           set -u
-          # -f: a 5xx (including the Worker's own JSON 500) fails the step instead of producing a parseable-but-empty body.
-          curl -fsS --max-time 30 -o status.json -w "status HTTP %{http_code}\n" https://api.clearmarket.fyi/v1/status
-          curl -fsS --max-time 30 -o mcp.json -w "mcp HTTP %{http_code}\n" -X POST https://api.clearmarket.fyi/mcp \
-            -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
-            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+          # -f: a 5xx (including the Worker's own JSON 500) fails the fetch instead of producing a parseable-but-empty body.
+          fetch() {
+            curl -fsS --max-time 30 -o status.json -w "status HTTP %{http_code}\n" https://api.clearmarket.fyi/v1/status &&
+            curl -fsS --max-time 30 -o mcp.json -w "mcp HTTP %{http_code}\n" -X POST https://api.clearmarket.fyi/mcp \
+              -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+          }
+          if ! fetch; then
+            echo "first attempt failed; retrying in 45s"
+            sleep 45
+            fetch
+          fi
       - name: Evaluate
         run: |
           python3 - <<'PY'
