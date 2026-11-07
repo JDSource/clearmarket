@@ -1,13 +1,13 @@
 ---
 signal_id: "CMSIG20261107VS07"
 signal_slug: "will-the-rate-of-core-cpi-inflation-be-a-vol-15672"
-headline: "Core CPI above 2.5% thru Nov: 99% on $16K Kalshi surge"
-semantic_title: "Core CPI above 2.5% for the year ending November stays a near-lock"
+headline: "Core CPI >2.5% thru Nov 2026: 99% on $16K"
+semantic_title: "Core CPI above 2.5% through November stays a near-lock"
 telemetry: "99% · $16K 24h"
 category_tag: "VOLUME_SPIKE"
 detection_path: "volume_spike"
 pre_news_classification: "pre_news"
-published_at: "2026-11-07T07:49:22+00:00"
+published_at: "2026-11-07T14:39:51+00:00"
 event_id: "CM-EVT-BXDL61HVR9"
 event_slug: "kxcpicoreyoy-26nov"
 event_question: "Will core inflation in November 2026 be measured by Core CPI year-over-year change?"
@@ -21,10 +21,10 @@ primary_market:
   arbitration_model: "kalshi_staff"
   resolves_at: "2026-12-17T15:00:00Z"
 bullets:
-  - "99% pricing is effectively a resolved trade, market sees above-2.5% core as certain."
-  - "Kalshi sees $15.7K in 24h, 55% of all-time, notable given the near-certain price."
-  - "Volume at 99% suggests participants are still opening positions despite near-zero edge, possibly hedging portfolio inflation exposure."
-  - "Resolves upon BLS release of CPI data for the year ending November 2026."
+  - "Kalshi prices core CPI staying above 2.5% for the year ending November 2026 at 99%, market treats it as resolved."
+  - "$16K in 24h is 55% of all-time volume, signaling fresh interest in an already-consensus inflation call."
+  - "Volume into a 99% contract likely reflects late arbitrage or hedging against portfolio inflation assumptions."
+  - "Resolves on the official BLS core CPI figure for November 2026."
 atomic_claims:
   - type: "volume_anomaly"
     provenance: "24h + cumulative volume direct from kalshi API; intensity = 24h/cumulative (derived)"
@@ -41,10 +41,10 @@ atomic_claims:
 sources:
   - label: "ClearMarket market record: Will core inflation in November 2026 be measured by Cor"
     url: "https://clearmarket.fyi/events/kxcpicoreyoy-26nov"
-    retrieved_at: "2026-11-07T07:49:22+00:00"
+    retrieved_at: "2026-11-07T14:39:51+00:00"
 field_provenance:
   pm_data: "kalshi_api"
   editorial_judgment: "cm_signal_llm_judge"
 ---
 
-A desk should read residual volume at 99% as hedging activity rather than price discovery, someone is still willing to pay up for the inflation confirmation leg as an offsetting position.
+A desk should treat this as a confirmed inflation signal, the market has effectively declared core CPI entrenched above 2.5% through November 2026, relevant for any rates or duration positioning tied to Fed targets.

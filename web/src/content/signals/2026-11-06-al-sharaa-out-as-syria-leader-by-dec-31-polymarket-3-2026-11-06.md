@@ -1,8 +1,8 @@
 ---
-signal_id: "CMSIG2026110605"
+signal_id: "CMSIG2026110607"
 signal_slug: "al-sharaa-out-as-syria-leader-by-dec-31-polymarket-3-2026-11-06"
 headline: "Al-Sharaa out as Syria leader by Dec 31: Polymarket 3%"
-semantic_title: "Ahmed al-Sharaa staying as Syria leader stays heavily favored"
+semantic_title: "Ahmed al-Sharaa staying as Syria leader through year-end near fully priced"
 telemetry: "Polymarket 3%"
 category_tag: "MOMENTUM_REPRICING"
 detection_path: "news_cycle"
@@ -20,10 +20,10 @@ primary_market:
   arbitration_model: "uma_oracle"
   resolves_at: "2026-12-31T00:00:00Z"
 bullets:
-  - "Polymarket prices the chance of Ahmed al-Sharaa no longer leading Syria by December 31, 2026 at just 3%."
-  - "Trump's meeting with al-Sharaa and sanctions relief signal US recognition of his leadership, consistent with the market's low probability of his removal."
-  - "US normalization moves reduce near-term political risk to al-Sharaa's position, leaving the 3% tail as residual instability risk."
-  - "Resolves via UMA oracle; departure could include death, ouster, or formal removal, not merely a ceasefire or government reshuffle."
+  - "Polymarket prices Ahmed al-Sharaa no longer leading Syria by December 31, 2026 at just 3%, implying 97% odds he remains in place through year-end."
+  - "Trump's direct meeting with al-Sharaa and announced sanctions relief represent strong U.S. legitimization of his leadership, the 3% reading is consistent with that diplomatic backing."
+  - "The Israel-Saudi normalization Polymarket contract sits at 2% before 2027, suggesting broader Middle East realignment remains a long shot even as the Syria shift unfolds."
+  - "Resolution is via Polymarket's UMA oracle, which will assess whether al-Sharaa has formally lost the leadership role by December 31."
 atomic_claims:
   - type: "news_event"
     significance:
@@ -31,7 +31,7 @@ atomic_claims:
       threshold_unit: "rank"
       passed: true
       reason: "surfaced in the daily Exa news-cycle scan; mechanically matched to an active polymarket market"
-    story: "Trump met with Syria's interim leader Ahmed al-Sharaa, announced sanctions relief, and signaled a major US policy shift toward normalizing relations with Syria."
+    story: "Trump met with Syria's interim leader Ahmed al-Sharaa, announced sanctions relief, and signaled a major U.S. policy shift toward normalizing relations with Syria."
     publisher: "link.cfr.org"
     published_at: "2026-11-06T00:00:00.000Z"
     source_url: "https://link.cfr.org/public/39859936"
@@ -41,9 +41,9 @@ atomic_claims:
         method: "exa_search"
         source: "link.cfr.org"
         source_url: "https://link.cfr.org/public/39859936"
-        retrieved_at: "2026-11-07T07:48:17+00:00"
+        retrieved_at: "2026-11-07T14:38:54+00:00"
   - type: "pm_response"
-    notes: "Polymarket at 3% aligns with US diplomatic engagement reinforcing al-Sharaa's hold on power."
+    notes: "Polymarket at 3% on al-Sharaa's departure effectively prices in U.S. legitimization of his rule as a stabilizing factor through year-end."
     field_provenance:
       notes:
         tier: "editorial"
@@ -52,7 +52,7 @@ sources:
   - label: "link.cfr.org: Across the Globe"
     url: "https://link.cfr.org/public/39859936"
     published_at: "2026-11-06T00:00:00.000Z"
-    retrieved_at: "2026-11-07T07:48:17+00:00"
+    retrieved_at: "2026-11-07T14:38:54+00:00"
 field_provenance:
   pm_data: "polymarket_api"
   news_context: "exa_search"
