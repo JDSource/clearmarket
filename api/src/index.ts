@@ -1168,7 +1168,9 @@ async function applyKalshiFinalized(env: Env, runId: string): Promise<ApplyResul
 // ---- on-time GitHub workflow dispatch --------------------------------------
 // GitHub's cron scheduler on this repo starts jobs 20 min to 5 h late and skips hours outright; workflow_dispatch
 // events start within seconds. The Worker's second cron (:45) fires the hourly Kalshi snapshot job so the :00
-// marks pass finds a fresh file, plus the two daily jobs at their intended hours. The GitHub schedules stay as backup.
+// marks pass finds a fresh file, plus the two daily jobs at their intended hours. Those three workflows have NO GitHub
+// schedule of their own (Nov 2026: the late-firing schedule duplicated every run, doubling D1 load and producing most of
+// the failure emails). Only status-check.yml keeps a GitHub schedule, so the alarm has a trigger independent of this Worker.
 const GH_REPO = 'JDSource/clearmarket';
 async function dispatchWorkflow(env: Env, runId: string, file: string): Promise<void> {
   const startedAt = new Date().toISOString();
@@ -1194,6 +1196,8 @@ async function dispatchWorkflow(env: Env, runId: string, file: string): Promise<
 // returned but does not by itself count as a change.
 // The since=/cursor key is the Worker's own commit clock (row_changed_at), never an observation clock: a Kalshi row
 // from the R2 snapshot carries the snapshot's time, which can trail the commit by up to 180 min.
+// Backed by the expression index idx_markets_changed_mkt ON markets(COALESCE(row_changed_at,''), market_id): the planner
+// matches the expression textually, so this string must stay byte-identical to the index definition in seed/schema.sql.
 const CHANGED_EXPR = `COALESCE(row_changed_at,'')`;
 const b64 = (s: string) => btoa(unescape(encodeURIComponent(s)));
 const unb64 = (s: string) => decodeURIComponent(escape(atob(s)));
@@ -1259,11 +1263,20 @@ async function listMarks(env: Env, url: URL): Promise<Response> {
 // One object, computed from D1, that says whether each core pipeline is fresh. Same URL serves the
 // hourly GitHub check that emails the operator and any consumer's DevOps poll. Core = prices, daily
 // history, status reconcile, sweep apply, eligibility screen. Signal-side feeds are reported as non_core.
+// Served from a 60s in-isolate memo: the object only changes hourly, and a monitor polling every minute
+// would otherwise recompute nine aggregates per poll (Nov 2026: with marks_daily unindexed on `day`, one
+// call read 3M rows and tripped D1's 10-second resource budget; the index fixed the cause, the memo caps the rate).
+// A D1 error here must surface as a 500 (the check retries), never as a wrong verdict: the earlier
+// `.catch(() => ({results: []}))` on feed_meta reported sweep_apply "never_run" during a D1 hiccup (Nov 5, 2026).
 const THRESHOLDS = { prices_hours: 2, history_days: 1, reconcile_hours: 30, sweep_hours: 30, screen_days: 45 };
 type CheckState = 'ok' | 'stale' | 'degraded';
 type Check = { name: string; state: CheckState; as_of: string | null; age_hours: number | null; threshold: string; detail: Record<string, unknown> };
 
+let statusMemo: { at: number; body: unknown } | null = null;
+const STATUS_MEMO_MS = 60_000;
+
 async function statusReport(env: Env): Promise<Response> {
+  if (statusMemo && Date.now() - statusMemo.at < STATUS_MEMO_MS) return json(statusMemo.body, 200, { 'Cache-Control': 'public, max-age=60' });
   const now = Date.now();
   const ageH = (iso: string | null | undefined) => (iso && !isNaN(Date.parse(iso)) ? Math.round(((now - Date.parse(iso)) / 3600e3) * 10) / 10 : null);
   const two = isoAgo(THRESHOLDS.prices_hours);
@@ -1278,8 +1291,8 @@ async function statusReport(env: Env): Promise<Response> {
     env.DB.prepare('SELECT MAX(reconciled_at) last FROM markets').first<{ last: string | null }>(),
     env.DB.prepare(`SELECT run_id, step, venue, started_at, finished_at, fetched, changed, error FROM cron_runs
                      WHERE (step, venue, started_at) IN (SELECT step, venue, MAX(started_at) FROM cron_runs GROUP BY step, venue)
-                     ORDER BY step, venue`).all<any>().catch(() => ({ results: [] as any[] })),
-    env.DB.prepare('SELECT key, value, updated_at FROM feed_meta').all<{ key: string; value: string | null; updated_at: string }>().catch(() => ({ results: [] as any[] })),
+                     ORDER BY step, venue`).all<any>(),
+    env.DB.prepare('SELECT key, value, updated_at FROM feed_meta').all<{ key: string; value: string | null; updated_at: string }>(),
     env.DB.prepare('SELECT MAX(updated_at) v FROM events').first<{ v: string | null }>(),
     env.DB.prepare('SELECT MAX(as_of) as_of FROM spot').first<{ as_of: string | null }>().catch(() => null),
     env.DB.prepare('SELECT eligibility_screens FROM markets WHERE eligibility_screens IS NOT NULL LIMIT 1').first<{ eligibility_screens: string }>(),
@@ -1343,7 +1356,7 @@ async function statusReport(env: Env): Promise<Response> {
   const rank: Record<CheckState, number> = { ok: 0, degraded: 1, stale: 2 };
   const overall = checks.reduce<CheckState>((w, c) => (rank[c.state] > rank[w] ? c.state : w), 'ok');
 
-  return json({
+  const body = {
     service: 'clearmarket-api', as_of: new Date(now).toISOString(), schema_version: SCHEMA_VERSION,
     state: overall,
     checks,
@@ -1351,7 +1364,9 @@ async function statusReport(env: Env): Promise<Response> {
     runs: runs.results,
     non_core: { spot: { as_of: spot?.as_of ?? null, age_hours: ageH(spot?.as_of), note: 'CM Signal context feed, not part of the reference dataset' } },
     docs: 'state = worst of checks[]. ok | degraded (fresh, but the latest run of a step reported an error) | stale (a core pipeline is past its threshold). Timestamps UTC.',
-  }, 200, { 'Cache-Control': 'no-store' });
+  };
+  statusMemo = { at: now, body };
+  return json(body, 200, { 'Cache-Control': 'public, max-age=60' });
 }
 
 // ---- agent-economy discovery documents ----------------------------------

@@ -2,16 +2,16 @@
 # Workers' shared egress IPs at the first request (the Worker's own hourly Kalshi scan only got through
 # sporadically; cron_runs made it visible 2026-09-17). Publishes kalshi-tracked-latest.json to R2; the
 # Worker's refreshMarks() applies it to the tracked markets when its direct fetch fails or the snapshot
-# is fresher. Runs at :50 so the Worker's :00 cron finds a snapshot at most ~10 minutes old.
+# is fresher. Dispatched by the Worker at :45 so the :00 cron finds a snapshot at most ~15 minutes old.
+# No GitHub `schedule:` trigger: GitHub's scheduler fired 20 min to 10 h late, duplicating the dispatched run
+# (double load on D1 and Kalshi, and most of the failure emails Sept-Nov 2026). Removed 2026-11-10.
 #
 # Manual: gh workflow run kalshi-marks.yml
 
 name: Kalshi marks snapshot (hourly)
 
 on:
-  schedule:
-    - cron: '50 * * * *'
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # dispatched by the Worker's :45 cron (api/src/index.ts dispatchWorkflow); no GitHub schedule, see header
 
 permissions:
   contents: read

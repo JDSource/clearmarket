@@ -21,9 +21,7 @@
 name: Freshness — daily status sweep
 
 on:
-  schedule:
-    - cron: '30 6 * * *'   # 06:30 UTC — after the Worker's 06:00 D1 reconcile, before the 08:00 site rebuild
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # dispatched by the Worker at 06:45 UTC (after its 06:00 reconcile, before the 07:45 site rebuild); no GitHub schedule since 2026-11-10 (late duplicate runs)
 
 permissions:
   contents: read
