@@ -19,9 +19,7 @@
 name: CM Signal — daily wires
 
 on:
-  schedule:
-    - cron: '0 8 * * *'      # 08:00 UTC ≈ 04:00 ET (PRD signal-generation cycle)
-  workflow_dispatch: {}        # manual trigger for supervised test runs
+  workflow_dispatch: {}   # dispatched by the Worker at 07:45 UTC (~03:45 ET); no GitHub schedule since 2026-11-10 (fired up to 10 h late, duplicating the run)
 
 permissions:
   contents: write              # to commit the generated wire files

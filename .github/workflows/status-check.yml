@@ -7,6 +7,8 @@
 # minutes (Nov 3-4, 2026: two 500s in a two-hour window, both runs green again by the next slot). One retry keeps that
 # from paging; a 500 that survives 45s still fails the run.
 # Thresholds live in the Worker (THRESHOLDS in api/src/index.ts), not here: one source of truth.
+# This is the ONE workflow that keeps a GitHub `schedule:` (the alarm must have a trigger that does not depend on the
+# Worker it monitors). The three pipeline workflows are Worker-dispatched only.
 #
 # Manual: gh workflow run status-check.yml
 
@@ -27,8 +29,13 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
+      # The Worker dispatches this job and the Kalshi snapshot job in the same second at :45. Give the Kalshi job
+      # (which pages /v1/marks) a head start so the two never share D1's 10-second resource window.
+      - name: Space out from the Kalshi snapshot job
+        if: github.event_name == 'workflow_dispatch'
+        run: sleep 150
       - name: Fetch /v1/status and MCP tools/list (one retry after 45s)
         run: |
           set -u
