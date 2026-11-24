@@ -6,12 +6,45 @@ import Site from '../../layouts/Site.astro';
 // Numbers: grade-to-dispute backtest (2026-06-14) + volume-confound control (2026-06-15).
 const updated = '2026-07-23';
 
+const published = '2026-07-23';
+const GLOBE_OPED = 'https://www.theglobeandmail.com/business/commentary/article-prediction-markets-offer-a-glimpse-into-the-future-and-protection-from/';
+const CFTC_COMMENT = 'https://comments.cftc.gov/Handlers/PdfHandler.ashx?id=36035';
+
+// Named author: the "who runs it" answer AI assistants and analysts look for.
+const author = {
+  "@type": "Person",
+  "name": "Jeremy Dietz",
+  "jobTitle": "Founder, ClearMarket",
+  "sameAs": ["https://www.linkedin.com/in/jeremydietz/", GLOBE_OPED],
+};
+
+// Report markup alongside the Dataset: same study, described as a written analysis with citations.
+const reportJsonld = {
+  "@context": "https://schema.org",
+  "@type": "Report",
+  "headline": "Do resolution rules predict prediction-market disputes? A 7,166-contract Polymarket backtest",
+  "abstract": "Across 7,166 Polymarket contracts with a public dispute record, contracts graded C on resolution clarity before they resolved were formally challenged at 1.59%, against 0.08% for contracts graded A or B (relative risk 20.6x, 95% CI 6.4x to 65.8x). 52 of the 55 challenged contracts had been graded C. The grade is computed from the resolution rules text only. The result holds within trading-volume quartiles.",
+  "author": author,
+  "publisher": { "@type": "Organization", "@id": "https://clearmarket.fyi/#organization", "name": "ClearMarket" },
+  "datePublished": published,
+  "dateModified": updated,
+  "url": "https://clearmarket.fyi/research/resolution-clarity-index/",
+  "isBasedOn": "https://github.com/JDSource/clearmarket/blob/main/docs/BACKTEST.md",
+  "citation": [
+    "https://arxiv.org/abs/2610.29578",
+    "https://arxiv.org/abs/2604.15674",
+    CFTC_COMMENT,
+  ],
+};
+
 const jsonld = {
   "@context": "https://schema.org",
   "@type": "Dataset",
   "name": "ClearMarket Resolution Clarity Grade: resolution-risk validation",
   "description": "Empirical test of whether ClearMarket's A/B/C Resolution Clarity Grades predict resolution risk, measured against on-chain UMA disputes, across 7,166 Polymarket markets with public dispute records, with a volume-confound control.",
-  "creator": { "@type": "Organization", "name": "ClearMarket", "url": "https://clearmarket.fyi" },
+  "creator": author,
+  "publisher": { "@type": "Organization", "@id": "https://clearmarket.fyi/#organization", "name": "ClearMarket", "url": "https://clearmarket.fyi" },
+  "datePublished": published,
   "url": "https://clearmarket.fyi/research/resolution-clarity-index/",
   "isBasedOn": "https://github.com/JDSource/clearmarket",
   "variableMeasured": ["Resolution Clarity Grade", "UMA dispute (tier1_challenged)", "market volume"],
@@ -25,8 +58,9 @@ const jsonld = {
   "dateModified": updated,
 };
 ---
-<Site title="Do prediction markets resolve fairly? A 7,166-contract Polymarket backtest | ClearMarket" description="Do prediction markets resolve fairly? Across 7,166 Polymarket markets, contracts ClearMarket rated C were formally disputed at 20 times the rate of A- and B-rated contracts. A backtest of resolution-risk grading: which prediction-market contracts resolve cleanly, and which get disputed.">
+<Site title="Do resolution rules predict prediction-market disputes? A 7,166-contract Polymarket backtest | ClearMarket" description="A backtest of resolution-clarity grades against actual dispute outcomes. Across 7,166 Polymarket contracts, those graded C from their rules text were formally disputed at 20 times the rate of A- and B-graded contracts (1.59% vs 0.08%; relative risk 20.6x, 95% CI 6.4x to 65.8x). Data, method and code are public.">
   <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+  <script type="application/ld+json" set:html={JSON.stringify(reportJsonld)} />
   <div class="doc">
     <aside class="doc-gutter">
       <div class="dg-meta">
@@ -43,14 +77,17 @@ const jsonld = {
         <a href="#cases">3 · What a C looks like</a>
         <a href="#how">4 · How the grade works</a>
         <a href="#scope">5 · Scope &amp; method</a>
+        <a href="#related">6 · Related research</a>
+        <a href="#author">7 · Author</a>
       </nav>
     </aside>
 
     <div class="doc-body">
       <header class="doc-head" id="overview">
         <p class="eyebrow">Resolution Clarity Grade · Polymarket validation backtest</p>
-        <h1>Do prediction markets resolve fairly?</h1>
-        <p class="doc-subtitle">A 7,166-contract Polymarket backtest.</p>
+        <h1>Do resolution rules predict prediction-market disputes?</h1>
+        <p class="doc-subtitle">A 7,166-contract Polymarket backtest of clarity grades against the public dispute record.</p>
+        <p class="doc-byline">By <a href="#author">Jeremy Dietz</a>, founder of ClearMarket · Edition 1 · data as of {published}</p>
         <p class="doc-lede">Most prediction-market contracts on Polymarket and Kalshi resolve cleanly. Some don't. They end in a dispute, or settle against what actually happened. That is the resolution risk traders and funds care about. ClearMarket grades it before a market resolves, from the resolution rules alone, as A, B, or C. This page tests the grade against the public record: do the contracts it flags as unclear actually get disputed?</p>
         <blockquote class="keyfinding"><strong>Key finding.</strong> Across 7,166 Polymarket markets with public dispute records, contracts ClearMarket rated C (the lowest of its three Resolution Clarity Grades) were formally disputed at <strong>20 times the rate</strong> of A- and B-rated contracts (1.59% vs 0.08%). 52 of the 55 disputes landed on C-rated contracts. The three challenges to A-rated contracts all failed: each market settled exactly as its rules specified. Reproducible at <a href="https://github.com/JDSource/clearmarket">github.com/JDSource/clearmarket</a>.</blockquote>
       </header>
@@ -59,13 +96,14 @@ const jsonld = {
         <h2 class="surface-tab">1 · THE FINDING</h2>
         <p>Across <strong>7,166 Polymarket markets</strong> with public dispute records, 52 of the 55 markets that ended up in a resolution dispute had been rated <strong>C by ClearMarket</strong>, the lowest clarity tier. C-rated contracts dispute at <strong>1.59%</strong>, 20 times the 0.08% rate of A- and B-rated contracts combined.</p>
         <table class="m-table">
-          <thead><tr><th scope="col">RCG</th><th scope="col" class="m-num">Resolution disputes</th><th scope="col" class="m-num">Markets</th><th scope="col" class="m-num">Dispute rate</th></tr></thead>
+          <thead><tr><th scope="col">RCG</th><th scope="col" class="m-num">Resolution disputes</th><th scope="col" class="m-num">Markets</th><th scope="col" class="m-num">Dispute rate</th><th scope="col" class="m-num">95% CI (Wilson)</th></tr></thead>
           <tbody>
-            <tr><td><span class="gr gr-a">A</span></td><td class="m-num">3</td><td class="m-num">2,587</td><td class="m-num">0.12%</td></tr>
-            <tr><td><span class="gr gr-b">B</span></td><td class="m-num">0</td><td class="m-num">1,302</td><td class="m-num">0.00%</td></tr>
-            <tr><td><span class="gr gr-c">C</span></td><td class="m-num">52</td><td class="m-num">3,277</td><td class="m-num">1.59%</td></tr>
+            <tr><td><span class="gr gr-a">A</span></td><td class="m-num">3</td><td class="m-num">2,587</td><td class="m-num">0.12%</td><td class="m-num">0.04% to 0.34%</td></tr>
+            <tr><td><span class="gr gr-b">B</span></td><td class="m-num">0</td><td class="m-num">1,302</td><td class="m-num">0.00%</td><td class="m-num">0.00% to 0.29%</td></tr>
+            <tr><td><span class="gr gr-c">C</span></td><td class="m-num">52</td><td class="m-num">3,277</td><td class="m-num">1.59%</td><td class="m-num">1.21% to 2.07%</td></tr>
           </tbody>
         </table>
+        <p class="doc-note">Relative risk, C versus A and B combined: <strong>20.6x</strong> (95% CI 6.4x to 65.8x). The interval is wide because only three A- or B-rated contracts were challenged; the direction is not in doubt, the multiple is approximate.</p>
         <p>Disputes concentrate in the bottom tier, the way loan defaults concentrate in the lowest credit rating. ClearMarket assigns the grade from rules text alone and never reads the dispute history, so the result is not circular. A dispute here means a formal on-chain challenge to a proposed outcome, including challenges that fail. All three challenges to A-rated contracts failed: two markets settling on the official CME silver print and one on Colombia's national electoral registry were each challenged, re-proposed, and settled exactly as their rules specified. That is the grade's claim in action: not that no one will ever contest a clear market, but that a clearly-worded market with a committed source gives a challenge nothing to stand on.</p>
         <p>The rate is measured on Polymarket because it is the only venue with a complete, publicly auditable dispute record: every challenge is posted on-chain, whether it succeeds or fails. Kalshi publishes no dispute feed, so its contested settlements become visible only when they reach a courtroom or the press. Section 5 covers what that public record shows.</p>
       </section>
@@ -148,6 +186,26 @@ const jsonld = {
           <li><strong>Reproducible.</strong> The study write-up with confidence intervals, the pre-registered dispute definition and the volume control is at <a href="https://github.com/JDSource/clearmarket/blob/main/docs/BACKTEST.md" rel="noopener">docs/BACKTEST.md</a>; the per-contract dataset is committed at <a href="https://github.com/JDSource/clearmarket/tree/main/data/backtest" rel="noopener">data/backtest/</a> and every number on this page reproduces with <code>python3 scripts/backtest_stats.py</code>, no API key required.</li>
         </ul>
       </section>
+
+      <section class="surface" id="related">
+        <h2 class="surface-tab">6 · RELATED RESEARCH</h2>
+        <p>Two academic papers ask a similar question of the same Polymarket dispute record.</p>
+        <ul class="m-list">
+          <li><strong>Mahrous and Di Pietro (2026),</strong> <a href="https://arxiv.org/abs/2610.29578" rel="noopener">"What Prediction-Market Contracts Reveal at Launch: Trading Volume and Dispute Risk"</a> (accepted at ICAIF 2026). Using 802,863 resolved Polymarket markets and only information available at listing, the authors report that launch-time features rank dispute risk well above chance (AUC 0.78), but that at a 0.31% base rate the scores suit ranking groups of markets, not forecasting individual disputes. This study points the same way: the grade separates groups of contracts by dispute rate, and a C is not a forecast that a given contract will be disputed.</li>
+          <li><strong>Wen, Zhou and Huang (2026),</strong> <a href="https://arxiv.org/abs/2604.15674" rel="noopener">"Can LLMs Help Decentralized Dispute Arbitration? A Case Study of UMA-Resolved Markets on Polymarket"</a>. The authors report that large language models could not reliably predict from event rules which events would later be disputed. The question here is narrower: not whether a model can pick out the individual contracts that will be disputed, but whether a fixed, published rubric applied to the rules text sorts contracts into tiers with different dispute rates. On 7,166 contracts it does.</li>
+        </ul>
+        <p class="doc-note">Both summaries are drawn from the papers' abstracts. Differences in sample, period and dispute definition mean the figures are not directly comparable with the table above.</p>
+      </section>
+
+      <section class="surface" id="author">
+        <h2 class="surface-tab">7 · AUTHOR</h2>
+        <p><strong>Jeremy Dietz</strong> is the founder of ClearMarket and has spent 20 years in Canadian capital markets. Related work under his name:</p>
+        <ul class="m-list">
+          <li><a href="https://www.theglobeandmail.com/business/commentary/article-prediction-markets-offer-a-glimpse-into-the-future-and-protection-from/" rel="noopener">"Prediction markets offer a glimpse into the future, and protection from it,"</a> <em>The Globe and Mail</em>, July 31, 2026.</li>
+          <li><a href="https://comments.cftc.gov/Handlers/PdfHandler.ashx?id=36035" rel="noopener">Public comment on the CFTC's prediction markets rulemaking</a> (RIN 3038-AF65), filed April 30, 2026, recommending structured resolution disclosure at contract listing.</li>
+        </ul>
+        <p class="doc-note">The findings on this page were cited in Matt Levine's <em><a href="https://www.bloomberg.com/opinion/newsletters/2026-07-27/a-merger-closing-mystery" rel="noopener">Money Stuff</a></em> (Bloomberg Opinion, July 27, 2026). Contact: <a href="mailto:hello@clearmarket.fyi">hello@clearmarket.fyi</a>.</p>
+      </section>
     </div>
   </div>
 
@@ -166,6 +224,8 @@ const jsonld = {
     .doc-head { margin-bottom: 8px; }
     .doc-head h1 { font-family: var(--va-sans); font-size: 34px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; color: var(--va-fg); }
     .doc-subtitle { font-family: var(--va-sans); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; margin: 0 0 16px; color: var(--va-fg-muted); }
+    .doc-byline { font-family: var(--va-mono); font-size: 11.5px; letter-spacing: 0.03em; color: var(--va-fg-faint); margin: 0 0 16px; }
+    .doc-byline a { color: var(--va-fg-muted); }
     .doc-lede { font-size: 17px; line-height: 1.55; color: var(--va-fg-muted); margin: 0 0 16px; }
     .doc-note { font-size: 14px; line-height: 1.6; color: var(--va-fg-muted); }
 
